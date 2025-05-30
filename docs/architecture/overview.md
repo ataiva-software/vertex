@@ -6,37 +6,37 @@ Eden DevOps Suite is built using a microservices architecture with shared librar
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend Layer                             │
+│                     Frontend Layer                              │
 │  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
 │  │   Eden Web UI       │    │        Eden CLI                 │ │
 │  │ (Kotlin/JS+Compose) │    │    (Kotlin Native)              │ │
 │  └─────────────────────┘    └─────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────┤
-│                     API Gateway Layer                          │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  Authentication • Rate Limiting • Load Balancing • Routing │ │
-│  └─────────────────────────────────────────────────────────────┘ │
+│                     API Gateway Layer                           │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  Authentication • Rate Limiting • Load Balancing • Routing  ││
+│  └─────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────┤
-│                    Service Layer                               │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
-│  │  Vault  │ │  Flow   │ │  Task   │ │ Monitor │ │  Sync   │   │
-│  │ Service │ │ Service │ │ Service │ │ Service │ │ Service │   │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘   │
-│  ┌─────────┐ ┌─────────┐                                       │
-│  │ Insight │ │   Hub   │                                       │
-│  │ Service │ │ Service │                                       │
-│  └─────────┘ └─────────┘                                       │
+│                    Service Layer                                │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
+│  │  Vault  │ │  Flow   │ │  Task   │ │ Monitor │ │  Sync   │    │
+│  │ Service │ │ Service │ │ Service │ │ Service │ │ Service │    │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
+│  ┌─────────┐ ┌─────────┐                                        │
+│  │ Insight │ │   Hub   │                                        │
+│  │ Service │ │ Service │                                        │
+│  └─────────┘ └─────────┘                                        │
 ├─────────────────────────────────────────────────────────────────┤
-│                   Shared Infrastructure                        │
+│                   Shared Infrastructure                         │
 │  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
-│  │   Shared Core       │    │    Message Bus & Events        │ │
-│  │     Library         │    │   (Redis Streams/NATS)         │ │
+│  │   Shared Core       │    │    Message Bus & Events         │ │
+│  │     Library         │    │   (Redis Streams/NATS)          │ │
 │  └─────────────────────┘    └─────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────┤
-│                     Data Layer                                 │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │         PostgreSQL + Extensions + Redis Cache              │ │
-│  └─────────────────────────────────────────────────────────────┘ │
+│                     Data Layer                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │         PostgreSQL + Extensions + Redis Cache               ││
+│  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -94,19 +94,19 @@ Eden DevOps Suite is built using a microservices architecture with shared librar
 │              API Gateway                │
 ├─────────────────────────────────────────┤
 │  Authentication Middleware              │
-│  ├─ JWT Token Validation               │
-│  ├─ User Session Management            │
-│  └─ Role-Based Access Control          │
+│  ├─ JWT Token Validation                │
+│  ├─ User Session Management             │
+│  └─ Role-Based Access Control           │
 ├─────────────────────────────────────────┤
 │  Traffic Management                     │
-│  ├─ Rate Limiting                      │
-│  ├─ Load Balancing                     │
-│  └─ Circuit Breaker                    │
+│  ├─ Rate Limiting                       │
+│  ├─ Load Balancing                      │
+│  └─ Circuit Breaker                     │
 ├─────────────────────────────────────────┤
 │  Request Routing                        │
-│  ├─ Service Discovery                  │
-│  ├─ Path-Based Routing                 │
-│  └─ Health Check Aggregation           │
+│  ├─ Service Discovery                   │
+│  ├─ Path-Based Routing                  │
+│  └─ Health Check Aggregation            │
 └─────────────────────────────────────────┘
 ```
 
@@ -116,25 +116,25 @@ Eden DevOps Suite is built using a microservices architecture with shared librar
 │            Eden Vault Service           │
 ├─────────────────────────────────────────┤
 │  API Layer                              │
-│  ├─ REST Endpoints                     │
-│  ├─ GraphQL Schema (future)            │
-│  └─ WebSocket Events                   │
+│  ├─ REST Endpoints                      │
+│  ├─ GraphQL Schema (future)             │
+│  └─ WebSocket Events                    │
 ├─────────────────────────────────────────┤
 │  Business Logic                         │
-│  ├─ Secret Management                  │
-│  ├─ Access Control                     │
-│  └─ Audit Logging                      │
+│  ├─ Secret Management                   │
+│  ├─ Access Control                      │
+│  └─ Audit Logging                       │
 ├─────────────────────────────────────────┤
 │  Data Access                            │
-│  ├─ Repository Pattern                 │
-│  ├─ Database Queries                   │
-│  └─ Cache Management                   │
+│  ├─ Repository Pattern                  │
+│  ├─ Database Queries                    │
+│  └─ Cache Management                    │
 ├─────────────────────────────────────────┤
 │  Shared Dependencies                    │
-│  ├─ Core Models                        │
-│  ├─ Authentication                     │
-│  ├─ Cryptography                       │
-│  └─ Events                             │
+│  ├─ Core Models                         │
+│  ├─ Authentication                      │
+│  ├─ Cryptography                        │
+│  └─ Events                              │
 └─────────────────────────────────────────┘
 ```
 
@@ -224,15 +224,15 @@ Client Device                 Eden Platform              Database
 ┌─────────────────────────────────────────┐
 │           Docker Compose                │
 ├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐   │
-│  │   API   │ │  Vault  │ │  Flow   │   │
-│  │ Gateway │ │ Service │ │ Service │   │
-│  └─────────┘ └─────────┘ └─────────┘   │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐    │
+│  │   API   │ │  Vault  │ │  Flow   │    │
+│  │ Gateway │ │ Service │ │ Service │    │
+│  └─────────┘ └─────────┘ └─────────┘    │
 ├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐               │
-│  │ PostgreSQL │ │  Redis  │               │
-│  │ Database│ │  Cache  │               │
-│  └─────────┘ └─────────┘               │
+│  ┌────────────┐  ┌─────────┐            │
+│  │ PostgreSQL │  │  Redis  │            │
+│  │ Database   │  │  Cache  │            │
+│  └────────────┘  └─────────┘            │
 └─────────────────────────────────────────┘
 ```
 
@@ -242,25 +242,25 @@ Client Device                 Eden Platform              Database
 │            Kubernetes Cluster           │
 ├─────────────────────────────────────────┤
 │  Ingress Controller                     │
-│  ├─ TLS Termination                    │
-│  ├─ Load Balancing                     │
-│  └─ Path Routing                       │
+│  ├─ TLS Termination                     │
+│  ├─ Load Balancing                      │
+│  └─ Path Routing                        │
 ├─────────────────────────────────────────┤
 │  Application Pods                       │
-│  ├─ API Gateway (3 replicas)          │
-│  ├─ Vault Service (2 replicas)        │
-│  ├─ Flow Service (2 replicas)         │
-│  └─ Other Services...                  │
+│  ├─ API Gateway (3 replicas)            │
+│  ├─ Vault Service (2 replicas)          │
+│  ├─ Flow Service (2 replicas)           │
+│  └─ Other Services...                   │
 ├─────────────────────────────────────────┤
 │  Data Layer                             │
-│  ├─ PostgreSQL (HA Cluster)           │
-│  ├─ Redis (Sentinel Setup)            │
-│  └─ Persistent Volumes                 │
+│  ├─ PostgreSQL (HA Cluster)             │
+│  ├─ Redis (Sentinel Setup)              │
+│  └─ Persistent Volumes                  │
 ├─────────────────────────────────────────┤
 │  Monitoring & Logging                   │
-│  ├─ Prometheus                         │
-│  ├─ Grafana                            │
-│  └─ Fluentd                            │
+│  ├─ Prometheus                          │
+│  ├─ Grafana                             │
+│  └─ Fluentd                             │
 └─────────────────────────────────────────┘
 ```
 

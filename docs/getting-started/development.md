@@ -70,7 +70,7 @@ docker-compose exec postgres psql -U eden -d eden_dev -c "\dt"
 
 ```
 eden/
-├── shared/                    # Shared Kotlin Multiplatform libraries
+├── shared/                   # Shared Kotlin Multiplatform libraries
 │   ├── core/                 # Core models and utilities
 │   ├── auth/                 # Authentication framework
 │   ├── crypto/               # Cryptography utilities

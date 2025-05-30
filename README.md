@@ -126,7 +126,6 @@ docker-compose up -d
 ### Development
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
 - **[Roadmap](docs/development/roadmap.md)** - Development timeline
-- **[Coding Standards](docs/development/coding-standards.md)** - Development guidelines
 
 ## 🤝 Contributing
 

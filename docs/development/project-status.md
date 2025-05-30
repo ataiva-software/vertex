@@ -8,20 +8,20 @@
 
 ```
 Phase 1: Foundation (Current)     Phase 2: Core Components (Planned)
-┌─────────────────────┐          ┌─────────────────────┐
-│ ✅ Project Structure │          │ 📋 Eden Vault       │
-│ ✅ Shared Libraries  │   ────>  │ 📋 Eden Hub         │
-│ 🔄 API Gateway      │          │ 📋 Eden Flow        │
-│ 🔄 Basic Web UI     │          │ 📋 CLI Features     │
-└─────────────────────┘          └─────────────────────┘
+┌──────────────────────┐          ┌─────────────────────┐
+│ ✅ Project Structure │          │ 📋 Eden Vault        │
+│ ✅ Shared Libraries  │   ────>  │ 📋 Eden Hub          │
+│ 🔄 API Gateway       │          │ 📋 Eden Flow         │
+│ 🔄 Basic Web UI      │          │ 📋 CLI Features      │
+└──────────────────────┘          └─────────────────────┘
            │                                │
            v                                v
 Phase 3: Advanced Features       Phase 4: Production Ready
 ┌─────────────────────┐          ┌─────────────────────┐
-│ 📋 Eden Monitor     │          │ 📋 Performance Opt  │
-│ 📋 Eden Sync        │          │ 📋 Security Audit   │
-│ 📋 Eden Insight     │          │ 📋 HA & DR          │
-│ 📋 Mobile App       │          │ 📋 Enterprise SSO   │
+│ 📋 Eden Monitor     │          │ 📋 Performance Opt   │
+│ 📋 Eden Sync        │          │ 📋 Security Audit    │
+│ 📋 Eden Insight     │          │ 📋 HA & DR           │
+│ 📋 Mobile App       │          │ 📋 Enterprise SSO    │
 └─────────────────────┘          └─────────────────────┘
 
 Legend: ✅ Complete  🔄 In Progress  📋 Planned
@@ -206,7 +206,6 @@ Legend: ✅ Complete  🔄 In Progress  📋 Planned
 1. **Pick a Component**: Choose from in-progress items above
 2. **Check Issues**: Look for "good first issue" labels
 3. **Read Architecture**: Review [Architecture Overview](../architecture/overview.md)
-4. **Follow Standards**: See [Coding Standards](coding-standards.md)
 
 ### For Users
 1. **Set Expectations**: This is early-stage software

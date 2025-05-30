@@ -108,14 +108,14 @@ test(flow): add unit tests for workflow execution
 ```
 eden/
 ├── shared/                    # Shared libraries (core, auth, crypto, etc.)
-├── services/                 # Microservices (vault, flow, task, etc.)
-├── clients/                  # Client applications (web, cli, mobile)
-├── infrastructure/           # Infrastructure as code
-└── docs/                     # Documentation
-    ├── getting-started/      # Installation and setup guides
-    ├── user-guide/          # User documentation and CLI reference
-    ├── architecture/        # Technical architecture documentation
-    └── development/         # Development guides and project status
+├── services/                  # Microservices (vault, flow, task, etc.)
+├── clients/                   # Client applications (web, cli, mobile)
+├── infrastructure/            # Infrastructure as code
+└── docs/                      # Documentation
+    ├── getting-started/       # Installation and setup guides
+    ├── user-guide/            # User documentation and CLI reference
+    ├── architecture/          # Technical architecture documentation
+    └── development/           # Development guides and project status
 ```
 
 ### Coding Standards
