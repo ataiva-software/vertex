@@ -12,6 +12,7 @@ include(":shared:monitoring")
 include(":shared:deployment")
 include(":shared:analytics")
 include(":shared:cloud")
+include(":shared:ai")
 
 // Services
 include(":services:api-gateway")

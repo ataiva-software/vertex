@@ -307,3 +307,271 @@ object TestEnvironmentFixtures {
         )
     }
 }
+
+/**
+ * Extended test fixtures for new database schema entities
+ */
+object NewSchemaTestFixtures {
+    
+    // Test IDs for new schema entities
+    const val TEST_SECRET_ID = "secret-test-12345"
+    const val TEST_WORKFLOW_ID = "workflow-test-67890"
+    const val TEST_TASK_ID = "task-test-abcde"
+    const val TEST_EXECUTION_ID = "execution-test-fghij"
+    
+    /**
+     * Creates a test secret for vault testing
+     */
+    fun createTestSecret(
+        id: String = TEST_SECRET_ID,
+        name: String = "test-secret",
+        userId: String = TestFixtures.TEST_USER_ID,
+        secretType: String = "generic"
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "name" to name,
+            "encrypted_value" to "encrypted_test_value_placeholder",
+            "encryption_key_id" to "test-key-001",
+            "secret_type" to secretType,
+            "description" to "Test secret for development",
+            "user_id" to userId,
+            "organization_id" to TestFixtures.TEST_ORG_ID,
+            "version" to 1,
+            "is_active" to true,
+            "created_at" to TestTimeFixtures.FIXED_INSTANT,
+            "updated_at" to TestTimeFixtures.FIXED_INSTANT
+        )
+    }
+    
+    /**
+     * Creates a test workflow for flow testing
+     */
+    fun createTestWorkflow(
+        id: String = TEST_WORKFLOW_ID,
+        name: String = "test-workflow",
+        userId: String = TestFixtures.TEST_USER_ID
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "name" to name,
+            "description" to "Test workflow for development",
+            "definition" to mapOf(
+                "name" to name,
+                "description" to "Test workflow",
+                "version" to "1.0",
+                "steps" to listOf(
+                    mapOf(
+                        "name" to "test-step",
+                        "type" to "shell",
+                        "configuration" to mapOf(
+                            "command" to "echo 'Hello World'"
+                        )
+                    )
+                )
+            ),
+            "user_id" to userId,
+            "status" to "active",
+            "version" to 1,
+            "created_at" to TestTimeFixtures.FIXED_INSTANT,
+            "updated_at" to TestTimeFixtures.FIXED_INSTANT
+        )
+    }
+    
+    /**
+     * Creates a test task for task testing
+     */
+    fun createTestTask(
+        id: String = TEST_TASK_ID,
+        name: String = "test-task",
+        userId: String = TestFixtures.TEST_USER_ID,
+        taskType: String = "shell"
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "name" to name,
+            "description" to "Test task for development",
+            "task_type" to taskType,
+            "configuration" to mapOf(
+                "command" to "echo 'Test task execution'"
+            ),
+            "schedule_cron" to null,
+            "user_id" to userId,
+            "is_active" to true,
+            "created_at" to TestTimeFixtures.FIXED_INSTANT,
+            "updated_at" to TestTimeFixtures.FIXED_INSTANT
+        )
+    }
+    
+    /**
+     * Creates a test workflow execution
+     */
+    fun createTestWorkflowExecution(
+        id: String = TEST_EXECUTION_ID,
+        workflowId: String = TEST_WORKFLOW_ID,
+        triggeredBy: String = TestFixtures.TEST_USER_ID,
+        status: String = "completed"
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "workflow_id" to workflowId,
+            "triggered_by" to triggeredBy,
+            "status" to status,
+            "input_data" to mapOf("test" to "input"),
+            "output_data" to if (status == "completed") mapOf("result" to "success") else null,
+            "error_message" to if (status == "failed") "Test error message" else null,
+            "started_at" to TestTimeFixtures.FIXED_INSTANT,
+            "completed_at" to if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else null,
+            "duration_ms" to if (status in listOf("completed", "failed")) 30000 else null
+        )
+    }
+    
+    /**
+     * Creates a test task execution
+     */
+    fun createTestTaskExecution(
+        id: String = "task-execution-${generateRandomId()}",
+        taskId: String = TEST_TASK_ID,
+        status: String = "completed",
+        priority: Int = 0
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "task_id" to taskId,
+            "status" to status,
+            "priority" to priority,
+            "input_data" to mapOf("test" to "input"),
+            "output_data" to if (status == "completed") mapOf("result" to "success") else null,
+            "error_message" to if (status == "failed") "Test error message" else null,
+            "progress_percentage" to if (status == "completed") 100 else 0,
+            "queued_at" to TestTimeFixtures.FIXED_INSTANT,
+            "started_at" to if (status != "queued") TestTimeFixtures.FIXED_INSTANT else null,
+            "completed_at" to if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else null,
+            "duration_ms" to if (status in listOf("completed", "failed")) 15000 else null
+        )
+    }
+    
+    /**
+     * Creates a test system event
+     */
+    fun createTestSystemEvent(
+        id: String = "event-${generateRandomId()}",
+        eventType: String = "test_event",
+        sourceService: String = "test-service",
+        severity: String = "info",
+        userId: String? = TestFixtures.TEST_USER_ID
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "event_type" to eventType,
+            "source_service" to sourceService,
+            "event_data" to mapOf(
+                "message" to "Test event",
+                "details" to "Additional test details"
+            ),
+            "severity" to severity,
+            "user_id" to userId,
+            "created_at" to TestTimeFixtures.FIXED_INSTANT
+        )
+    }
+    
+    /**
+     * Creates a test audit log entry
+     */
+    fun createTestAuditLog(
+        id: String = "audit-${generateRandomId()}",
+        userId: String = TestFixtures.TEST_USER_ID,
+        action: String = "READ",
+        resource: String = "test_resource",
+        resourceId: String? = null
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "user_id" to userId,
+            "organization_id" to TestFixtures.TEST_ORG_ID,
+            "action" to action,
+            "resource" to resource,
+            "resource_id" to resourceId,
+            "details" to mapOf(
+                "action" to action.lowercase(),
+                "resource_type" to resource
+            ),
+            "ip_address" to TestFixtures.TEST_IP_ADDRESS,
+            "user_agent" to TestFixtures.TEST_USER_AGENT,
+            "timestamp" to TestTimeFixtures.FIXED_INSTANT,
+            "severity" to "INFO"
+        )
+    }
+    
+    /**
+     * Creates a test secret access log
+     */
+    fun createTestSecretAccessLog(
+        id: String = "access-${generateRandomId()}",
+        secretId: String = TEST_SECRET_ID,
+        userId: String = TestFixtures.TEST_USER_ID,
+        action: String = "read"
+    ): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "secret_id" to secretId,
+            "user_id" to userId,
+            "action" to action,
+            "ip_address" to TestFixtures.TEST_IP_ADDRESS,
+            "user_agent" to TestFixtures.TEST_USER_AGENT,
+            "created_at" to TestTimeFixtures.FIXED_INSTANT
+        )
+    }
+    
+    /**
+     * Creates a complete test dataset for new schema
+     */
+    fun createCompleteTestDataset(): Map<String, List<Map<String, Any>>> {
+        return mapOf(
+            "secrets" to listOf(
+                createTestSecret(name = "database-password", secretType = "database"),
+                createTestSecret(name = "api-key-github", secretType = "api_token"),
+                createTestSecret(name = "ssl-certificate", secretType = "certificate")
+            ),
+            "workflows" to listOf(
+                createTestWorkflow(name = "deploy-to-staging"),
+                createTestWorkflow(name = "backup-database"),
+                createTestWorkflow(name = "run-tests")
+            ),
+            "tasks" to listOf(
+                createTestTask(name = "health-check", taskType = "http_check"),
+                createTestTask(name = "file-cleanup", taskType = "file_cleanup"),
+                createTestTask(name = "data-sync", taskType = "data_sync")
+            ),
+            "workflow_executions" to listOf(
+                createTestWorkflowExecution(status = "completed"),
+                createTestWorkflowExecution(status = "running"),
+                createTestWorkflowExecution(status = "failed")
+            ),
+            "task_executions" to listOf(
+                createTestTaskExecution(status = "completed"),
+                createTestTaskExecution(status = "running"),
+                createTestTaskExecution(status = "queued")
+            ),
+            "system_events" to listOf(
+                createTestSystemEvent(eventType = "user_login", sourceService = "api-gateway"),
+                createTestSystemEvent(eventType = "secret_accessed", sourceService = "vault"),
+                createTestSystemEvent(eventType = "workflow_failed", sourceService = "flow", severity = "error")
+            ),
+            "audit_logs" to listOf(
+                createTestAuditLog(action = "CREATE", resource = "secret"),
+                createTestAuditLog(action = "EXECUTE", resource = "workflow"),
+                createTestAuditLog(action = "READ", resource = "secret")
+            ),
+            "secret_access_logs" to listOf(
+                createTestSecretAccessLog(action = "read"),
+                createTestSecretAccessLog(action = "write"),
+                createTestSecretAccessLog(action = "delete")
+            )
+        )
+    }
+    
+    private fun generateRandomId(): String {
+        return (1..8).map { ('a'..'z').random() }.joinToString("")
+    }
+}
