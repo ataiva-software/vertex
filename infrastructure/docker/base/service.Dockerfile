@@ -16,12 +16,19 @@ COPY shared/ shared/
 # Copy services
 COPY services/ services/
 
-# Build the specific service
+# Build the specific service with memory optimization
 ARG SERVICE_NAME
-RUN ./gradlew :services:${SERVICE_NAME}:build --no-daemon -x test
+ENV GRADLE_OPTS="-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC -XX:+UseStringDeduplication"
+RUN echo "Building service: ${SERVICE_NAME} with memory optimization" && \
+    ./gradlew :services:${SERVICE_NAME}:build --no-daemon -x test \
+    --max-workers=1 \
+    --no-parallel \
+    --build-cache \
+    --gradle-user-home=/tmp/.gradle \
+    --org.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m"
 
 # Runtime stage
-FROM openjdk:17-jre-slim
+FROM eclipse-temurin:17-jre
 
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*

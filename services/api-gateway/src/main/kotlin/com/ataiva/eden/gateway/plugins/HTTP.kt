@@ -6,22 +6,26 @@ import io.ktor.http.*
 
 fun Application.configureHTTP() {
     install(CORS) {
+        // Add missing HTTP methods
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Delete)
         allowMethod(HttpMethod.Patch)
+        
+        // Add missing headers
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
         allowHeader("X-Organization-Id")
+        
+        // Allow credentials
         allowCredentials = true
         
-        // Allow origins from environment or default to localhost
-        val allowedOrigins = environment.config.propertyOrNull("cors.origins")?.getString()
-            ?.split(",")
-            ?: listOf("http://localhost:3000", "http://localhost:8080")
+        // DIAGNOSTIC: Allow any host for now to test origin configuration
+        anyHost()
         
-        allowedOrigins.forEach { origin ->
-            allowHost(origin.removePrefix("http://").removePrefix("https://"))
-        }
+        // DIAGNOSTIC: Log CORS configuration
+        println("CORS configured with anyHost(), all methods, and credentials enabled")
     }
 }

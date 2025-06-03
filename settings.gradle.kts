@@ -7,6 +7,11 @@ include(":shared:crypto")
 include(":shared:events")
 include(":shared:auth")
 include(":shared:config")
+include(":shared:testing")
+include(":shared:monitoring")
+include(":shared:deployment")
+include(":shared:analytics")
+include(":shared:cloud")
 
 // Services
 include(":services:api-gateway")
@@ -27,3 +32,8 @@ include(":clients:mobile")
 include(":tools:code-generation")
 include(":tools:migration")
 include(":tools:monitoring")
+
+// Testing modules
+include(":integration-tests")
+include(":e2e-tests")
+include(":performance-tests")

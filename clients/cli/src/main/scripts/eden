@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Eden DevOps Suite CLI Launcher Script
+# This script provides a convenient way to run the Eden CLI
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLI_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Default Java options
+JAVA_OPTS="${JAVA_OPTS:-"-Xmx512m -Xms128m"}"
+
+# Eden CLI JAR location
+EDEN_JAR="$CLI_DIR/eden.jar"
+
+# Check if Java is available
+if ! command -v java &> /dev/null; then
+    echo "❌ Error: Java is not installed or not in PATH"
+    echo "Please install Java 11 or higher to run Eden CLI"
+    exit 1
+fi
+
+# Check Java version
+JAVA_VERSION=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1-2)
+if [[ "$JAVA_VERSION" < "11" ]]; then
+    echo "❌ Error: Java 11 or higher is required"
+    echo "Current Java version: $JAVA_VERSION"
+    exit 1
+fi
+
+# Check if Eden JAR exists
+if [[ ! -f "$EDEN_JAR" ]]; then
+    echo "❌ Error: Eden CLI JAR not found at $EDEN_JAR"
+    echo "Please ensure Eden CLI is properly installed"
+    exit 1
+fi
+
+# Set up environment
+export EDEN_CLI_HOME="$CLI_DIR"
+export EDEN_CONFIG_DIR="${EDEN_CONFIG_DIR:-$HOME/.eden}"
+
+# Create config directory if it doesn't exist
+mkdir -p "$EDEN_CONFIG_DIR"
+
+# Handle special commands
+case "${1:-}" in
+    --version|-v)
+        echo "🌟 Eden DevOps Suite CLI"
+        echo "Version: 1.0.0-alpha"
+        echo "Java: $JAVA_VERSION"
+        echo "Home: $EDEN_CLI_HOME"
+        exit 0
+        ;;
+    --help|-h)
+        java $JAVA_OPTS -jar "$EDEN_JAR" help
+        exit 0
+        ;;
+    --java-opts)
+        echo "Current Java options: $JAVA_OPTS"
+        echo "To customize: export JAVA_OPTS=\"-Xmx1g -Xms256m\""
+        exit 0
+        ;;
+    --debug)
+        echo "🔍 Debug Information:"
+        echo "  Script Dir: $SCRIPT_DIR"
+        echo "  CLI Dir: $CLI_DIR"
+        echo "  Eden JAR: $EDEN_JAR"
+        echo "  Java Version: $JAVA_VERSION"
+        echo "  Java Options: $JAVA_OPTS"
+        echo "  Config Dir: $EDEN_CONFIG_DIR"
+        exit 0
+        ;;
+esac
+
+# Run Eden CLI with all arguments
+exec java $JAVA_OPTS -jar "$EDEN_JAR" "$@"

@@ -1,0 +1,267 @@
+# FIXED: Sequential builds to prevent memory exhaustion
+# System has only 62MB free memory - building 8 services simultaneously causes failures
+# Solution: Build services sequentially with resource limits
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: eden_test
+      POSTGRES_USER: eden_test
+      POSTGRES_PASSWORD: eden_test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ../infrastructure/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eden_test -d eden_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for event streaming
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: api-gateway
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=test_jwt_secret_key_for_testing_only
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+      - LOG_LEVEL=INFO
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Vault Service
+  vault:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: vault
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=test_encryption_key_32_characters
+      - LOG_LEVEL=INFO
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Flow Service
+  flow:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: flow
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Task Service
+  task:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: task
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8084:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Monitor Service
+  monitor:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: monitor
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8085:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Sync Service
+  sync:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: sync
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8086:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Insight Service
+  insight:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: insight
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8087:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Hub Service
+  hub:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/base/service.Dockerfile
+      args:
+        SERVICE_NAME: hub
+    environment:
+      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8088:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Web Client (for UI testing)
+  web-client:
+    build:
+      context: ..
+      dockerfile: clients/web/Dockerfile
+    environment:
+      - REACT_APP_API_URL=http://api-gateway:8080
+      - REACT_APP_ENVIRONMENT=test
+    ports:
+      - "3001:3000"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+
+networks:
+  default:
+    name: eden_test_network

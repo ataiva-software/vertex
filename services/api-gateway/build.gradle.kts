@@ -21,50 +21,31 @@ dependencies {
     implementation(project(":shared:events"))
     implementation(project(":shared:config"))
     
-    // Ktor server
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-netty-jvm")
-    implementation("io.ktor:ktor-server-content-negotiation-jvm")
-    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
-    implementation("io.ktor:ktor-server-auth-jvm")
-    implementation("io.ktor:ktor-server-auth-jwt-jvm")
-    implementation("io.ktor:ktor-server-cors-jvm")
-    implementation("io.ktor:ktor-server-call-logging-jvm")
-    implementation("io.ktor:ktor-server-status-pages-jvm")
-    implementation("io.ktor:ktor-server-rate-limit-jvm")
-    implementation("io.ktor:ktor-server-swagger-jvm")
-    implementation("io.ktor:ktor-server-openapi")
-    
-    // Ktor client for service communication
-    implementation("io.ktor:ktor-client-core-jvm")
-    implementation("io.ktor:ktor-client-cio-jvm")
-    implementation("io.ktor:ktor-client-content-negotiation-jvm")
-    implementation("io.ktor:ktor-client-auth-jvm")
+    // Ktor server and client
+    implementation(libs.bundles.ktor.server)
+    implementation(libs.bundles.ktor.client)
     
     // Database
-    implementation("org.postgresql:postgresql")
-    implementation("com.zaxxer:HikariCP")
-    implementation("org.jetbrains.exposed:exposed-core")
-    implementation("org.jetbrains.exposed:exposed-dao")
-    implementation("org.jetbrains.exposed:exposed-jdbc")
-    implementation("org.jetbrains.exposed:exposed-kotlin-datetime")
-    implementation("org.jetbrains.exposed:exposed-json")
+    implementation(libs.bundles.database)
     
     // Redis
-    implementation("redis.clients:jedis")
+    implementation(libs.jedis)
     
     // Logging
-    implementation("ch.qos.logback:logback-classic")
-    implementation("io.github.oshai:kotlin-logging-jvm")
+    implementation(libs.bundles.logging)
     
     // Configuration
-    implementation("com.typesafe:config")
+    implementation(libs.typesafe.config)
     
     // Testing
-    testImplementation("io.ktor:ktor-server-tests-jvm")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
-    testImplementation("io.mockk:mockk")
-    testImplementation("org.testcontainers:testcontainers")
-    testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation(project(":shared:testing"))
+    testImplementation(libs.ktor.server.tests)
+    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testImplementation(libs.kotlinx.coroutines.test)
 }

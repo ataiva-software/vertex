@@ -17,21 +17,28 @@ dependencies {
     implementation(project(":shared:events"))
     implementation(project(":shared:config"))
     
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-netty-jvm")
-    implementation("io.ktor:ktor-server-content-negotiation-jvm")
-    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
-    implementation("io.ktor:ktor-client-core-jvm")
-    implementation("io.ktor:ktor-client-cio-jvm")
+    // Ktor
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
     
-    implementation("org.postgresql:postgresql")
-    implementation("com.zaxxer:HikariCP")
-    implementation("org.jetbrains.exposed:exposed-core")
-    implementation("org.jetbrains.exposed:exposed-dao")
-    implementation("org.jetbrains.exposed:exposed-jdbc")
-    implementation("redis.clients:jedis")
-    implementation("ch.qos.logback:logback-classic")
+    // Database
+    implementation(libs.postgresql)
+    implementation(libs.hikaricp)
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.dao)
+    implementation(libs.exposed.jdbc)
     
-    testImplementation("io.ktor:ktor-server-tests-jvm")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    // Redis
+    implementation(libs.jedis)
+    
+    // Logging
+    implementation(libs.logback.classic)
+    
+    // Testing
+    testImplementation(libs.ktor.server.tests)
+    testImplementation(libs.kotlin.test.junit)
 }

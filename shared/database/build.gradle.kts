@@ -4,6 +4,33 @@ plugins {
 }
 
 kotlin {
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = "17"
+        }
+        withJava()
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    
+    js(IR) {
+        browser {
+            commonWebpackConfig {
+                cssSupport {
+                    enabled.set(true)
+                }
+            }
+        }
+        nodejs()
+    }
+    
+    // Native targets disabled for Docker builds
+    // linuxX64()
+    // macosX64()
+    // macosArm64()
+    // mingwX64()
+    
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -15,8 +42,8 @@ kotlin {
             dependencies {
                 implementation("org.postgresql:postgresql:42.6.0")
                 implementation("com.zaxxer:HikariCP:5.0.1")
-                implementation("org.flywaydb:flyway-core:9.22.3")
-                implementation("org.flywaydb:flyway-database-postgresql:9.22.3")
+                implementation("org.flywaydb:flyway-core:10.22.0")
+                implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
                 implementation("org.jetbrains.exposed:exposed-core:0.44.1")
                 implementation("org.jetbrains.exposed:exposed-dao:0.44.1")
                 implementation("org.jetbrains.exposed:exposed-jdbc:0.44.1")

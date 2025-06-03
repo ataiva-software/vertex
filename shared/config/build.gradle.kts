@@ -4,6 +4,33 @@ plugins {
 }
 
 kotlin {
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = "17"
+        }
+        withJava()
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    
+    js(IR) {
+        browser {
+            commonWebpackConfig {
+                cssSupport {
+                    enabled.set(true)
+                }
+            }
+        }
+        nodejs()
+    }
+    
+    // Native targets disabled for Docker builds
+    // linuxX64()
+    // macosX64()
+    // macosArm64()
+    // mingwX64()
+    
     sourceSets {
         val commonMain by getting {
             dependencies {

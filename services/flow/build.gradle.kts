@@ -22,36 +22,29 @@ dependencies {
     implementation(project(":shared:config"))
     
     // Ktor
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-netty-jvm")
-    implementation("io.ktor:ktor-server-content-negotiation-jvm")
-    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
-    implementation("io.ktor:ktor-server-auth-jvm")
-    implementation("io.ktor:ktor-server-auth-jwt-jvm")
-    implementation("io.ktor:ktor-client-core-jvm")
-    implementation("io.ktor:ktor-client-cio-jvm")
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.auth.jwt)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
     
     // Database
-    implementation("org.postgresql:postgresql")
-    implementation("com.zaxxer:HikariCP")
-    implementation("org.jetbrains.exposed:exposed-core")
-    implementation("org.jetbrains.exposed:exposed-dao")
-    implementation("org.jetbrains.exposed:exposed-jdbc")
-    implementation("org.jetbrains.exposed:exposed-kotlin-datetime")
-    implementation("org.jetbrains.exposed:exposed-json")
+    implementation(libs.bundles.database)
     
     // Redis
-    implementation("redis.clients:jedis")
+    implementation(libs.jedis)
     
     // Workflow engine
     implementation("org.yaml:snakeyaml:2.2")
     
     // Logging
-    implementation("ch.qos.logback:logback-classic")
-    implementation("io.github.oshai:kotlin-logging-jvm")
+    implementation(libs.bundles.logging)
     
     // Testing
-    testImplementation("io.ktor:ktor-server-tests-jvm")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
-    testImplementation("io.mockk:mockk")
+    testImplementation(libs.ktor.server.tests)
+    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.mockk)
 }

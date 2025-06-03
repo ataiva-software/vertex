@@ -4,12 +4,46 @@ plugins {
 }
 
 kotlin {
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = "17"
+        }
+        withJava()
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    
+    js(IR) {
+        browser {
+            commonWebpackConfig {
+                cssSupport {
+                    enabled.set(true)
+                }
+            }
+        }
+        nodejs()
+    }
+    
+    // Native targets for CLI support
+    linuxX64()
+    macosX64()
+    macosArm64()
+    mingwX64()
+    
     sourceSets {
         val commonMain by getting {
             dependencies {
                 // Additional core dependencies
-                implementation("org.jetbrains.kotlinx:kotlinx-uuid:0.0.22")
                 implementation("com.benasher44:uuid:0.8.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+            }
+        }
+        
+        val commonTest by getting {
+            dependencies {
+                implementation(project(":shared:testing"))
             }
         }
         

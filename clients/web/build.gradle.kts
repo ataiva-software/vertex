@@ -47,9 +47,10 @@ kotlin {
             dependencies {
                 implementation(compose.html.core)
                 implementation("io.ktor:ktor-client-js:2.3.5")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react:18.2.0-pre.467")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:18.2.0-pre.467")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion:11.11.1-pre.467")
+                // React wrappers temporarily removed due to repository access issues
+                // implementation("org.jetbrains.kotlin-wrappers:kotlin-react:18.2.0-pre.346")
+                // implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:18.2.0-pre.346")
+                // implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion:11.11.1-pre.346")
             }
         }
         
