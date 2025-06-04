@@ -37,6 +37,7 @@ kotlin {
                 api(project(":shared:core"))
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         
@@ -44,6 +45,13 @@ kotlin {
             dependencies {
                 implementation("redis.clients:jedis:5.0.2")
                 implementation("io.nats:jnats:2.16.14")
+            }
+        }
+        
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
         

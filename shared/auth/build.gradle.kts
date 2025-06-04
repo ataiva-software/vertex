@@ -35,8 +35,9 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":shared:core"))
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         
@@ -50,6 +51,7 @@ kotlin {
             dependencies {
                 implementation("com.auth0:java-jwt:4.4.0")
                 implementation("org.mindrot:jbcrypt:0.4")
+                // kotlinx-coroutines-core already provides JVM support
             }
         }
         

@@ -363,9 +363,78 @@ run_integration_tests() {
     if [[ "${#test_tasks[@]}" -eq 0 ]]; then
         test_tasks+=("integrationTest")
     fi
-    
     # Run tests
     local test_failures=0
     for task in "${test_tasks[@]}"; do
         print_status "Running $task..."
+        
+        if $GRADLE_CMD $task $GRADLE_OPTS; then
+            print_success "$task completed successfully"
+        else
+            print_error "$task failed"
+            ((test_failures++))
+        fi
+    done
+    
+    # Return appropriate exit code
+    if [[ $test_failures -eq 0 ]]; then
+        print_success "All integration tests passed!"
+        return 0
+    else
+        print_error "$test_failures test task(s) failed"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    print_status "Eden DevOps Suite - Integration Tests"
+    echo "Project Root: $PROJECT_ROOT"
+    echo ""
+    
+    # Check prerequisites
+    check_prerequisites
+    
+    # Track overall success
+    local overall_success=true
+    
+    # Start services if needed
+    if ! start_services; then
+        overall_success=false
+    fi
+    
+    # Wait for services if needed
+    if [[ "$overall_success" == "true" ]]; then
+        if ! wait_for_services; then
+            overall_success=false
+        fi
+    fi
+    
+    # Run integration tests
+    if [[ "$overall_success" == "true" ]]; then
+        if ! run_integration_tests; then
+            overall_success=false
+        fi
+    fi
+    
+    # Generate summary
+    echo ""
+    echo "=========================================="
+    echo "      INTEGRATION TEST SUMMARY"
+    echo "=========================================="
+    
+    if [[ "$overall_success" == "true" ]]; then
+        print_success "All integration tests completed successfully!"
+        echo "✅ Services: Started and healthy"
+        echo "✅ Tests: All passed"
+        exit 0
+    else
+        print_error "Integration tests completed with failures"
+        echo "❌ Some services or tests failed"
+        exit 1
+    fi
+}
+
+# Run main function
+main "$@"
         

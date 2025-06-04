@@ -35,6 +35,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":shared:core"))
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.datetime)
             }
         }
         
@@ -46,8 +48,9 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
-                implementation("org.bouncycastle:bcprov-jdk18on:1.76")
+                implementation(libs.bouncycastle)
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.76")
+                // kotlinx-coroutines-core already provides JVM support
             }
         }
         

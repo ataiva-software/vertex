@@ -1,343 +1,254 @@
 package com.ataiva.eden.database
 
 /**
- * Generic repository interface for CRUD operations
+ * Base repository interface
  */
 interface Repository<T, ID> {
-    /**
-     * Find entity by ID
-     */
     suspend fun findById(id: ID): T?
-    
-    /**
-     * Find all entities
-     */
     suspend fun findAll(): List<T>
-    
-    /**
-     * Find entities with pagination
-     */
-    suspend fun findAll(offset: Int, limit: Int): Page<T>
-    
-    /**
-     * Save entity (create or update)
-     */
     suspend fun save(entity: T): T
-    
-    /**
-     * Save multiple entities
-     */
-    suspend fun saveAll(entities: List<T>): List<T>
-    
-    /**
-     * Delete entity by ID
-     */
-    suspend fun deleteById(id: ID): Boolean
-    
-    /**
-     * Delete entity
-     */
-    suspend fun delete(entity: T): Boolean
-    
-    /**
-     * Check if entity exists by ID
-     */
-    suspend fun existsById(id: ID): Boolean
-    
-    /**
-     * Count all entities
-     */
+    suspend fun update(entity: T): Boolean
+    suspend fun delete(id: ID): Boolean
     suspend fun count(): Long
 }
 
 /**
- * Paginated result
+ * User repository interface
  */
-data class Page<T>(
-    val content: List<T>,
-    val totalElements: Long,
-    val totalPages: Int,
-    val page: Int,
-    val size: Int,
-    val hasNext: Boolean,
-    val hasPrevious: Boolean
-)
-
-/**
- * Database connection interface
- */
-interface DatabaseConnection {
-    /**
-     * Execute query and return results
-     */
-    suspend fun <T> query(sql: String, parameters: Map<String, Any?> = emptyMap(), mapper: (ResultRow) -> T): List<T>
-    
-    /**
-     * Execute query and return single result
-     */
-    suspend fun <T> queryOne(sql: String, parameters: Map<String, Any?> = emptyMap(), mapper: (ResultRow) -> T): T?
-    
-    /**
-     * Execute update/insert/delete query
-     */
-    suspend fun execute(sql: String, parameters: Map<String, Any?> = emptyMap()): Int
-    
-    /**
-     * Execute query in transaction
-     */
-    suspend fun <T> transaction(block: suspend (DatabaseConnection) -> T): T
-    
-    /**
-     * Close connection
-     */
-    suspend fun close()
+interface UserRepository : Repository<User, String> {
+    suspend fun findByEmail(email: String): User?
+    suspend fun findByUsername(username: String): User?
+    suspend fun updatePassword(userId: String, passwordHash: String): Boolean
+    suspend fun getUserPermissions(userId: String): Set<Permission>
+    suspend fun getUserOrganizationMemberships(userId: String): List<OrganizationMembership>
+    suspend fun findByRole(role: String): List<User>
+    suspend fun findActiveUsers(): List<User>
+    suspend fun findNewUsersSince(since: String): List<User>
 }
 
 /**
- * Result row interface for database queries
+ * Secret repository interface
  */
-interface ResultRow {
-    /**
-     * Get string value by column name
-     */
-    fun getString(columnName: String): String?
-    
-    /**
-     * Get int value by column name
-     */
-    fun getInt(columnName: String): Int?
-    
-    /**
-     * Get long value by column name
-     */
-    fun getLong(columnName: String): Long?
-    
-    /**
-     * Get boolean value by column name
-     */
-    fun getBoolean(columnName: String): Boolean?
-    
-    /**
-     * Get double value by column name
-     */
-    fun getDouble(columnName: String): Double?
-    
-    /**
-     * Get bytes value by column name
-     */
-    fun getBytes(columnName: String): ByteArray?
-    
-    /**
-     * Get timestamp value by column name
-     */
-    fun getTimestamp(columnName: String): kotlinx.datetime.Instant?
-    
-    /**
-     * Check if column is null
-     */
-    fun isNull(columnName: String): Boolean
+interface SecretRepository : Repository<Secret, String> {
+    suspend fun findByName(name: String): Secret?
+    suspend fun findByType(type: String): List<Secret>
+    suspend fun findByUserId(userId: String): List<Secret>
+    suspend fun findByOrganizationId(organizationId: String): List<Secret>
+    suspend fun findAccessibleByUser(userId: String): List<Secret>
+    suspend fun findUpdatedSince(since: String): List<Secret>
 }
 
 /**
- * Query builder interface
+ * Secret access log repository interface
  */
-interface QueryBuilder {
-    /**
-     * SELECT clause
-     */
-    fun select(vararg columns: String): QueryBuilder
-    
-    /**
-     * FROM clause
-     */
-    fun from(table: String): QueryBuilder
-    
-    /**
-     * WHERE clause
-     */
-    fun where(condition: String, vararg parameters: Any?): QueryBuilder
-    
-    /**
-     * AND condition
-     */
-    fun and(condition: String, vararg parameters: Any?): QueryBuilder
-    
-    /**
-     * OR condition
-     */
-    fun or(condition: String, vararg parameters: Any?): QueryBuilder
-    
-    /**
-     * ORDER BY clause
-     */
-    fun orderBy(column: String, direction: SortDirection = SortDirection.ASC): QueryBuilder
-    
-    /**
-     * LIMIT clause
-     */
-    fun limit(count: Int): QueryBuilder
-    
-    /**
-     * OFFSET clause
-     */
-    fun offset(count: Int): QueryBuilder
-    
-    /**
-     * JOIN clause
-     */
-    fun join(table: String, condition: String): QueryBuilder
-    
-    /**
-     * LEFT JOIN clause
-     */
-    fun leftJoin(table: String, condition: String): QueryBuilder
-    
-    /**
-     * Build SQL query
-     */
-    fun build(): String
-    
-    /**
-     * Get query parameters
-     */
-    fun getParameters(): Map<String, Any?>
+interface SecretAccessLogRepository : Repository<SecretAccessLog, String> {
+    suspend fun findBySecretId(secretId: String): List<SecretAccessLog>
+    suspend fun findByUserId(userId: String): List<SecretAccessLog>
+    suspend fun findByTimeRange(start: String, end: String): List<SecretAccessLog>
+    suspend fun findBySecretIdAndTimeRange(secretId: String, start: String, end: String): List<SecretAccessLog>
+    suspend fun findByUserIdAndTimeRange(userId: String, start: String, end: String): List<SecretAccessLog>
 }
 
 /**
- * Sort direction enum
+ * Workflow repository interface
  */
-enum class SortDirection {
-    ASC, DESC
+interface WorkflowRepository : Repository<Workflow, String> {
+    suspend fun findByName(name: String): Workflow?
+    suspend fun findByStatus(status: String): List<Workflow>
+    suspend fun findByUserId(userId: String): List<Workflow>
+    suspend fun findByOrganizationId(organizationId: String): List<Workflow>
+    suspend fun findUpdatedSince(since: String): List<Workflow>
+    suspend fun updateStatus(workflowId: String, status: String): Boolean
 }
 
 /**
- * Migration interface
+ * Workflow execution repository interface
  */
-interface Migration {
-    /**
-     * Migration version
-     */
-    val version: String
-    
-    /**
-     * Migration description
-     */
-    val description: String
-    
-    /**
-     * Execute migration
-     */
-    suspend fun up(connection: DatabaseConnection)
-    
-    /**
-     * Rollback migration
-     */
-    suspend fun down(connection: DatabaseConnection)
+interface WorkflowExecutionRepository : Repository<WorkflowExecution, String> {
+    suspend fun findByWorkflowId(workflowId: String): List<WorkflowExecution>
+    suspend fun findByStatus(status: String): List<WorkflowExecution>
+    suspend fun findByTimeRange(start: String, end: String): List<WorkflowExecution>
+    suspend fun findByWorkflowIdAndTimeRange(workflowId: String, start: String, end: String): List<WorkflowExecution>
+    suspend fun findLatestByWorkflowId(workflowId: String): WorkflowExecution?
+    suspend fun updateStatus(executionId: String, status: String): Boolean
 }
 
 /**
- * Migration manager interface
+ * Workflow step repository interface
  */
-interface MigrationManager {
-    /**
-     * Run all pending migrations
-     */
-    suspend fun migrate(): List<String>
-    
-    /**
-     * Rollback to specific version
-     */
-    suspend fun rollback(version: String): List<String>
-    
-    /**
-     * Get migration status
-     */
-    suspend fun getStatus(): List<MigrationStatus>
-    
-    /**
-     * Validate migrations
-     */
-    suspend fun validate(): Boolean
+interface WorkflowStepRepository : Repository<WorkflowStep, String> {
+    suspend fun findByWorkflowId(workflowId: String): List<WorkflowStep>
+    suspend fun findByExecutionId(executionId: String): List<WorkflowStep>
+    suspend fun findByStatus(status: String): List<WorkflowStep>
+    suspend fun updateStatus(stepId: String, status: String): Boolean
+    suspend fun findByWorkflowIdAndOrder(workflowId: String, order: Int): WorkflowStep?
 }
 
 /**
- * Migration status
+ * Task repository interface
  */
-data class MigrationStatus(
-    val version: String,
-    val description: String,
-    val applied: Boolean,
-    val appliedAt: kotlinx.datetime.Instant?
-)
+interface TaskRepository : Repository<Task, String> {
+    suspend fun findByName(name: String): Task?
+    suspend fun findByStatus(status: String): List<Task>
+    suspend fun findByType(type: String): List<Task>
+    suspend fun findByUserId(userId: String): List<Task>
+    suspend fun findByPriority(priority: Int): List<Task>
+    suspend fun findScheduledBefore(time: String): List<Task>
+    suspend fun updateStatus(taskId: String, status: String): Boolean
+}
 
 /**
- * Database configuration
+ * Task execution repository interface
  */
-data class DatabaseConfig(
-    val url: String,
+interface TaskExecutionRepository : Repository<TaskExecution, String> {
+    suspend fun findByTaskId(taskId: String): List<TaskExecution>
+    suspend fun findByStatus(status: String): List<TaskExecution>
+    suspend fun findByTimeRange(start: String, end: String): List<TaskExecution>
+    suspend fun findByTaskIdAndTimeRange(taskId: String, start: String, end: String): List<TaskExecution>
+    suspend fun findLatestByTaskId(taskId: String): TaskExecution?
+    suspend fun updateStatus(executionId: String, status: String): Boolean
+}
+
+/**
+ * System event repository interface
+ */
+interface SystemEventRepository : Repository<SystemEvent, String> {
+    suspend fun findByType(type: String): List<SystemEvent>
+    suspend fun findBySource(source: String): List<SystemEvent>
+    suspend fun findByTimeRange(start: String, end: String): List<SystemEvent>
+    suspend fun findByTypeAndTimeRange(type: String, start: String, end: String): List<SystemEvent>
+    suspend fun findBySourceAndTimeRange(source: String, start: String, end: String): List<SystemEvent>
+}
+
+/**
+ * Audit log repository interface
+ */
+interface AuditLogRepository : Repository<AuditLog, String> {
+    suspend fun findByUserId(userId: String): List<AuditLog>
+    suspend fun findByAction(action: String): List<AuditLog>
+    suspend fun findByResource(resource: String): List<AuditLog>
+    suspend fun findByTimeRange(start: String, end: String): List<AuditLog>
+    suspend fun findByUserIdAndTimeRange(userId: String, start: String, end: String): List<AuditLog>
+    suspend fun findByActionAndTimeRange(action: String, start: String, end: String): List<AuditLog>
+    suspend fun findSecurityRelatedLogs(start: String, end: String): List<AuditLog>
+}
+
+/**
+ * User entity
+ */
+data class User(
+    val id: String,
+    val email: String,
     val username: String,
-    val password: String,
-    val driverClassName: String = "org.postgresql.Driver",
-    val maxPoolSize: Int = 10,
-    val minIdleConnections: Int = 2,
-    val connectionTimeout: Long = 30000,
-    val idleTimeout: Long = 600000,
-    val maxLifetime: Long = 1800000,
-    val autoCommit: Boolean = true,
-    val schema: String? = null
+    val passwordHash: String?,
+    val isActive: Boolean,
+    val emailVerified: Boolean,
+    val mfaSecret: String?,
+    val profile: UserProfile,
+    val createdAt: String,
+    val updatedAt: String
 )
 
 /**
- * Database factory interface
+ * User profile
  */
-interface DatabaseFactory {
-    /**
-     * Create database connection
-     */
-    suspend fun createConnection(config: DatabaseConfig): DatabaseConnection
-    
-    /**
-     * Create connection pool
-     */
-    suspend fun createConnectionPool(config: DatabaseConfig): ConnectionPool
-    
-    /**
-     * Create migration manager
-     */
-    fun createMigrationManager(config: DatabaseConfig): MigrationManager
-}
+data class UserProfile(
+    val firstName: String,
+    val lastName: String,
+    val displayName: String,
+    val avatarUrl: String?,
+    val bio: String?,
+    val preferences: Map<String, String>
+)
 
 /**
- * Connection pool interface
+ * Permission entity
  */
-interface ConnectionPool {
-    /**
-     * Get connection from pool
-     */
-    suspend fun getConnection(): DatabaseConnection
-    
-    /**
-     * Return connection to pool
-     */
-    suspend fun returnConnection(connection: DatabaseConnection)
-    
-    /**
-     * Close all connections in pool
-     */
-    suspend fun close()
-    
-    /**
-     * Get pool statistics
-     */
-    fun getStats(): PoolStats
-}
+data class Permission(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val resource: String,
+    val action: String
+)
 
 /**
- * Connection pool statistics
+ * Organization membership
  */
-data class PoolStats(
-    val totalConnections: Int,
-    val activeConnections: Int,
-    val idleConnections: Int,
-    val waitingForConnection: Int
+data class OrganizationMembership(
+    val userId: String,
+    val organizationId: String,
+    val role: String,
+    val joinedAt: String
+)
+
+/**
+ * Secret access log
+ */
+data class SecretAccessLog(
+    val id: String,
+    val secretId: String,
+    val userId: String,
+    val accessType: String,
+    val timestamp: String,
+    val ipAddress: String?,
+    val userAgent: String?
+)
+
+/**
+ * Workflow execution
+ */
+data class WorkflowExecution(
+    val id: String,
+    val workflowId: String,
+    val status: String,
+    val startedAt: String,
+    val completedAt: String?,
+    val executedBy: String,
+    val parameters: Map<String, Any>,
+    val result: Map<String, Any>?,
+    val error: String?
+)
+
+/**
+ * Task execution
+ */
+data class TaskExecution(
+    val id: String,
+    val taskId: String,
+    val status: String,
+    val startedAt: String,
+    val completedAt: String?,
+    val executedBy: String?,
+    val parameters: Map<String, Any>,
+    val result: Map<String, Any>?,
+    val error: String?
+)
+
+/**
+ * System event
+ */
+data class SystemEvent(
+    val id: String,
+    val type: String,
+    val source: String,
+    val timestamp: String,
+    val message: String,
+    val details: Map<String, Any>?,
+    val severity: String
+)
+
+/**
+ * Audit log
+ */
+data class AuditLog(
+    val id: String,
+    val userId: String?,
+    val action: String,
+    val resource: String,
+    val resourceId: String?,
+    val timestamp: String,
+    val ipAddress: String?,
+    val userAgent: String?,
+    val details: Map<String, Any>?
 )

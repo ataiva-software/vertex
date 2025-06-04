@@ -35,20 +35,23 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":shared:core"))
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         
         val jvmMain by getting {
             dependencies {
-                implementation("org.postgresql:postgresql:42.6.0")
-                implementation("com.zaxxer:HikariCP:5.0.1")
+                implementation(libs.postgresql)
+                implementation(libs.hikaricp)
                 implementation("org.flywaydb:flyway-core:10.22.0")
                 implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
-                implementation("org.jetbrains.exposed:exposed-core:0.44.1")
-                implementation("org.jetbrains.exposed:exposed-dao:0.44.1")
-                implementation("org.jetbrains.exposed:exposed-jdbc:0.44.1")
-                implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.44.1")
-                implementation("org.jetbrains.exposed:exposed-json:0.44.1")
+                implementation(libs.exposed.core)
+                implementation(libs.exposed.dao)
+                implementation(libs.exposed.jdbc)
+                implementation(libs.exposed.kotlin.datetime)
+                implementation(libs.exposed.json)
+                // kotlinx-coroutines-core already provides JVM support
             }
         }
         

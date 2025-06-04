@@ -110,7 +110,7 @@ tasks.register<Exec>("nativeCompile") {
 }
 
 // Distribution tasks
-tasks.register<Zip>("distZip") {
+tasks.named<Zip>("distZip") {
     dependsOn("executableJar")
     
     archiveBaseName.set("eden-cli")
@@ -128,7 +128,7 @@ tasks.register<Zip>("distZip") {
     from("README.md", "LICENSE")
 }
 
-tasks.register<Tar>("distTar") {
+tasks.named<Tar>("distTar") {
     dependsOn("executableJar")
     
     archiveBaseName.set("eden-cli")

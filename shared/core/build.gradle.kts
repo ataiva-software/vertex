@@ -25,19 +25,19 @@ kotlin {
         nodejs()
     }
     
-    // Native targets for CLI support
-    linuxX64()
-    macosX64()
-    macosArm64()
-    mingwX64()
+    // Native targets disabled for Docker builds
+    // linuxX64()
+    // macosX64()
+    // macosArm64()
+    // mingwX64()
     
     sourceSets {
         val commonMain by getting {
             dependencies {
                 // Additional core dependencies
-                implementation("com.benasher44:uuid:0.8.2")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+                implementation(libs.uuid)
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
         
@@ -49,7 +49,7 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
-                implementation("org.bouncycastle:bcprov-jdk18on:1.76")
+                implementation(libs.bouncycastle)
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.76")
                 implementation("com.auth0:java-jwt:4.4.0")
                 implementation("org.mindrot:jbcrypt:0.4")

@@ -232,14 +232,22 @@ extract_coverage_stats() {
             
             if [[ "$line_coverage" != "N/A" && "$line_total" != "N/A" ]]; then
                 local total_lines=$((line_coverage + line_total))
-                local line_percentage=$(( (line_coverage * 100) / total_lines ))
-                print_status "Line Coverage: $line_coverage/$total_lines ($line_percentage%)"
+                if [[ $total_lines -gt 0 ]]; then
+                    local line_percentage=$(( (line_coverage * 100) / total_lines ))
+                    print_status "Line Coverage: $line_coverage/$total_lines ($line_percentage%)"
+                else
+                    print_status "Line Coverage: $line_coverage/$total_lines (0%)"
+                fi
             fi
             
             if [[ "$branch_coverage" != "N/A" && "$branch_total" != "N/A" ]]; then
                 local total_branches=$((branch_coverage + branch_total))
-                local branch_percentage=$(( (branch_coverage * 100) / total_branches ))
-                print_status "Branch Coverage: $branch_coverage/$total_branches ($branch_percentage%)"
+                if [[ $total_branches -gt 0 ]]; then
+                    local branch_percentage=$(( (branch_coverage * 100) / total_branches ))
+                    print_status "Branch Coverage: $branch_coverage/$total_branches ($branch_percentage%)"
+                else
+                    print_status "Branch Coverage: $branch_coverage/$total_branches (0%)"
+                fi
             fi
         else
             print_warning "xmllint not available. Install libxml2-utils for detailed coverage stats."

@@ -2,31 +2,39 @@ package com.ataiva.eden.crypto
 
 /**
  * Core encryption interface for Eden services
+ * Provides symmetric encryption, key derivation, and zero-knowledge encryption capabilities
  */
 interface Encryption {
     /**
-     * Encrypt data with AES-256-GCM
+     * Encrypt data with a symmetric key
      */
-    fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult
+    suspend fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult
     
     /**
-     * Decrypt data with AES-256-GCM
+     * Decrypt data with a symmetric key
      */
-    fun decrypt(encryptedData: ByteArray, key: ByteArray, nonce: ByteArray): DecryptionResult
+    suspend fun decrypt(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray? = null): DecryptionResult
     
     /**
-     * Encrypt string data
+     * Encrypt string with a symmetric key
      */
-    fun encryptString(data: String, key: ByteArray): EncryptionResult
+    suspend fun encryptString(text: String, key: ByteArray): EncryptionResult {
+        return encrypt(text.encodeToByteArray(), key)
+    }
     
     /**
-     * Decrypt to string
+     * Decrypt string with a symmetric key
      */
-    fun decryptString(encryptedData: ByteArray, key: ByteArray, nonce: ByteArray): String?
+    suspend fun decryptString(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray? = null): String? {
+        return when (val result = decrypt(data, key, nonce, authTag)) {
+            is DecryptionResult.Success -> result.data.decodeToString()
+            is DecryptionResult.Failure -> null
+        }
+    }
 }
 
 /**
- * Encryption result containing encrypted data and metadata
+ * Result of encryption operation
  */
 data class EncryptionResult(
     val encryptedData: ByteArray,
@@ -36,19 +44,19 @@ data class EncryptionResult(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
-        
+
         other as EncryptionResult
-        
+
         if (!encryptedData.contentEquals(other.encryptedData)) return false
         if (!nonce.contentEquals(other.nonce)) return false
         if (authTag != null) {
             if (other.authTag == null) return false
             if (!authTag.contentEquals(other.authTag)) return false
         } else if (other.authTag != null) return false
-        
+
         return true
     }
-    
+
     override fun hashCode(): Int {
         var result = encryptedData.contentHashCode()
         result = 31 * result + nonce.contentHashCode()
@@ -58,19 +66,19 @@ data class EncryptionResult(
 }
 
 /**
- * Decryption result
+ * Result of decryption operation
  */
 sealed class DecryptionResult {
     data class Success(val data: ByteArray) : DecryptionResult() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other == null || this::class != other::class) return false
-            
+
             other as Success
-            
+
             return data.contentEquals(other.data)
         }
-        
+
         override fun hashCode(): Int {
             return data.contentHashCode()
         }
@@ -86,50 +94,65 @@ interface KeyDerivation {
     /**
      * Derive key from password using PBKDF2
      */
-    fun deriveKey(password: String, salt: ByteArray, iterations: Int = 100000, keyLength: Int = 32): ByteArray
+    suspend fun deriveKey(
+        password: String, 
+        salt: ByteArray, 
+        iterations: Int = 100000, 
+        keyLength: Int = 32
+    ): ByteArray
     
     /**
      * Derive key from password using Argon2
      */
-    fun deriveKeyArgon2(password: String, salt: ByteArray, memory: Int = 65536, iterations: Int = 3, parallelism: Int = 4): ByteArray
+    suspend fun deriveKeyArgon2(
+        password: String, 
+        salt: ByteArray, 
+        memory: Int = 65536, 
+        iterations: Int = 3, 
+        parallelism: Int = 4
+    ): ByteArray
     
     /**
      * Generate random salt
      */
-    fun generateSalt(length: Int = 32): ByteArray
+    suspend fun generateSalt(length: Int = 32): ByteArray
     
     /**
-     * Derive multiple keys using HKDF
+     * Derive multiple keys from a master key using HKDF
      */
-    fun deriveKeys(masterKey: ByteArray, info: String, keyCount: Int, keyLength: Int = 32): List<ByteArray>
+    suspend fun deriveKeys(
+        masterKey: ByteArray, 
+        info: String, 
+        count: Int, 
+        keyLength: Int = 32
+    ): List<ByteArray>
 }
 
 /**
- * Zero-knowledge encryption for secrets
+ * Zero-knowledge encryption interface
  */
 interface ZeroKnowledgeEncryption {
     /**
      * Encrypt data with zero-knowledge approach
-     * Client-side key derivation and encryption
      */
-    fun encryptZeroKnowledge(
-        data: String,
-        userPassword: String,
+    suspend fun encryptZeroKnowledge(
+        data: String, 
+        password: String, 
         salt: ByteArray? = null
     ): ZeroKnowledgeResult
     
     /**
      * Decrypt zero-knowledge encrypted data
      */
-    fun decryptZeroKnowledge(
-        encryptedData: ZeroKnowledgeResult,
-        userPassword: String
+    suspend fun decryptZeroKnowledge(
+        result: ZeroKnowledgeResult, 
+        password: String
     ): String?
     
     /**
-     * Verify zero-knowledge encrypted data integrity
+     * Verify integrity of zero-knowledge encrypted data
      */
-    fun verifyIntegrity(encryptedData: ZeroKnowledgeResult): Boolean
+    suspend fun verifyIntegrity(result: ZeroKnowledgeResult): Boolean
 }
 
 /**
@@ -139,29 +162,32 @@ data class ZeroKnowledgeResult(
     val encryptedData: ByteArray,
     val salt: ByteArray,
     val nonce: ByteArray,
-    val authTag: ByteArray,
+    val authTag: ByteArray? = null,
     val keyDerivationParams: KeyDerivationParams
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
-        
+
         other as ZeroKnowledgeResult
-        
+
         if (!encryptedData.contentEquals(other.encryptedData)) return false
         if (!salt.contentEquals(other.salt)) return false
         if (!nonce.contentEquals(other.nonce)) return false
-        if (!authTag.contentEquals(other.authTag)) return false
+        if (authTag != null) {
+            if (other.authTag == null) return false
+            if (!authTag.contentEquals(other.authTag)) return false
+        } else if (other.authTag != null) return false
         if (keyDerivationParams != other.keyDerivationParams) return false
-        
+
         return true
     }
-    
+
     override fun hashCode(): Int {
         var result = encryptedData.contentHashCode()
         result = 31 * result + salt.contentHashCode()
         result = 31 * result + nonce.contentHashCode()
-        result = 31 * result + authTag.contentHashCode()
+        result = 31 * result + (authTag?.contentHashCode() ?: 0)
         result = 31 * result + keyDerivationParams.hashCode()
         return result
     }
@@ -178,37 +204,37 @@ data class KeyDerivationParams(
 )
 
 /**
- * Digital signature interface
+ * Asymmetric cryptography interface
  */
-interface DigitalSignature {
+interface AsymmetricCrypto {
     /**
-     * Generate key pair for signing
+     * Generate key pair
      */
-    fun generateKeyPair(): KeyPair
+    suspend fun generateKeyPair(): KeyPair
+    
+    /**
+     * Encrypt data with public key
+     */
+    suspend fun encryptWithPublicKey(data: ByteArray, publicKey: ByteArray): ByteArray
+    
+    /**
+     * Decrypt data with private key
+     */
+    suspend fun decryptWithPrivateKey(data: ByteArray, privateKey: ByteArray): ByteArray
     
     /**
      * Sign data with private key
      */
-    fun sign(data: ByteArray, privateKey: ByteArray): ByteArray
+    suspend fun sign(data: ByteArray, privateKey: ByteArray): ByteArray
     
     /**
      * Verify signature with public key
      */
-    fun verify(data: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
-    
-    /**
-     * Sign string data
-     */
-    fun signString(data: String, privateKey: ByteArray): ByteArray
-    
-    /**
-     * Verify string signature
-     */
-    fun verifyString(data: String, signature: ByteArray, publicKey: ByteArray): Boolean
+    suspend fun verify(data: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
 }
 
 /**
- * Key pair for digital signatures
+ * Key pair for asymmetric cryptography
  */
 data class KeyPair(
     val publicKey: ByteArray,
@@ -217,15 +243,15 @@ data class KeyPair(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
-        
+
         other as KeyPair
-        
+
         if (!publicKey.contentEquals(other.publicKey)) return false
         if (!privateKey.contentEquals(other.privateKey)) return false
-        
+
         return true
     }
-    
+
     override fun hashCode(): Int {
         var result = publicKey.contentHashCode()
         result = 31 * result + privateKey.contentHashCode()
@@ -236,19 +262,129 @@ data class KeyPair(
 /**
  * Secure random number generator
  */
-interface SecureRandom {
+class SecureRandom {
+    private val random = java.security.SecureRandom()
+    
     /**
      * Generate random bytes
      */
-    fun nextBytes(size: Int): ByteArray
+    fun nextBytes(bytes: ByteArray) {
+        random.nextBytes(bytes)
+    }
     
     /**
-     * Generate random string
+     * Generate random integer
      */
-    fun nextString(length: Int, charset: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"): String
+    fun nextInt(bound: Int = Int.MAX_VALUE): Int {
+        return if (bound == Int.MAX_VALUE) random.nextInt() else random.nextInt(bound)
+    }
     
     /**
-     * Generate UUID
+     * Generate random long
      */
-    fun nextUuid(): String
+    fun nextLong(bound: Long = Long.MAX_VALUE): Long {
+        return if (bound == Long.MAX_VALUE) random.nextLong() else Math.abs(random.nextLong()) % bound
+    }
+    
+    /**
+     * Generate random double
+     */
+    fun nextDouble(): Double {
+        return random.nextDouble()
+    }
+    
+    /**
+     * Generate random boolean
+     */
+    fun nextBoolean(): Boolean {
+        return random.nextBoolean()
+    }
+    
+    companion object {
+        private val sharedRandom = java.security.SecureRandom()
+        
+        /**
+         * Generate random bytes
+         */
+        fun generateBytes(length: Int): ByteArray {
+            val bytes = ByteArray(length)
+            sharedRandom.nextBytes(bytes)
+            return bytes
+        }
+        
+        /**
+         * Generate random string
+         */
+        fun generateString(length: Int, charset: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"): String {
+            return (1..length)
+                .map { charset[sharedRandom.nextInt(charset.length)] }
+                .joinToString("")
+        }
+        
+        /**
+         * Generate random UUID
+         */
+        fun generateUuid(): String {
+            return java.util.UUID.randomUUID().toString()
+        }
+    }
+}
+
+/**
+ * Default implementation of Encryption interface
+ */
+class DefaultEncryption(
+    private val keyDerivation: KeyDerivation
+) : Encryption, KeyDerivation by keyDerivation, ZeroKnowledgeEncryption {
+    
+    override suspend fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult {
+        // Implementation would use platform-specific encryption
+        // This is a placeholder that would be overridden in platform-specific code
+        val nonce = SecureRandom.generateBytes(12)
+        val encryptedData = data.copyOf() // Placeholder for actual encryption
+        return EncryptionResult(encryptedData, nonce)
+    }
+    
+    override suspend fun decrypt(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray?): DecryptionResult {
+        // Implementation would use platform-specific decryption
+        // This is a placeholder that would be overridden in platform-specific code
+        return try {
+            DecryptionResult.Success(data.copyOf()) // Placeholder for actual decryption
+        } catch (e: Exception) {
+            DecryptionResult.Failure("Decryption failed: ${e.message}")
+        }
+    }
+    
+    override suspend fun encryptZeroKnowledge(data: String, password: String, salt: ByteArray?): ZeroKnowledgeResult {
+        val actualSalt = salt ?: generateSalt()
+        val key = deriveKey(password, actualSalt)
+        val encryptionResult = encrypt(data.encodeToByteArray(), key)
+        
+        return ZeroKnowledgeResult(
+            encryptedData = encryptionResult.encryptedData,
+            salt = actualSalt,
+            nonce = encryptionResult.nonce,
+            authTag = encryptionResult.authTag,
+            keyDerivationParams = KeyDerivationParams()
+        )
+    }
+    
+    override suspend fun decryptZeroKnowledge(result: ZeroKnowledgeResult, password: String): String? {
+        val key = deriveKey(
+            password, 
+            result.salt, 
+            result.keyDerivationParams.iterations,
+            result.keyDerivationParams.keyLength
+        )
+        
+        return when (val decryptResult = decrypt(result.encryptedData, key, result.nonce, result.authTag)) {
+            is DecryptionResult.Success -> decryptResult.data.decodeToString()
+            is DecryptionResult.Failure -> null
+        }
+    }
+    
+    override suspend fun verifyIntegrity(result: ZeroKnowledgeResult): Boolean {
+        // In a real implementation, this would verify HMAC or similar integrity check
+        return result.authTag != null
+    }
 }

@@ -52,7 +52,7 @@ data class DatabaseHealthStatus(
     val isHealthy: Boolean,
     val connectionPoolStats: PoolStats,
     val migrationStatus: List<MigrationStatus>,
-    val lastHealthCheck: kotlinx.datetime.Instant,
+    val lastHealthCheck: String,
     val issues: List<String> = emptyList()
 )
 
@@ -126,8 +126,8 @@ data class FacetValue(
  * Date range for filtering
  */
 data class DateRange(
-    val startDate: kotlinx.datetime.Instant,
-    val endDate: kotlinx.datetime.Instant
+    val startDate: String,
+    val endDate: String
 )
 
 /**
@@ -156,7 +156,7 @@ data class ActivityItem(
     val id: String,
     val type: String,
     val description: String,
-    val timestamp: kotlinx.datetime.Instant,
+    val timestamp: String,
     val userId: String?,
     val metadata: Map<String, Any> = emptyMap()
 )
@@ -169,7 +169,7 @@ data class SystemHealthSummary(
     val activeServices: Int,
     val totalServices: Int,
     val criticalIssues: Int,
-    val lastUpdated: kotlinx.datetime.Instant
+    val lastUpdated: String
 )
 
 /**
@@ -217,7 +217,7 @@ enum class ReportType {
 data class Report(
     val type: ReportType,
     val title: String,
-    val generatedAt: kotlinx.datetime.Instant,
+    val generatedAt: String,
     val parameters: Map<String, Any>,
     val data: Map<String, Any>,
     val summary: String,

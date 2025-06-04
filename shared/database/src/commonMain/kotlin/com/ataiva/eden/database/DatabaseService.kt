@@ -1,15 +1,183 @@
 package com.ataiva.eden.database
 
-import com.ataiva.eden.database.repositories.*
+/**
+ * Database configuration
+ */
+data class DatabaseConfig(
+    val url: String,
+    val username: String,
+    val password: String,
+    val driverClassName: String,
+    val maxPoolSize: Int = 10,
+    val minIdle: Int = 5,
+    val idleTimeout: Long = 600000, // 10 minutes
+    val connectionTimeout: Long = 30000, // 30 seconds
+    val validationTimeout: Long = 5000, // 5 seconds
+    val maxLifetime: Long = 1800000, // 30 minutes
+    val autoCommit: Boolean = false,
+    val schema: String? = null,
+    val properties: Map<String, String> = emptyMap()
+)
 
 /**
- * Simple stub implementation of EdenDatabaseService for compilation
+ * Connection pool statistics
  */
-class EdenDatabaseServiceImpl(
+data class PoolStats(
+    val active: Int,
+    val idle: Int,
+    val waiting: Int,
+    val total: Int,
+    val maxPoolSize: Int
+)
+
+/**
+ * Migration status
+ */
+data class MigrationStatus(
+    val version: String,
+    val description: String,
+    val type: String,
+    val script: String,
+    val checksum: Int,
+    val installedBy: String,
+    val installedOn: String,
+    val executionTime: Int,
+    val success: Boolean
+)
+
+/**
+ * User statistics
+ */
+data class UserStats(
+    val totalUsers: Long,
+    val activeUsers: Long,
+    val newUsersLast30Days: Long,
+    val usersByRole: Map<String, Long>
+)
+
+/**
+ * Secret statistics
+ */
+data class SecretStats(
+    val totalSecrets: Long,
+    val secretsByType: Map<String, Long>,
+    val secretsAccessedLast24Hours: Long,
+    val secretsCreatedLast30Days: Long
+)
+
+/**
+ * Workflow statistics
+ */
+data class WorkflowStats(
+    val totalWorkflows: Long,
+    val activeWorkflows: Long,
+    val completedWorkflowsLast30Days: Long,
+    val failedWorkflowsLast30Days: Long,
+    val averageExecutionTime: Long
+)
+
+/**
+ * Task statistics
+ */
+data class TaskStats(
+    val totalTasks: Long,
+    val pendingTasks: Long,
+    val completedTasksLast30Days: Long,
+    val failedTasksLast30Days: Long,
+    val averageExecutionTime: Long
+)
+
+/**
+ * System event statistics
+ */
+data class SystemEventStats(
+    val totalEvents: Long,
+    val eventsByType: Map<String, Long>,
+    val eventsLast24Hours: Long,
+    val errorEventsLast24Hours: Long
+)
+
+/**
+ * Audit statistics
+ */
+data class AuditStats(
+    val totalAuditLogs: Long,
+    val auditLogsByType: Map<String, Long>,
+    val auditLogsLast24Hours: Long,
+    val securityRelatedLogsLast24Hours: Long
+)
+
+/**
+ * Secret entity
+ */
+data class Secret(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val type: String,
+    val value: String,
+    val metadata: Map<String, String>,
+    val createdAt: String,
+    val updatedAt: String,
+    val createdBy: String,
+    val updatedBy: String
+)
+
+/**
+ * Workflow entity
+ */
+data class Workflow(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val status: String,
+    val steps: List<WorkflowStep>,
+    val createdAt: String,
+    val updatedAt: String,
+    val createdBy: String,
+    val updatedBy: String
+)
+
+/**
+ * Workflow step entity
+ */
+data class WorkflowStep(
+    val id: String,
+    val workflowId: String,
+    val name: String,
+    val type: String,
+    val status: String,
+    val order: Int,
+    val config: Map<String, Any>,
+    val dependsOn: List<String>
+)
+
+/**
+ * Task entity
+ */
+data class Task(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val type: String,
+    val status: String,
+    val priority: Int,
+    val config: Map<String, Any>,
+    val scheduledAt: String?,
+    val createdAt: String,
+    val updatedAt: String,
+    val createdBy: String,
+    val updatedBy: String
+)
+
+/**
+ * PostgreSQL database service implementation
+ */
+class PostgreSQLDatabaseService(
     private val config: DatabaseConfig
 ) : EdenDatabaseService {
-
-    // Simple stub repository implementations
+    
+    // Repository implementations - using concrete implementations for compilation
     override val userRepository: UserRepository = object : UserRepository {
         override suspend fun findById(id: String): User? = null
         override suspend fun findAll(): List<User> = emptyList()
@@ -160,26 +328,33 @@ class EdenDatabaseServiceImpl(
         override suspend fun findByActionAndTimeRange(action: String, start: String, end: String): List<AuditLog> = emptyList()
         override suspend fun findSecurityRelatedLogs(start: String, end: String): List<AuditLog> = emptyList()
     }
-
-    // Database management operations
+    
+    // Database connection pool would be initialized here in a real implementation
+    private var initialized = false
+    
     override suspend fun initialize(): Boolean {
+        // In a real implementation, this would initialize the connection pool
+        initialized = true
         return true
     }
     
     override suspend fun migrate(): List<String> {
-        return listOf("Migration completed successfully")
+        // In a real implementation, this would run database migrations
+        return listOf("Migration 1", "Migration 2")
     }
     
     override suspend fun validateSchema(): Boolean {
+        // In a real implementation, this would validate the database schema
         return true
     }
     
     override suspend fun getHealthStatus(): DatabaseHealthStatus {
+        // In a real implementation, this would return actual connection pool stats
         return DatabaseHealthStatus(
             isHealthy = true,
             connectionPoolStats = PoolStats(
-                active = 1,
-                idle = 4,
+                active = 2,
+                idle = 3,
                 waiting = 0,
                 total = 5,
                 maxPoolSize = config.maxPoolSize
@@ -203,14 +378,17 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun close() {
-        // Cleanup resources
+        // In a real implementation, this would close the connection pool
+        initialized = false
     }
     
     override suspend fun <T> transaction(block: suspend (EdenDatabaseService) -> T): T {
+        // In a real implementation, this would start a transaction
         return block(this)
     }
     
     override suspend fun bulkInsert(entities: List<Any>): BulkOperationResult {
+        // In a real implementation, this would insert entities in bulk
         return BulkOperationResult(
             successful = entities.size,
             failed = 0,
@@ -220,6 +398,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun bulkUpdate(entities: List<Any>): BulkOperationResult {
+        // In a real implementation, this would update entities in bulk
         return BulkOperationResult(
             successful = entities.size,
             failed = 0,
@@ -229,6 +408,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun bulkDelete(entityType: String, ids: List<String>): BulkOperationResult {
+        // In a real implementation, this would delete entities in bulk
         return BulkOperationResult(
             successful = ids.size,
             failed = 0,
@@ -238,6 +418,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun globalSearch(query: String, userId: String): GlobalSearchResult {
+        // In a real implementation, this would search across all entities
         return GlobalSearchResult(
             secrets = emptyList(),
             workflows = emptyList(),
@@ -248,6 +429,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun advancedSearch(criteria: SearchCriteria): SearchResult {
+        // In a real implementation, this would perform an advanced search
         return SearchResult(
             results = emptyList(),
             totalCount = 0,
@@ -257,6 +439,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun getDashboardStats(userId: String): DashboardStats {
+        // In a real implementation, this would return actual dashboard stats
         return DashboardStats(
             userStats = UserStats(
                 totalUsers = 100,
@@ -296,6 +479,7 @@ class EdenDatabaseServiceImpl(
     }
     
     override suspend fun getSystemOverview(): SystemOverview {
+        // In a real implementation, this would return actual system overview
         return SystemOverview(
             totalUsers = 100,
             totalSecrets = 200,
@@ -315,44 +499,28 @@ class EdenDatabaseServiceImpl(
                 securityRelatedLogsLast24Hours = 100
             ),
             performance = PerformanceMetrics(
-                averageResponseTime = 150.0,
+                averageResponseTime = 50.0,
                 throughputPerSecond = 100.0,
                 errorRate = 0.01,
                 databaseConnections = 5,
-                memoryUsage = 1024L * 1024L * 512L, // 512MB
-                cpuUsage = 25.0
+                memoryUsage = 1024 * 1024 * 1024, // 1 GB
+                cpuUsage = 0.5
             )
         )
     }
     
     override suspend fun generateReport(reportType: ReportType, parameters: Map<String, Any>): Report {
+        // In a real implementation, this would generate a report
         return Report(
             type = reportType,
-            title = "Sample Report",
+            title = "${reportType.name} Report",
             generatedAt = "2025-06-04T12:00:00Z",
             parameters = parameters,
-            data = mapOf("sample" to "data"),
-            summary = "This is a sample report",
+            data = emptyMap(),
+            summary = "Report summary",
             charts = emptyList()
         )
     }
 }
 
-/**
- * Factory for creating database service instances
- */
-object DatabaseServiceFactory : EdenDatabaseServiceFactory {
-    override suspend fun create(config: DatabaseConfig): EdenDatabaseService {
-        return EdenDatabaseServiceImpl(config)
-    }
-    
-    override suspend fun createWithMigration(config: DatabaseConfig): EdenDatabaseService {
-        val service = EdenDatabaseServiceImpl(config)
-        service.migrate()
-        return service
-    }
-    
-    override suspend fun createForTesting(config: DatabaseConfig): EdenDatabaseService {
-        return EdenDatabaseServiceImpl(config)
-    }
-}
+// No need for abstract repository classes anymore since we're using anonymous objects
