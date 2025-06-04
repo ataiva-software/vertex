@@ -4,6 +4,13 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.system.exitProcess
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 
 /**
  * Eden DevOps Suite Command Line Interface
@@ -380,14 +387,15 @@ class EdenCLI {
         
         var healthyCount = 0
         services.forEach { service ->
-            val health = checkServiceHealth("${service.url}/health")
+            val health = checkServiceHealth(service.healthEndpoint)
             val icon = if (health.healthy) "✅" else "❌"
             if (health.healthy) healthyCount++
-            
+
             println("$icon ${service.name}: ${health.status}")
-            
+
             if (detailed) {
                 println("    URL: ${service.url}")
+                println("    Health Endpoint: ${service.healthEndpoint}")
                 println("    Response Time: ${health.responseTime}ms")
                 println("    Uptime: ${formatUptime(health.uptime)}")
                 if (!health.healthy && health.error != null) {
@@ -444,8 +452,9 @@ class EdenCLI {
     }
     
     private fun loadConfig(): EdenConfig {
+        val apiGatewayUrl = System.getenv("EDEN_API_GATEWAY_URL") ?: "http://localhost:8080"
         return EdenConfig(
-            apiGatewayUrl = System.getenv("EDEN_API_GATEWAY_URL") ?: "http://localhost:8080",
+            apiGatewayUrl = apiGatewayUrl,
             vaultUrl = System.getenv("EDEN_VAULT_URL") ?: "http://localhost:8081",
             flowUrl = System.getenv("EDEN_FLOW_URL") ?: "http://localhost:8083",
             taskUrl = System.getenv("EDEN_TASK_URL") ?: "http://localhost:8084",
@@ -454,6 +463,37 @@ class EdenCLI {
             insightUrl = System.getenv("EDEN_INSIGHT_URL") ?: "http://localhost:8087",
             hubUrl = System.getenv("EDEN_HUB_URL") ?: "http://localhost:8082"
         )
+    }
+
+    private fun getTokenPath(): String {
+        val os = System.getProperty("os.name").lowercase()
+        val homeDir = System.getProperty("user.home")
+
+        return when {
+            os.contains("win") -> "$homeDir\\.eden\\token"
+            os.contains("mac") || os.contains("linux") -> "$homeDir/.eden/token"
+            else -> ".eden/token"
+        }
+    }
+
+    private fun getAuthToken(): String? {
+        val tokenPath = getTokenPath()
+        return try {
+            java.io.File(tokenPath).readText()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun saveAuthToken(token: String) {
+        val tokenPath = getTokenPath()
+        java.io.File(tokenPath).parentFile?.mkdirs()
+        java.io.File(tokenPath).writeText(token)
+    }
+
+    private fun clearAuthToken() {
+        val tokenPath = getTokenPath()
+        java.io.File(tokenPath).delete()
     }
     
     private fun getPlatform(): String = "JVM ${System.getProperty("java.version")}"
@@ -479,13 +519,35 @@ class EdenCLI {
     
     // Mock data methods (would be replaced with actual API calls)
     private suspend fun checkServiceHealth(url: String): HealthStatus {
-        return HealthStatus(
-            healthy = true,
-            status = "healthy",
-            uptime = 7200,
-            responseTime = 45,
-            error = null
-        )
+        val client = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                })
+            }
+        }
+        try {
+            val response: HttpResponse = client.get(url) {
+                val token = getAuthToken()
+                if (token != null) {
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                }
+            }
+            if (response.status.isSuccess()) {
+                val apiResponse: ApiResponse<HealthStatus> = response.body()
+                return apiResponse.data ?: HealthStatus(false, "unhealthy", 0, 0, "No data")
+            } else {
+                println("Error checking health for $url: ${response.status}")
+                return HealthStatus(false, "unhealthy", 0, 0, "HTTP error: ${response.status}")
+            }
+        } catch (e: Exception) {
+            println("Error checking health for $url: ${e.message}")
+            return HealthStatus(false, "unhealthy", 0, 0, e.message)
+        } finally {
+            client.close()
+        }
     }
     
     private suspend fun authenticateUser(email: String, password: String): AuthResult {
@@ -508,41 +570,115 @@ class EdenCLI {
     }
     
     private suspend fun getVaultSecrets(): List<SecretInfo> {
-        return listOf(
-            SecretInfo("api-key-prod", "api-key", "2024-12-01", "2024-12-03"),
-            SecretInfo("db-password", "password", "2024-11-15", "2024-11-20"),
-            SecretInfo("ssl-cert", "certificate", "2024-10-01", "2024-10-01")
-        )
+        val client = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                })
+            }
+        }
+        val userId = "cli-user" // Replace with actual user authentication logic
+        try {
+            val response: HttpResponse = client.get("http://localhost:8080/api/v1/vault/api/v1/secrets?userId=$userId") { // Replace with actual API Gateway URL
+                val token = getAuthToken()
+                if (token != null) {
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                }
+            }
+            if (response.status.isSuccess()) {
+                val apiResponse: ApiResponse<List<SecretInfo>> = response.body()
+                return apiResponse.data ?: emptyList()
+            } else {
+                println("Error fetching secrets: ${response.status}")
+                return emptyList()
+            }
+        } catch (e: Exception) {
+            println("Error fetching secrets: ${e.message}")
+            return emptyList()
+        } finally {
+            client.close()
+        }
     }
     
     private suspend fun getVaultSecret(name: String): SecretDetail? {
-        return SecretDetail(
-            name = name,
-            type = "api-key",
-            value = "sk-1234567890abcdef",
-            createdAt = "2024-12-01",
-            updatedAt = "2024-12-03"
-        )
+        val client = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                })
+            }
+        }
+        val userId = "cli-user" // Replace with actual user authentication logic
+        val userPassword = "password123" // Replace with actual user authentication logic
+        try {
+            val response: HttpResponse = client.get("http://localhost:8080/api/v1/vault/api/v1/secrets/$name?userId=$userId&userPassword=$userPassword") { // Replace with actual API Gateway URL
+                val token = getAuthToken()
+                if (token != null) {
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                }
+            }
+            if (response.status.isSuccess()) {
+                val apiResponse: ApiResponse<SecretDetail> = response.body()
+                return apiResponse.data
+            } else {
+                println("Error fetching secret: ${response.status}")
+                return null
+            }
+        } catch (e: Exception) {
+            println("Error fetching secret: ${e.message}")
+            return null
+        } finally {
+            client.close()
+        }
     }
     
     private suspend fun getWorkflows(): List<WorkflowInfo> {
-        return listOf(
-            WorkflowInfo("deploy-prod", "deployment", "active", "2024-12-03 09:30:00"),
-            WorkflowInfo("backup-db", "maintenance", "active", "2024-12-03 02:00:00"),
-            WorkflowInfo("security-scan", "security", "paused", null)
-        )
+        val client = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                })
+            }
+        }
+        val userId = "cli-user" // Replace with actual user authentication logic
+        try {
+            val response: HttpResponse = client.get("http://localhost:8080/api/v1/flow/api/v1/workflows?userId=$userId") { // Replace with actual API Gateway URL
+                val token = getAuthToken()
+                if (token != null) {
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                }
+            }
+            if (response.status.isSuccess()) {
+                val apiResponse: ApiResponse<List<WorkflowInfo>> = response.body()
+                return apiResponse.data ?: emptyList()
+            } else {
+                println("Error fetching workflows: ${response.status}")
+                return emptyList()
+            }
+        } catch (e: Exception) {
+            println("Error fetching workflows: ${e.message}")
+            return emptyList()
+        } finally {
+            client.close()
+        }
     }
     
     private fun getAllServices(): List<ServiceInfo> {
         return listOf(
-            ServiceInfo("api-gateway", config.apiGatewayUrl),
-            ServiceInfo("vault", config.vaultUrl),
-            ServiceInfo("flow", config.flowUrl),
-            ServiceInfo("task", config.taskUrl),
-            ServiceInfo("monitor", config.monitorUrl),
-            ServiceInfo("sync", config.syncUrl),
-            ServiceInfo("insight", config.insightUrl),
-            ServiceInfo("hub", config.hubUrl)
+            ServiceInfo("api-gateway", config.apiGatewayUrl, "${config.apiGatewayUrl}/health"),
+            ServiceInfo("vault", config.vaultUrl, "${config.vaultUrl}/health"),
+            ServiceInfo("flow", config.flowUrl, "${config.flowUrl}/health"),
+            ServiceInfo("task", config.taskUrl, "${config.taskUrl}/health"),
+            ServiceInfo("monitor", config.monitorUrl, "${config.monitorUrl}/health"),
+            ServiceInfo("sync", config.syncUrl, "${config.syncUrl}/health"),
+            ServiceInfo("insight", config.insightUrl, "${config.insightUrl}/health"),
+            ServiceInfo("hub", config.hubUrl, "${config.hubUrl}/health")
         )
     }
     
@@ -651,3 +787,15 @@ data class ServiceInfo(
 
 // Extension function for string repetition
 private operator fun String.times(count: Int): String = this.repeat(count)
+@Serializable
+data class ApiResponse<T>(
+    val success: Boolean,
+    val data: T? = null,
+    val message: String? = null,
+    val error: String? = null
+) {
+    companion object {
+        fun <T> success(data: T): ApiResponse<T> = ApiResponse(true, data)
+        fun <T> error(message: String): ApiResponse<T> = ApiResponse(false, null, null, message)
+    }
+}
