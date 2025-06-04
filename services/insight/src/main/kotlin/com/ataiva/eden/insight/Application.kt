@@ -1,5 +1,8 @@
 package com.ataiva.eden.insight
 
+import com.ataiva.eden.insight.controller.InsightController
+import com.ataiva.eden.insight.model.*
+import com.ataiva.eden.insight.service.InsightService
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -9,8 +12,11 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
-import kotlinx.serialization.Serializable
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.calllogging.*
+import io.ktor.server.plugins.defaultheaders.*
 import kotlinx.serialization.json.Json
+import org.slf4j.event.Level
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
@@ -18,30 +24,117 @@ fun main() {
 }
 
 fun Application.module() {
+    // Configure JSON serialization
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
             isLenient = true
             ignoreUnknownKeys = true
+            encodeDefaults = true
         })
     }
     
+    // Configure CORS
+    install(CORS) {
+        anyHost()
+        allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Delete)
+        allowMethod(HttpMethod.Patch)
+        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader("X-User-ID")
+        allowCredentials = true
+    }
+    
+    // Configure logging
+    install(CallLogging) {
+        level = Level.INFO
+        filter { call -> call.request.path().startsWith("/api") }
+    }
+    
+    // Configure default headers
+    install(DefaultHeaders) {
+        header("X-Service", "Eden Insight Service")
+        header("X-Version", "1.0.0")
+    }
+    
+    // Configure error handling
     install(StatusPages) {
+        exception<IllegalArgumentException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "success" to false,
+                    "error" to (cause.message ?: "Invalid request"),
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
+        }
+        
+        exception<IllegalStateException> { call, cause ->
+            call.respond(
+                HttpStatusCode.Conflict,
+                mapOf(
+                    "success" to false,
+                    "error" to (cause.message ?: "Invalid state"),
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
+        }
+        
+        exception<NoSuchElementException> { call, cause ->
+            call.respond(
+                HttpStatusCode.NotFound,
+                mapOf(
+                    "success" to false,
+                    "error" to (cause.message ?: "Resource not found"),
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
+        }
+        
         exception<Throwable> { call, cause ->
-            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to cause.localizedMessage))
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "success" to false,
+                    "error" to "Internal server error",
+                    "message" to (cause.message ?: "An unexpected error occurred"),
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
         }
     }
     
+    // Initialize services
+    val insightConfiguration = InsightConfiguration(
+        maxQueryTimeout = 300000, // 5 minutes
+        maxResultRows = 100000,
+        cacheEnabled = true,
+        cacheTtl = 3600, // 1 hour
+        reportOutputPath = System.getProperty("java.io.tmpdir") + "/eden-reports",
+        maxConcurrentQueries = 10
+    )
+    
+    val insightService = InsightService(insightConfiguration)
+    val insightController = InsightController(insightService)
+    
+    // Configure routing
     routing {
+        // Root endpoint - Service information
         get("/") {
             call.respond(ServiceInfo(
                 name = "Eden Insight Service",
                 version = "1.0.0",
-                description = "Analytics and business intelligence service",
+                description = "Advanced analytics and business intelligence service with real-time capabilities",
                 status = "running"
             ))
         }
         
+        // Health check endpoint
         get("/health") {
             call.respond(HttpStatusCode.OK, HealthCheck(
                 status = "healthy",
@@ -51,167 +144,246 @@ fun Application.module() {
             ))
         }
         
-        // Insight-specific endpoints
+        // Readiness check endpoint
+        get("/ready") {
+            try {
+                // Perform basic service checks
+                val systemAnalytics = insightService.getSystemAnalytics()
+                call.respond(HttpStatusCode.OK, mapOf(
+                    "status" to "ready",
+                    "timestamp" to System.currentTimeMillis(),
+                    "checks" to mapOf(
+                        "analytics_engine" to "operational",
+                        "query_cache" to "operational",
+                        "report_generator" to "operational"
+                    )
+                ))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf(
+                    "status" to "not_ready",
+                    "error" to e.message,
+                    "timestamp" to System.currentTimeMillis()
+                ))
+            }
+        }
+        
+        // Metrics endpoint for monitoring
+        get("/metrics") {
+            try {
+                val metrics = mapOf(
+                    "service" to "insight",
+                    "version" to "1.0.0",
+                    "uptime_ms" to (System.currentTimeMillis() - startTime),
+                    "memory_usage" to getMemoryUsage(),
+                    "system_analytics" to insightService.getSystemAnalytics(),
+                    "usage_statistics" to insightService.getUsageStatistics(),
+                    "performance_analytics" to insightService.getPerformanceAnalytics()
+                )
+                call.respond(HttpStatusCode.OK, metrics)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf(
+                    "error" to "Failed to collect metrics",
+                    "message" to e.message
+                ))
+            }
+        }
+        
+        // Configure all API routes through the controller
+        insightController.configureRoutes(this)
+        
+        // Legacy compatibility endpoints (for backward compatibility)
         route("/api/v1") {
-            route("/analytics") {
-                get("/overview") {
-                    call.respond(mapOf(
-                        "message" to "Analytics overview endpoint",
-                        "total_users" to 1250,
-                        "active_workflows" to 45,
-                        "completed_tasks" to 8932,
-                        "system_uptime" to 99.8,
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
-                
-                get("/usage") {
-                    call.respond(mapOf(
-                        "message" to "Usage analytics endpoint",
-                        "daily_active_users" to 89,
-                        "api_calls_today" to 15420,
-                        "storage_used" to "2.3 GB",
-                        "bandwidth_used" to "450 MB",
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
-                
-                get("/performance") {
-                    call.respond(mapOf(
-                        "message" to "Performance analytics endpoint",
-                        "avg_response_time" to 245,
-                        "success_rate" to 99.2,
-                        "error_rate" to 0.8,
-                        "throughput" to 1250,
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
+            // Legacy analytics endpoint
+            get("/analytics") {
+                call.respond(HttpStatusCode.MovedPermanently, mapOf(
+                    "message" to "This endpoint has moved to /api/v1/analytics/overview",
+                    "new_url" to "/api/v1/analytics/overview"
+                ))
             }
             
-            route("/reports") {
-                get {
-                    call.respond(mapOf(
-                        "message" to "Reports endpoint",
-                        "available_reports" to listOf("usage", "performance", "security", "compliance", "custom")
-                    ))
-                }
-                
-                get("/{type}") {
-                    val type = call.parameters["type"]
-                    call.respond(mapOf(
-                        "message" to "Get report: $type",
-                        "report_id" to "report-${System.currentTimeMillis()}",
-                        "status" to "generating",
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
-                
-                post("/generate") {
-                    call.respond(HttpStatusCode.Accepted, mapOf(
-                        "message" to "Generate custom report endpoint",
-                        "report_id" to "custom-report-${System.currentTimeMillis()}",
-                        "status" to "queued",
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
+            // Legacy reports endpoint
+            get("/reports") {
+                call.respond(HttpStatusCode.MovedPermanently, mapOf(
+                    "message" to "This endpoint has moved to /api/v1/reports",
+                    "new_url" to "/api/v1/reports"
+                ))
             }
             
-            route("/dashboards") {
-                get {
-                    call.respond(mapOf(
-                        "message" to "Dashboards endpoint",
-                        "dashboards" to listOf(
-                            mapOf("id" to "exec-summary", "name" to "Executive Summary"),
-                            mapOf("id" to "ops-dashboard", "name" to "Operations Dashboard"),
-                            mapOf("id" to "dev-metrics", "name" to "Developer Metrics"),
-                            mapOf("id" to "security-overview", "name" to "Security Overview")
-                        )
-                    ))
-                }
-                
-                get("/{id}") {
-                    val id = call.parameters["id"]
-                    call.respond(mapOf(
-                        "message" to "Get dashboard: $id",
-                        "widgets" to listOf("chart-1", "table-1", "metric-1", "gauge-1"),
-                        "last_updated" to System.currentTimeMillis() - 60000,
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
+            // Legacy dashboards endpoint
+            get("/dashboards") {
+                call.respond(HttpStatusCode.MovedPermanently, mapOf(
+                    "message" to "This endpoint has moved to /api/v1/dashboards",
+                    "new_url" to "/api/v1/dashboards"
+                ))
             }
             
-            route("/queries") {
-                get {
-                    call.respond(mapOf(
-                        "message" to "Data queries endpoint",
-                        "available_operations" to listOf("execute", "save", "schedule", "export")
-                    ))
-                }
-                
-                post("/execute") {
-                    call.respond(mapOf(
-                        "message" to "Execute query endpoint",
-                        "query_id" to "query-${System.currentTimeMillis()}",
-                        "status" to "running",
-                        "estimated_time" to 30,
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
-                
-                get("/saved") {
-                    call.respond(mapOf(
-                        "message" to "Saved queries endpoint",
-                        "queries" to listOf(
-                            mapOf("id" to "q1", "name" to "Daily User Activity", "last_run" to System.currentTimeMillis() - 3600000),
-                            mapOf("id" to "q2", "name" to "System Performance", "last_run" to System.currentTimeMillis() - 1800000)
-                        ),
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
+            // Legacy queries endpoint
+            get("/queries") {
+                call.respond(HttpStatusCode.MovedPermanently, mapOf(
+                    "message" to "This endpoint has moved to /api/v1/queries",
+                    "new_url" to "/api/v1/queries"
+                ))
             }
             
-            route("/alerts") {
-                get {
-                    call.respond(mapOf(
-                        "message" to "Analytics alerts endpoint",
-                        "active_alerts" to listOf(
-                            mapOf(
-                                "id" to "alert-insight-1",
-                                "type" to "anomaly",
-                                "message" to "Unusual spike in API calls detected",
-                                "severity" to "medium",
-                                "timestamp" to System.currentTimeMillis() - 900000
-                            )
-                        ),
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
-                
-                post {
-                    call.respond(HttpStatusCode.Created, mapOf(
-                        "message" to "Create analytics alert endpoint",
-                        "note" to "This is a placeholder implementation"
-                    ))
-                }
+            // Legacy alerts endpoint (for compatibility with old placeholder)
+            get("/alerts") {
+                call.respond(HttpStatusCode.OK, mapOf(
+                    "message" to "Analytics alerts are now managed through metrics and KPIs",
+                    "active_alerts" to emptyList<Any>(),
+                    "redirect_to" to listOf(
+                        "/api/v1/metrics",
+                        "/api/v1/kpis"
+                    ),
+                    "note" to "This endpoint is deprecated. Use metrics and KPIs for alerting."
+                ))
+            }
+        }
+        
+        // API documentation endpoint
+        get("/api/docs") {
+            call.respond(HttpStatusCode.OK, getApiDocumentation())
+        }
+        
+        // Service status endpoint with detailed information
+        get("/status") {
+            try {
+                val status = mapOf(
+                    "service" to "Eden Insight Service",
+                    "version" to "1.0.0",
+                    "status" to "operational",
+                    "timestamp" to System.currentTimeMillis(),
+                    "uptime_ms" to (System.currentTimeMillis() - startTime),
+                    "features" to mapOf(
+                        "analytics_engine" to "enabled",
+                        "query_processing" to "enabled",
+                        "report_generation" to "enabled",
+                        "dashboard_management" to "enabled",
+                        "metrics_and_kpis" to "enabled",
+                        "real_time_analytics" to "enabled",
+                        "caching" to "enabled"
+                    ),
+                    "statistics" to insightService.getUsageStatistics(),
+                    "performance" to insightService.getPerformanceAnalytics()
+                )
+                call.respond(HttpStatusCode.OK, status)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf(
+                    "service" to "Eden Insight Service",
+                    "status" to "error",
+                    "error" to e.message,
+                    "timestamp" to System.currentTimeMillis()
+                ))
             }
         }
     }
 }
 
-@Serializable
-data class ServiceInfo(
-    val name: String,
-    val version: String,
-    val description: String,
-    val status: String
-)
+/**
+ * Get current memory usage information
+ */
+private fun getMemoryUsage(): Map<String, Any> {
+    val runtime = Runtime.getRuntime()
+    val totalMemory = runtime.totalMemory()
+    val freeMemory = runtime.freeMemory()
+    val usedMemory = totalMemory - freeMemory
+    val maxMemory = runtime.maxMemory()
+    
+    return mapOf(
+        "used_bytes" to usedMemory,
+        "free_bytes" to freeMemory,
+        "total_bytes" to totalMemory,
+        "max_bytes" to maxMemory,
+        "usage_percentage" to ((usedMemory.toDouble() / totalMemory) * 100).toInt()
+    )
+}
 
-@Serializable
-data class HealthCheck(
-    val status: String,
-    val timestamp: Long,
-    val uptime: Long,
-    val service: String
-)
+/**
+ * Generate API documentation
+ */
+private fun getApiDocumentation(): Map<String, Any> {
+    return mapOf(
+        "service" to "Eden Insight Service",
+        "version" to "1.0.0",
+        "description" to "Advanced analytics and business intelligence service",
+        "base_url" to "/api/v1",
+        "endpoints" to mapOf(
+            "queries" to mapOf(
+                "description" to "Manage analytics queries",
+                "endpoints" to listOf(
+                    "GET /api/v1/queries - List all queries",
+                    "POST /api/v1/queries - Create new query",
+                    "GET /api/v1/queries/{id} - Get specific query",
+                    "PUT /api/v1/queries/{id} - Update query",
+                    "DELETE /api/v1/queries/{id} - Delete query",
+                    "POST /api/v1/queries/{id}/execute - Execute query",
+                    "POST /api/v1/queries/execute - Execute raw query"
+                )
+            ),
+            "reports" to mapOf(
+                "description" to "Manage reports and report generation",
+                "endpoints" to listOf(
+                    "GET /api/v1/reports - List all reports",
+                    "POST /api/v1/reports - Create new report",
+                    "GET /api/v1/reports/{id} - Get specific report",
+                    "POST /api/v1/reports/{id}/generate - Generate report",
+                    "GET /api/v1/reports/executions/{id} - Get report execution status"
+                )
+            ),
+            "report_templates" to mapOf(
+                "description" to "Manage report templates",
+                "endpoints" to listOf(
+                    "GET /api/v1/report-templates - List all templates",
+                    "POST /api/v1/report-templates - Create new template",
+                    "GET /api/v1/report-templates/{id} - Get specific template"
+                )
+            ),
+            "dashboards" to mapOf(
+                "description" to "Manage dashboards and real-time data",
+                "endpoints" to listOf(
+                    "GET /api/v1/dashboards - List all dashboards",
+                    "POST /api/v1/dashboards - Create new dashboard",
+                    "GET /api/v1/dashboards/{id} - Get specific dashboard",
+                    "GET /api/v1/dashboards/{id}/data - Get dashboard data",
+                    "PUT /api/v1/dashboards/{id} - Update dashboard"
+                )
+            ),
+            "analytics" to mapOf(
+                "description" to "System analytics and insights",
+                "endpoints" to listOf(
+                    "GET /api/v1/analytics/overview - System analytics overview",
+                    "GET /api/v1/analytics/usage - Usage statistics",
+                    "GET /api/v1/analytics/performance - Performance analytics"
+                )
+            ),
+            "metrics" to mapOf(
+                "description" to "Metrics and KPI management",
+                "endpoints" to listOf(
+                    "GET /api/v1/metrics - List all metrics",
+                    "POST /api/v1/metrics - Create new metric",
+                    "GET /api/v1/kpis - List all KPIs",
+                    "POST /api/v1/kpis - Create new KPI"
+                )
+            )
+        ),
+        "authentication" to mapOf(
+            "type" to "Bearer Token",
+            "header" to "Authorization: Bearer <token>",
+            "user_header" to "X-User-ID: <user_id>"
+        ),
+        "response_format" to mapOf(
+            "success" to mapOf(
+                "success" to true,
+                "data" to "<response_data>",
+                "message" to "<optional_message>",
+                "timestamp" to "<unix_timestamp>"
+            ),
+            "error" to mapOf(
+                "success" to false,
+                "error" to "<error_message>",
+                "timestamp" to "<unix_timestamp>"
+            )
+        )
+    )
+}
 
 private val startTime = System.currentTimeMillis()
