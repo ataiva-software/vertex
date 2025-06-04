@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  hub-service:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/eden_hub
+      - DATABASE_DRIVER=org.postgresql.Driver
+      - DATABASE_USER=hub_user
+      - DATABASE_PASSWORD=hub_password
+      - JWT_SECRET=hub-service-jwt-secret-key-for-development-only
+      - ENCRYPTION_KEY=hub-encryption-key-32-chars-dev
+      - EMAIL_ENABLED=false
+      - SMS_ENABLED=false
+      - PUSH_ENABLED=false
+      - EVENTS_ENABLED=true
+      - MONITORING_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=eden_hub
+      - POSTGRES_USER=hub_user
+      - POSTGRES_PASSWORD=hub_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub_user -d eden_hub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Webhook testing service
+  webhook-tester:
+    image: tarampampam/webhook-tester:latest
+    ports:
+      - "8090:8080"
+    networks:
+      - eden-network
+    profiles:
+      - testing
+
+  # Optional: Mail server for testing email notifications
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - eden-network
+    profiles:
+      - testing
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  eden-network:
+    driver: bridge

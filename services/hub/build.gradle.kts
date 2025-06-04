@@ -1,62 +1,123 @@
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("io.ktor.plugin")
+    kotlin("jvm") version "1.9.20"
+    kotlin("plugin.serialization") version "1.9.20"
     application
+}
+
+group = "com.ataiva.eden"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Ktor Server
+    implementation("io.ktor:ktor-server-core:2.3.6")
+    implementation("io.ktor:ktor-server-netty:2.3.6")
+    implementation("io.ktor:ktor-server-content-negotiation:2.3.6")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.6")
+    implementation("io.ktor:ktor-server-cors:2.3.6")
+    implementation("io.ktor:ktor-server-call-logging:2.3.6")
+    implementation("io.ktor:ktor-server-status-pages:2.3.6")
+    implementation("io.ktor:ktor-server-auth:2.3.6")
+    implementation("io.ktor:ktor-server-auth-jwt:2.3.6")
+    
+    // Ktor Client (for external API calls)
+    implementation("io.ktor:ktor-client-core:2.3.6")
+    implementation("io.ktor:ktor-client-cio:2.3.6")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.6")
+    implementation("io.ktor:ktor-client-logging:2.3.6")
+    implementation("io.ktor:ktor-client-auth:2.3.6")
+    
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
+    
+    // Database
+    implementation("org.jetbrains.exposed:exposed-core:0.44.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.44.1")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.44.1")
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.44.1")
+    implementation("com.h2database:h2:2.2.224")
+    implementation("org.postgresql:postgresql:42.6.0")
+    
+    // Logging
+    implementation("ch.qos.logback:logback-classic:1.4.11")
+    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    
+    // Configuration
+    implementation("com.typesafe:config:1.4.3")
+    
+    // DateTime
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    
+    // Encryption/Security
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("com.auth0:java-jwt:4.4.0")
+    
+    // HTTP Client for webhooks
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Email
+    implementation("org.simplejavamail:simple-java-mail:8.3.1")
+    
+    // AWS SDK (for AWS connector)
+    implementation("aws.sdk.kotlin:aws-core:0.33.1-beta")
+    implementation("aws.sdk.kotlin:ec2:0.33.1-beta")
+    implementation("aws.sdk.kotlin:s3:0.33.1-beta")
+    implementation("aws.sdk.kotlin:lambda:0.33.1-beta")
+    
+    // Testing
+    testImplementation("io.ktor:ktor-server-tests:2.3.6")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.20")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("com.h2database:h2:2.2.224")
 }
 
 application {
     mainClass.set("com.ataiva.eden.hub.ApplicationKt")
-    
-    val isDevelopment: Boolean = project.ext.has("development")
-    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
-dependencies {
-    // Shared libraries
-    implementation(project(":shared:core"))
-    implementation(project(":shared:auth"))
-    implementation(project(":shared:crypto"))
-    implementation(project(":shared:database"))
-    implementation(project(":shared:events"))
-    implementation(project(":shared:config"))
+tasks.test {
+    useJUnitPlatform()
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
+        jvmTarget = "17"
+    }
+}
+
+// Task to run integration tests
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests"
+    group = "verification"
     
-    // Ktor server
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.netty)
-    implementation(libs.ktor.server.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
-    implementation(libs.ktor.server.auth)
-    implementation(libs.ktor.server.auth.jwt)
-    implementation(libs.ktor.server.cors)
-    implementation(libs.ktor.server.call.logging)
-    implementation(libs.ktor.server.status.pages)
+    useJUnitPlatform {
+        includeTags("integration")
+    }
     
-    // Ktor client
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.content.negotiation)
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
     
-    // Database
-    implementation(libs.bundles.database)
+    shouldRunAfter("test")
+}
+
+// Task to run all tests
+tasks.register("testAll") {
+    description = "Runs all tests including integration tests"
+    group = "verification"
     
-    // Redis
-    implementation(libs.jedis)
-    
-    // Service discovery
-    implementation("io.etcd:jetcd-core:0.7.7")
-    
-    // Logging
-    implementation(libs.bundles.logging)
-    
-    // Configuration
-    implementation(libs.typesafe.config)
-    
-    // Testing
-    testImplementation(libs.ktor.server.tests)
-    testImplementation(libs.kotlin.test.junit)
-    testImplementation(libs.mockk)
-    testImplementation(libs.testcontainers.core)
-    testImplementation(libs.testcontainers.postgresql)
-    testImplementation(libs.testcontainers.junit.jupiter)
+    dependsOn("test", "integrationTest")
 }
