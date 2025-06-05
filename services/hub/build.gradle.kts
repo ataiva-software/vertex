@@ -42,8 +42,20 @@ dependencies {
     
     // Email
     implementation("org.simplejavamail:simple-java-mail:8.3.1")
+    implementation("javax.mail:javax.mail-api:1.6.2")
+    implementation("com.sun.mail:javax.mail:1.6.2")
+    implementation("com.sendgrid:sendgrid-java:4.9.3")
     
     // AWS SDK (for AWS connector)
+    // Java AWS SDK v2
+    implementation(platform("software.amazon.awssdk:bom:2.20.156"))
+    implementation("software.amazon.awssdk:ec2")
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:lambda")
+    implementation("software.amazon.awssdk:sts")
+    implementation("software.amazon.awssdk:cloudwatch")
+    
+    // Kotlin AWS SDK (legacy)
     implementation("aws.sdk.kotlin:aws-core:0.33.1-beta")
     implementation("aws.sdk.kotlin:ec2:0.33.1-beta")
     implementation("aws.sdk.kotlin:s3:0.33.1-beta")

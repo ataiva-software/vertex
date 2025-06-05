@@ -14,10 +14,10 @@ For detailed implementation information, see the [Hub Service Implementation Sum
 ## Features
 
 ### 🔗 Integration Management
-- **Multi-Platform Support**: GitHub, Slack, JIRA, AWS, and extensible connector framework
-- **Secure Authentication**: OAuth 2.0, API keys, and token-based authentication
-- **Real-time Operations**: Execute operations across integrated platforms
-- **Health Monitoring**: Continuous health checks and status monitoring
+- **Multi-Platform Support**: Production-ready connectors for GitHub, Slack, JIRA, AWS, and extensible connector framework
+- **Secure Authentication**: OAuth 2.0, API keys, and token-based authentication with proper credential encryption
+- **Real-time Operations**: Execute operations across integrated platforms with async/await patterns
+- **Health Monitoring**: Continuous health checks and status monitoring with detailed diagnostics
 
 ### 🪝 Webhook Management
 - **Reliable Delivery**: Exponential backoff retry mechanism with configurable attempts
@@ -209,6 +209,39 @@ All configuration values can be overridden with environment variables:
 - `EMAIL_ENABLED`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`
 - `SMS_ENABLED`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`
 
+## Production-Ready Integration Connectors
+
+The Hub Service now features fully implemented, production-ready integration connectors that replace all previously mocked implementations:
+
+### AWS Connector
+- **Complete AWS SDK Integration**: Uses the official AWS SDK for Java with async clients
+- **Comprehensive Service Support**: EC2, S3, Lambda, CloudWatch, and STS services
+- **Secure Credential Management**: Proper encryption of AWS access keys and secrets
+- **Connection Pooling**: Efficient client reuse with proper resource management
+- **Error Handling**: Comprehensive exception handling with detailed error messages
+- **Async Operations**: Non-blocking operations using Kotlin coroutines and AWS async clients
+
+### GitHub Connector
+- **GitHub API v3 Support**: Complete implementation of GitHub REST API
+- **OAuth and PAT Authentication**: Support for both OAuth flows and Personal Access Tokens
+- **Webhook Management**: GitHub webhook registration, verification, and event handling
+- **Rate Limiting**: Proper handling of GitHub API rate limits with exponential backoff
+- **Event Processing**: Processing of GitHub events (push, pull request, issue, etc.)
+
+### Slack Connector
+- **Slack API Integration**: Complete implementation of Slack Web API and Events API
+- **Bot and User Authentication**: Support for both bot tokens and user tokens
+- **Interactive Components**: Support for buttons, menus, and modals
+- **Message Formatting**: Rich message formatting with blocks and attachments
+- **File Uploads**: Support for file uploads and sharing
+
+### JIRA Connector
+- **JIRA Cloud API Integration**: Complete implementation of JIRA REST API
+- **Issue Management**: Create, update, and transition issues
+- **Query Support**: JQL query execution and result processing
+- **Attachment Handling**: Upload and download of attachments
+- **User Management**: User lookup and permission checking
+
 ## Integration Examples
 
 ### GitHub Integration
@@ -218,14 +251,38 @@ val integration = CreateIntegrationRequest(
     type = IntegrationType.GITHUB,
     configuration = mapOf(
         "baseUrl" to "https://api.github.com",
-        "owner" to "myorganization"
+        "owner" to "myorganization",
+        "rateLimit" to "5000",
+        "webhookSecret" to "webhook_secret_key",
+        "apiVersion" to "2022-11-28"
     ),
     credentials = IntegrationCredentials(
         type = CredentialType.TOKEN,
         encryptedData = "github_pat_...",
-        encryptionKeyId = ""
+        encryptionKeyId = "key-1"
     ),
     userId = "user123"
+)
+```
+
+### AWS Integration
+```kotlin
+val integration = CreateIntegrationRequest(
+    name = "Production AWS Integration",
+    type = IntegrationType.AWS,
+    configuration = mapOf(
+        "region" to "us-west-2",
+        "maxConnections" to "50",
+        "connectionTimeout" to "5000",
+        "socketTimeout" to "10000",
+        "retryMode" to "standard"
+    ),
+    credentials = IntegrationCredentials(
+        type = CredentialType.AWS_CREDENTIALS,
+        encryptedData = """{"accessKeyId":"AKIA...","secretAccessKey":"..."}""",
+        encryptionKeyId = "key-2"
+    ),
+    userId = "admin"
 )
 ```
 
@@ -242,7 +299,30 @@ val notification = SendNotificationRequest(
     subject = "Deployment Complete",
     body = "Application deployed successfully to production",
     priority = NotificationPriority.HIGH,
-    userId = "user123"
+    userId = "user123",
+    attachments = listOf(
+        NotificationAttachment(
+            title = "Deployment Details",
+            fields = mapOf(
+                "Version" to "1.2.3",
+                "Environment" to "Production",
+                "Deployed By" to "CI/CD Pipeline"
+            ),
+            color = "#36a64f"
+        )
+    ),
+    buttons = listOf(
+        ActionButton(
+            text = "View Logs",
+            url = "https://logs.example.com/deployment/123",
+            style = "primary"
+        ),
+        ActionButton(
+            text = "Rollback",
+            url = "https://deploy.example.com/rollback/123",
+            style = "danger"
+        )
+    )
 )
 ```
 

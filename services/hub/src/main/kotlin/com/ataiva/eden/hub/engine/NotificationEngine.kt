@@ -280,11 +280,49 @@ class NotificationEngine(
     // Private helper methods
     
     private fun initializeChannelProviders() {
-        channelProviders[NotificationType.EMAIL] = EmailChannelProvider()
-        channelProviders[NotificationType.SMS] = SmsChannelProvider()
+        // Initialize email provider with configuration
+        val emailConfig = loadEmailConfig()
+        channelProviders[NotificationType.EMAIL] = if (emailConfig.provider == "sendgrid") {
+            SendGridEmailProvider(
+                apiKey = emailConfig.password,
+                fromEmail = emailConfig.fromEmail,
+                fromName = emailConfig.fromName
+            )
+        } else {
+            EmailChannelProvider(emailConfig)
+        }
+        
+        // Initialize Slack provider with configuration
         channelProviders[NotificationType.SLACK] = SlackChannelProvider()
+        
+        channelProviders[NotificationType.SMS] = SmsChannelProvider()
         channelProviders[NotificationType.WEBHOOK] = WebhookChannelProvider()
         channelProviders[NotificationType.PUSH] = PushChannelProvider()
+    }
+    
+    /**
+     * Load email configuration from environment or configuration file
+     */
+    private fun loadEmailConfig(): EmailProviderConfig {
+        // In a real implementation, this would load from environment variables or a configuration file
+        // For now, we'll use default values that can be overridden in production
+        val provider = System.getenv("EMAIL_PROVIDER") ?: "smtp"
+        val host = System.getenv("EMAIL_HOST") ?: "smtp.gmail.com"
+        val port = System.getenv("EMAIL_PORT") ?: "587"
+        val username = System.getenv("EMAIL_USERNAME") ?: "notifications@example.com"
+        val password = System.getenv("EMAIL_PASSWORD") ?: "password"
+        val fromEmail = System.getenv("EMAIL_FROM_ADDRESS") ?: "notifications@example.com"
+        val fromName = System.getenv("EMAIL_FROM_NAME") ?: "Eden Notifications"
+        
+        return EmailProviderConfig(
+            provider = provider,
+            host = host,
+            port = port,
+            username = username,
+            password = password,
+            fromEmail = fromEmail,
+            fromName = fromName
+        )
     }
     
     private fun extractVariables(content: String): List<String> {
@@ -411,39 +449,7 @@ data class ChannelDeliveryResult(
     val details: Map<String, Any> = emptyMap()
 )
 
-/**
- * Email channel provider
- */
-class EmailChannelProvider : NotificationChannelProvider {
-    override suspend fun sendNotification(
-        recipients: List<NotificationRecipient>,
-        subject: String?,
-        body: String,
-        priority: NotificationPriority
-    ): ChannelDeliveryResult {
-        return try {
-            val emailRecipients = recipients.filter { it.type == RecipientType.EMAIL }
-            if (emailRecipients.isEmpty()) {
-                return ChannelDeliveryResult(false, "No email recipients found")
-            }
-            
-            // TODO: Integrate with actual email service (SMTP, SendGrid, etc.)
-            // For now, simulate email sending
-            delay(100) // Simulate network delay
-            
-            ChannelDeliveryResult(
-                success = true,
-                details = mapOf(
-                    "recipients" to emailRecipients.map { it.address },
-                    "subject" to (subject ?: ""),
-                    "provider" to "mock-email"
-                )
-            )
-        } catch (e: Exception) {
-            ChannelDeliveryResult(false, "Email delivery failed: ${e.message}")
-        }
-    }
-}
+// Email channel provider implementation moved to EmailChannelProvider.kt
 
 /**
  * SMS channel provider
@@ -479,41 +485,7 @@ class SmsChannelProvider : NotificationChannelProvider {
     }
 }
 
-/**
- * Slack channel provider
- */
-class SlackChannelProvider : NotificationChannelProvider {
-    override suspend fun sendNotification(
-        recipients: List<NotificationRecipient>,
-        subject: String?,
-        body: String,
-        priority: NotificationPriority
-    ): ChannelDeliveryResult {
-        return try {
-            val slackRecipients = recipients.filter { 
-                it.type == RecipientType.SLACK_CHANNEL || it.type == RecipientType.SLACK_USER 
-            }
-            if (slackRecipients.isEmpty()) {
-                return ChannelDeliveryResult(false, "No Slack recipients found")
-            }
-            
-            // TODO: Integrate with actual Slack API
-            // For now, simulate Slack sending
-            delay(150) // Simulate network delay
-            
-            ChannelDeliveryResult(
-                success = true,
-                details = mapOf(
-                    "recipients" to slackRecipients.map { it.address },
-                    "message" to body,
-                    "provider" to "mock-slack"
-                )
-            )
-        } catch (e: Exception) {
-            ChannelDeliveryResult(false, "Slack delivery failed: ${e.message}")
-        }
-    }
-}
+// Slack channel provider implementation moved to SlackChannelProvider.kt
 
 /**
  * Webhook channel provider

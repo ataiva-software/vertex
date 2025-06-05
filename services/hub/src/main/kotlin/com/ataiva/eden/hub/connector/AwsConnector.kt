@@ -5,11 +5,22 @@ import com.ataiva.eden.hub.model.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.net.URI
-import java.time.Duration
+import kotlinx.coroutines.future.await
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.ec2.Ec2AsyncClient
+import software.amazon.awssdk.services.ec2.model.*
+import software.amazon.awssdk.services.s3.S3AsyncClient
+import software.amazon.awssdk.services.s3.model.*
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient
+import software.amazon.awssdk.services.lambda.model.*
+import software.amazon.awssdk.services.sts.StsAsyncClient
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
+import software.amazon.awssdk.core.async.AsyncRequestBody
+import software.amazon.awssdk.core.async.AsyncResponseTransformer
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * AWS integration connector for cloud service management
@@ -17,10 +28,7 @@ import java.time.Duration
 class AwsConnector : IntegrationConnector {
     override val type = IntegrationType.AWS
     
-    private val httpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(30))
-        .build()
-    
+    private val clientCache = ConcurrentHashMap<String, AwsClients>()
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -37,6 +45,10 @@ class AwsConnector : IntegrationConnector {
                 return authResult
             }
             
+            // Initialize AWS clients
+            val clients = createAwsClients(integration)
+            clientCache[integration.id] = clients
+            
             ConnectorResult(
                 success = true,
                 message = "AWS connector initialized successfully",
@@ -51,6 +63,8 @@ class AwsConnector : IntegrationConnector {
     }
     
     override suspend fun reconfigure(integration: IntegrationInstance): ConnectorResult {
+        // Clean up existing clients
+        clientCache.remove(integration.id)
         return initialize(integration)
     }
     
@@ -59,15 +73,21 @@ class AwsConnector : IntegrationConnector {
             // Test AWS connection by calling STS GetCallerIdentity
             val region = integration.configuration["region"] ?: "us-east-1"
             
-            // For now, simulate AWS connection test
-            // TODO: Implement actual AWS SDK integration
+            // Get or create AWS clients
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
+            
+            // Call STS GetCallerIdentity to verify credentials
+            val request = GetCallerIdentityRequest.builder().build()
+            val response = clients.stsClient.getCallerIdentity(request).await()
+            
             ConnectorTestResult(
                 success = true,
-                message = "AWS connection successful (simulated)",
+                message = "AWS connection successful",
                 details = mapOf(
-                    "region" to region,
-                    "service" to "sts",
-                    "operation" to "GetCallerIdentity"
+                    "accountId" to response.account(),
+                    "userId" to response.userId(),
+                    "arn" to response.arn(),
+                    "region" to region
                 )
             )
         } catch (e: Exception) {
@@ -99,7 +119,9 @@ class AwsConnector : IntegrationConnector {
     }
     
     override suspend fun cleanup(integration: IntegrationInstance) {
-        // Cleanup any resources if needed
+        // Close AWS clients
+        clientCache[integration.id]?.close()
+        clientCache.remove(integration.id)
     }
     
     override fun getSupportedOperations(): List<ConnectorOperation> {
@@ -192,35 +214,73 @@ class AwsConnector : IntegrationConnector {
         }
     }
     
-    // Mock implementations - TODO: Replace with actual AWS SDK calls
+    private fun createAwsClients(integration: IntegrationInstance): AwsClients {
+        // In a real implementation, we would decrypt the credentials
+        // For now, we'll assume the encryptedData contains a JSON string with accessKeyId and secretAccessKey
+        val credentialsJson = integration.credentials.encryptedData
+        val awsCredentials = json.decodeFromString<AwsCredentialsConfig>(credentialsJson)
+        
+        val region = Region.of(integration.configuration["region"] ?: "us-east-1")
+        val credentials = AwsBasicCredentials.create(awsCredentials.accessKeyId, awsCredentials.secretAccessKey)
+        val credentialsProvider = StaticCredentialsProvider.create(credentials)
+        
+        val ec2Client = Ec2AsyncClient.builder()
+            .region(region)
+            .credentialsProvider(credentialsProvider)
+            .build()
+            
+        val s3Client = S3AsyncClient.builder()
+            .region(region)
+            .credentialsProvider(credentialsProvider)
+            .build()
+            
+        val lambdaClient = LambdaAsyncClient.builder()
+            .region(region)
+            .credentialsProvider(credentialsProvider)
+            .build()
+            
+        val stsClient = StsAsyncClient.builder()
+            .region(region)
+            .credentialsProvider(credentialsProvider)
+            .build()
+            
+        return AwsClients(ec2Client, s3Client, lambdaClient, stsClient)
+    }
     
     private suspend fun listEC2Instances(
         integration: IntegrationInstance,
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val state = parameters["state"] as? String ?: ""
             val maxResults = parameters["maxResults"] as? Int ?: 50
             
-            // Mock EC2 instances data
-            val instances = listOf(
-                mapOf(
-                    "instanceId" to "i-1234567890abcdef0",
-                    "instanceType" to "t3.micro",
-                    "state" to "running",
-                    "publicIpAddress" to "203.0.113.12",
-                    "privateIpAddress" to "10.0.1.12",
-                    "launchTime" to "2025-01-06T10:00:00Z"
-                ),
-                mapOf(
-                    "instanceId" to "i-0987654321fedcba0",
-                    "instanceType" to "t3.small",
-                    "state" to "stopped",
-                    "privateIpAddress" to "10.0.1.13",
-                    "launchTime" to "2025-01-05T15:30:00Z"
-                )
-            ).filter { instance ->
-                state.isEmpty() || instance["state"] == state
+            val requestBuilder = DescribeInstancesRequest.builder()
+            
+            // Add state filter if specified
+            if (state.isNotEmpty()) {
+                val filter = Filter.builder()
+                    .name("instance-state-name")
+                    .values(state)
+                    .build()
+                requestBuilder.filters(filter)
+            }
+            
+            val request = requestBuilder.build()
+            val response = clients.ec2Client.describeInstances(request).await()
+            
+            val instances = response.reservations().flatMap { reservation ->
+                reservation.instances().map { instance ->
+                    mapOf(
+                        "instanceId" to instance.instanceId(),
+                        "instanceType" to instance.instanceTypeAsString(),
+                        "state" to instance.state().nameAsString(),
+                        "publicIpAddress" to (instance.publicIpAddress() ?: ""),
+                        "privateIpAddress" to (instance.privateIpAddress() ?: ""),
+                        "launchTime" to instance.launchTime().toString()
+                    )
+                }
             }.take(maxResults)
             
             ConnectorOperationResult(
@@ -238,17 +298,25 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val instanceId = parameters["instanceId"] as? String
                 ?: return ConnectorOperationResult(false, "Instance ID is required")
             
-            // Mock start instance operation
+            val request = StartInstancesRequest.builder()
+                .instanceIds(instanceId)
+                .build()
+                
+            val response = clients.ec2Client.startInstances(request).await()
+            val stateChange = response.startingInstances().firstOrNull()
+                ?: return ConnectorOperationResult(false, "No instance state change information returned")
+            
             ConnectorOperationResult(
                 success = true,
                 message = "EC2 instance start initiated",
                 data = mapOf(
-                    "instanceId" to instanceId,
-                    "currentState" to "pending",
-                    "previousState" to "stopped"
+                    "instanceId" to stateChange.instanceId(),
+                    "currentState" to stateChange.currentState().nameAsString(),
+                    "previousState" to stateChange.previousState().nameAsString()
                 )
             )
         } catch (e: Exception) {
@@ -261,17 +329,25 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val instanceId = parameters["instanceId"] as? String
                 ?: return ConnectorOperationResult(false, "Instance ID is required")
             
-            // Mock stop instance operation
+            val request = StopInstancesRequest.builder()
+                .instanceIds(instanceId)
+                .build()
+                
+            val response = clients.ec2Client.stopInstances(request).await()
+            val stateChange = response.stoppingInstances().firstOrNull()
+                ?: return ConnectorOperationResult(false, "No instance state change information returned")
+            
             ConnectorOperationResult(
                 success = true,
                 message = "EC2 instance stop initiated",
                 data = mapOf(
-                    "instanceId" to instanceId,
-                    "currentState" to "stopping",
-                    "previousState" to "running"
+                    "instanceId" to stateChange.instanceId(),
+                    "currentState" to stateChange.currentState().nameAsString(),
+                    "previousState" to stateChange.previousState().nameAsString()
                 )
             )
         } catch (e: Exception) {
@@ -284,24 +360,17 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
-            // Mock S3 buckets data
-            val buckets = listOf(
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
+            
+            val request = ListBucketsRequest.builder().build()
+            val response = clients.s3Client.listBuckets(request).await()
+            
+            val buckets = response.buckets().map { bucket ->
                 mapOf(
-                    "name" to "my-app-logs",
-                    "creationDate" to "2024-12-01T10:00:00Z",
-                    "region" to "us-east-1"
-                ),
-                mapOf(
-                    "name" to "my-app-backups",
-                    "creationDate" to "2024-11-15T14:30:00Z",
-                    "region" to "us-west-2"
-                ),
-                mapOf(
-                    "name" to "my-app-static-assets",
-                    "creationDate" to "2024-10-20T09:15:00Z",
-                    "region" to "us-east-1"
+                    "name" to bucket.name(),
+                    "creationDate" to bucket.creationDate().toString()
                 )
-            )
+            }
             
             ConnectorOperationResult(
                 success = true,
@@ -318,18 +387,29 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val bucketName = parameters["bucketName"] as? String
                 ?: return ConnectorOperationResult(false, "Bucket name is required")
             val region = parameters["region"] as? String ?: integration.configuration["region"] ?: "us-east-1"
             
-            // Mock create bucket operation
+            val createBucketConfiguration = CreateBucketConfiguration.builder()
+                .locationConstraint(region)
+                .build()
+                
+            val request = CreateBucketRequest.builder()
+                .bucket(bucketName)
+                .createBucketConfiguration(createBucketConfiguration)
+                .build()
+                
+            val response = clients.s3Client.createBucket(request).await()
+            
             ConnectorOperationResult(
                 success = true,
                 message = "S3 bucket created successfully",
                 data = mapOf(
                     "bucketName" to bucketName,
                     "region" to region,
-                    "location" to "/$bucketName"
+                    "location" to response.location()
                 )
             )
         } catch (e: Exception) {
@@ -342,34 +422,28 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val bucketName = parameters["bucketName"] as? String
                 ?: return ConnectorOperationResult(false, "Bucket name is required")
             val prefix = parameters["prefix"] as? String ?: ""
             val maxKeys = parameters["maxKeys"] as? Int ?: 1000
             
-            // Mock S3 objects data
-            val objects = listOf(
+            val request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .maxKeys(maxKeys)
+                .build()
+                
+            val response = clients.s3Client.listObjectsV2(request).await()
+            
+            val objects = response.contents().map { s3Object ->
                 mapOf(
-                    "key" to "logs/2025/01/06/app.log",
-                    "lastModified" to "2025-01-06T12:00:00Z",
-                    "size" to 1024,
-                    "storageClass" to "STANDARD"
-                ),
-                mapOf(
-                    "key" to "logs/2025/01/05/app.log",
-                    "lastModified" to "2025-01-05T23:59:59Z",
-                    "size" to 2048,
-                    "storageClass" to "STANDARD"
-                ),
-                mapOf(
-                    "key" to "backups/database-backup-20250106.sql",
-                    "lastModified" to "2025-01-06T02:00:00Z",
-                    "size" to 10485760,
-                    "storageClass" to "STANDARD_IA"
+                    "key" to s3Object.key(),
+                    "lastModified" to s3Object.lastModified().toString(),
+                    "size" to s3Object.size(),
+                    "storageClass" to s3Object.storageClassAsString()
                 )
-            ).filter { obj ->
-                prefix.isEmpty() || (obj["key"] as String).startsWith(prefix)
-            }.take(maxKeys)
+            }
             
             ConnectorOperationResult(
                 success = true,
@@ -390,21 +464,30 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val bucketName = parameters["bucketName"] as? String
                 ?: return ConnectorOperationResult(false, "Bucket name is required")
             val key = parameters["key"] as? String
                 ?: return ConnectorOperationResult(false, "Object key is required")
             val content = parameters["content"] as? String ?: ""
             
-            // Mock upload operation
+            val requestBody = AsyncRequestBody.fromString(content)
+            
+            val request = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build()
+                
+            val response = clients.s3Client.putObject(request, requestBody).await()
+            
             ConnectorOperationResult(
                 success = true,
                 message = "S3 object uploaded successfully",
                 data = mapOf(
                     "bucketName" to bucketName,
                     "key" to key,
-                    "size" to content.length,
-                    "etag" to "\"${content.hashCode().toString(16)}\""
+                    "etag" to response.eTag(),
+                    "size" to content.length
                 )
             )
         } catch (e: Exception) {
@@ -417,35 +500,25 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val maxItems = parameters["maxItems"] as? Int ?: 50
             
-            // Mock Lambda functions data
-            val functions = listOf(
+            val request = ListFunctionsRequest.builder()
+                .maxItems(maxItems)
+                .build()
+                
+            val response = clients.lambdaClient.listFunctions(request).await()
+            
+            val functions = response.functions().map { function ->
                 mapOf(
-                    "functionName" to "process-orders",
-                    "functionArn" to "arn:aws:lambda:us-east-1:123456789012:function:process-orders",
-                    "runtime" to "python3.9",
-                    "handler" to "lambda_function.lambda_handler",
-                    "codeSize" to 1024,
-                    "lastModified" to "2025-01-06T10:00:00.000+0000"
-                ),
-                mapOf(
-                    "functionName" to "send-notifications",
-                    "functionArn" to "arn:aws:lambda:us-east-1:123456789012:function:send-notifications",
-                    "runtime" to "nodejs18.x",
-                    "handler" to "index.handler",
-                    "codeSize" to 2048,
-                    "lastModified" to "2025-01-05T15:30:00.000+0000"
-                ),
-                mapOf(
-                    "functionName" to "data-processor",
-                    "functionArn" to "arn:aws:lambda:us-east-1:123456789012:function:data-processor",
-                    "runtime" to "java11",
-                    "handler" to "com.example.Handler::handleRequest",
-                    "codeSize" to 5120,
-                    "lastModified" to "2025-01-04T09:15:00.000+0000"
+                    "functionName" to function.functionName(),
+                    "functionArn" to function.functionArn(),
+                    "runtime" to function.runtime().toString(),
+                    "handler" to function.handler(),
+                    "codeSize" to function.codeSize(),
+                    "lastModified" to function.lastModified()
                 )
-            ).take(maxItems)
+            }
             
             ConnectorOperationResult(
                 success = true,
@@ -462,21 +535,35 @@ class AwsConnector : IntegrationConnector {
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
         return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
             val functionName = parameters["functionName"] as? String
                 ?: return ConnectorOperationResult(false, "Function name is required")
             val payload = parameters["payload"] as? String ?: "{}"
             val invocationType = parameters["invocationType"] as? String ?: "RequestResponse"
             
-            // Mock Lambda invocation
+            val request = InvokeRequest.builder()
+                .functionName(functionName)
+                .payload(payload.toByteArray(StandardCharsets.UTF_8))
+                .invocationType(invocationType)
+                .build()
+                
+            val response = clients.lambdaClient.invoke(request).await()
+            
+            val responsePayload = if (response.payload() != null) {
+                String(response.payload().asByteArray(), StandardCharsets.UTF_8)
+            } else {
+                ""
+            }
+            
             ConnectorOperationResult(
                 success = true,
                 message = "Lambda function invoked successfully",
                 data = mapOf(
                     "functionName" to functionName,
-                    "statusCode" to 200,
-                    "executedVersion" to "\$LATEST",
-                    "payload" to "{\"result\": \"success\", \"message\": \"Function executed successfully\"}",
-                    "logResult" to "U1RBUlQgUmVxdWVzdElkOiAxMjM0NTY3OC05MDEyLTM0NTYtNzg5MC0xMjM0NTY3ODkwMTI="
+                    "statusCode" to response.statusCode(),
+                    "executedVersion" to response.executedVersion(),
+                    "payload" to responsePayload,
+                    "logResult" to (response.logResult() ?: "")
                 )
             )
         } catch (e: Exception) {
@@ -488,50 +575,28 @@ class AwsConnector : IntegrationConnector {
         integration: IntegrationInstance,
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
-        return try {
-            val namespace = parameters["namespace"] as? String ?: "AWS/EC2"
-            val metricName = parameters["metricName"] as? String ?: "CPUUtilization"
-            val startTime = parameters["startTime"] as? String ?: "2025-01-06T00:00:00Z"
-            val endTime = parameters["endTime"] as? String ?: "2025-01-06T23:59:59Z"
-            
-            // Mock CloudWatch metrics data
-            val datapoints = listOf(
-                mapOf(
-                    "timestamp" to "2025-01-06T12:00:00Z",
-                    "average" to 45.2,
-                    "maximum" to 78.5,
-                    "minimum" to 12.1,
-                    "unit" to "Percent"
-                ),
-                mapOf(
-                    "timestamp" to "2025-01-06T13:00:00Z",
-                    "average" to 52.8,
-                    "maximum" to 89.3,
-                    "minimum" to 18.7,
-                    "unit" to "Percent"
-                ),
-                mapOf(
-                    "timestamp" to "2025-01-06T14:00:00Z",
-                    "average" to 38.9,
-                    "maximum" to 65.2,
-                    "minimum" to 15.4,
-                    "unit" to "Percent"
-                )
-            )
-            
-            ConnectorOperationResult(
-                success = true,
-                message = "CloudWatch metrics retrieved successfully",
-                data = mapOf(
-                    "namespace" to namespace,
-                    "metricName" to metricName,
-                    "datapoints" to datapoints,
-                    "startTime" to startTime,
-                    "endTime" to endTime
-                )
-            )
-        } catch (e: Exception) {
-            ConnectorOperationResult(false, "Failed to get CloudWatch metrics: ${e.message}")
+        // CloudWatch metrics implementation would go here
+        // For now, return a not implemented message
+        return ConnectorOperationResult(
+            success = false,
+            message = "CloudWatch metrics retrieval not yet implemented"
+        )
+    }
+    
+    /**
+     * Class to hold AWS clients for an integration
+     */
+    private class AwsClients(
+        val ec2Client: Ec2AsyncClient,
+        val s3Client: S3AsyncClient,
+        val lambdaClient: LambdaAsyncClient,
+        val stsClient: StsAsyncClient
+    ) {
+        fun close() {
+            ec2Client.close()
+            s3Client.close()
+            lambdaClient.close()
+            stsClient.close()
         }
     }
 }

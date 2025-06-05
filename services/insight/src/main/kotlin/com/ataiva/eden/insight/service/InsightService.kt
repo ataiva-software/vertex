@@ -1,42 +1,78 @@
 package com.ataiva.eden.insight.service
 
+import com.ataiva.eden.insight.config.InsightDatabaseConfig
 import com.ataiva.eden.insight.engine.AnalyticsEngine
+import com.ataiva.eden.insight.engine.ReportEngine
+import com.ataiva.eden.insight.engine.ReportScheduler
+import com.ataiva.eden.insight.engine.TemplateManager
 import com.ataiva.eden.insight.model.*
+import com.ataiva.eden.insight.repository.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.collections.mutableListOf
-import kotlin.collections.mutableMapOf
 
 /**
  * Core business logic service for the Insight Service.
  * Manages analytics queries, reports, dashboards, and KPIs with comprehensive functionality.
  */
 class InsightService(
-    private val configuration: InsightConfiguration = InsightConfiguration()
+    private val configuration: InsightConfiguration = InsightConfiguration(),
+    private val databaseConfig: InsightDatabaseConfig
 ) {
+    private val logger = LoggerFactory.getLogger(InsightService::class.java)
     private val analyticsEngine = AnalyticsEngine(configuration)
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     
-    // In-memory storage (in production, these would be database repositories)
-    private val queries = ConcurrentHashMap<String, AnalyticsQuery>()
-    private val reports = ConcurrentHashMap<String, Report>()
-    private val reportTemplates = ConcurrentHashMap<String, ReportTemplate>()
-    private val dashboards = ConcurrentHashMap<String, Dashboard>()
-    private val metrics = ConcurrentHashMap<String, Metric>()
-    private val kpis = ConcurrentHashMap<String, KPI>()
-    private val executions = ConcurrentHashMap<String, QueryExecution>()
-    private val reportExecutions = ConcurrentHashMap<String, ReportExecution>()
+    // Repository access
+    private val analyticsQueryRepository = databaseConfig.analyticsQueryRepository
+    private val queryExecutionRepository = databaseConfig.queryExecutionRepository
+    private val reportRepository = databaseConfig.reportRepository
+    private val reportTemplateRepository = databaseConfig.reportTemplateRepository
+    private val reportExecutionRepository = databaseConfig.reportExecutionRepository
+    private val dashboardRepository = databaseConfig.dashboardRepository
+    private val metricRepository = databaseConfig.metricRepository
+    private val metricValueRepository = databaseConfig.metricValueRepository
+    private val kpiRepository = databaseConfig.kpiRepository
+    
+    // Report generation components
+    private val reportEngine = ReportEngine(
+        analyticsEngine,
+        analyticsQueryRepository,
+        queryExecutionRepository,
+        configuration.reportOutputPath
+    )
+    
+    private val templateManager = TemplateManager(configuration.reportOutputPath + "/templates")
+    
+    private val reportScheduler = ReportScheduler(
+        reportRepository,
+        reportTemplateRepository,
+        reportExecutionRepository,
+        this
+    )
+    
+    private val notificationService = ReportNotificationService(
+        NotificationConfig(
+            smtpHost = "smtp.example.com", // Should be loaded from configuration
+            smtpPort = "587",
+            username = "reports@example.com",
+            password = "password", // Should be loaded securely
+            fromEmail = "reports@example.com"
+        )
+    )
     
     private val idCounter = AtomicLong(0)
     
     init {
-        initializeDefaultData()
+        runBlocking {
+            initializeDefaultData()
+        }
         startBackgroundTasks()
+        reportScheduler.start()
     }
     
     // ============================================================================
@@ -66,31 +102,40 @@ class InsightService(
             tags = tags
         )
         
-        queries[query.id] = query
-        return query
+        return analyticsQueryRepository.save(query)
     }
     
     /**
      * Get all queries with optional filtering
      */
-    fun getQueries(
+    suspend fun getQueries(
         createdBy: String? = null,
         queryType: QueryType? = null,
         tags: List<String> = emptyList(),
         isActive: Boolean? = null
     ): List<AnalyticsQuery> {
-        return queries.values.filter { query ->
-            (createdBy == null || query.createdBy == createdBy) &&
-            (queryType == null || query.queryType == queryType) &&
-            (tags.isEmpty() || query.tags.any { it in tags }) &&
-            (isActive == null || query.isActive == isActive)
+        // Apply filters based on parameters
+        val queries = when {
+            createdBy != null && isActive != null -> analyticsQueryRepository.findByCreatedByAndActive(createdBy, isActive)
+            createdBy != null -> analyticsQueryRepository.findByCreatedBy(createdBy)
+            queryType != null -> analyticsQueryRepository.findByQueryType(queryType)
+            isActive != null && isActive -> analyticsQueryRepository.findActive()
+            isActive != null && !isActive -> analyticsQueryRepository.findAll().filter { !it.isActive }
+            else -> analyticsQueryRepository.findAll()
+        }
+        
+        // Apply tag filtering if needed
+        return if (tags.isNotEmpty()) {
+            queries.filter { query -> query.tags.any { it in tags } }
+        } else {
+            queries
         }.sortedByDescending { it.createdAt }
     }
     
     /**
      * Get query by ID
      */
-    fun getQuery(id: String): AnalyticsQuery? = queries[id]
+    suspend fun getQuery(id: String): AnalyticsQuery? = analyticsQueryRepository.findById(id)
     
     /**
      * Update an existing query
@@ -104,7 +149,7 @@ class InsightService(
         tags: List<String>? = null,
         isActive: Boolean? = null
     ): AnalyticsQuery? {
-        val existing = queries[id] ?: return null
+        val existing = analyticsQueryRepository.findById(id) ?: return null
         
         val updated = existing.copy(
             name = name ?: existing.name,
@@ -116,7 +161,7 @@ class InsightService(
             lastModified = System.currentTimeMillis()
         )
         
-        queries[id] = updated
+        analyticsQueryRepository.update(updated)
         return updated
     }
     
@@ -124,7 +169,7 @@ class InsightService(
      * Delete a query
      */
     suspend fun deleteQuery(id: String): Boolean {
-        return queries.remove(id) != null
+        return analyticsQueryRepository.delete(id)
     }
     
     /**
@@ -135,7 +180,7 @@ class InsightService(
         parameters: Map<String, String> = emptyMap(),
         executedBy: String = "system"
     ): AnalyticsResult {
-        val query = queries[queryId] ?: throw IllegalArgumentException("Query not found: $queryId")
+        val query = analyticsQueryRepository.findById(queryId) ?: throw IllegalArgumentException("Query not found: $queryId")
         
         if (!query.isActive) {
             throw IllegalStateException("Query is not active: $queryId")
@@ -173,7 +218,7 @@ class InsightService(
         format: ReportFormat = ReportFormat.PDF,
         createdBy: String
     ): Report {
-        val template = reportTemplates[templateId] 
+        val template = reportTemplateRepository.findById(templateId) 
             ?: throw IllegalArgumentException("Report template not found: $templateId")
         
         val report = Report(
@@ -188,41 +233,46 @@ class InsightService(
             createdBy = createdBy
         )
         
-        reports[report.id] = report
-        return report
+        return reportRepository.save(report)
     }
     
     /**
      * Get all reports with optional filtering
      */
-    fun getReports(
+    suspend fun getReports(
         createdBy: String? = null,
         templateId: String? = null,
         isActive: Boolean? = null
     ): List<Report> {
-        return reports.values.filter { report ->
-            (createdBy == null || report.createdBy == createdBy) &&
-            (templateId == null || report.templateId == templateId) &&
-            (isActive == null || report.isActive == isActive)
-        }.sortedByDescending { it.createdAt }
+        // Apply filters based on parameters
+        val reports = when {
+            createdBy != null && isActive != null -> reportRepository.findByCreatedByAndActive(createdBy, isActive)
+            createdBy != null -> reportRepository.findByCreatedBy(createdBy)
+            templateId != null -> reportRepository.findByTemplateId(templateId)
+            isActive != null && isActive -> reportRepository.findActive()
+            isActive != null && !isActive -> reportRepository.findAll().filter { !it.isActive }
+            else -> reportRepository.findAll()
+        }
+        
+        return reports.sortedByDescending { it.createdAt }
     }
     
     /**
      * Get report by ID
      */
-    fun getReport(id: String): Report? = reports[id]
+    suspend fun getReport(id: String): Report? = reportRepository.findById(id)
     
     /**
      * Generate a report
      */
     suspend fun generateReport(request: ReportGenerationRequest, executedBy: String = "system"): ReportGenerationResponse {
-        val report = reports[request.reportId] 
+        val report = reportRepository.findById(request.reportId)
             ?: return ReportGenerationResponse(
                 success = false,
                 error = "Report not found: ${request.reportId}"
             )
         
-        val template = reportTemplates[report.templateId]
+        val template = reportTemplateRepository.findById(report.templateId)
             ?: return ReportGenerationResponse(
                 success = false,
                 error = "Report template not found: ${report.templateId}"
@@ -238,7 +288,7 @@ class InsightService(
             parameters = request.parameters
         )
         
-        reportExecutions[executionId] = execution
+        reportExecutionRepository.save(execution)
         
         return if (request.async) {
             // Start async generation
@@ -256,6 +306,14 @@ class InsightService(
             try {
                 val outputPath = generateReportSync(report, template, request)
                 updateReportExecution(executionId, ExecutionStatus.COMPLETED, outputPath)
+                
+                // Send notification if recipients are specified
+                if (report.recipients.isNotEmpty()) {
+                    val updatedExecution = reportExecutionRepository.findById(executionId)
+                    if (updatedExecution != null) {
+                        notificationService.sendReportNotification(report, updatedExecution, report.recipients)
+                    }
+                }
                 
                 ReportGenerationResponse(
                     success = true,
@@ -277,7 +335,7 @@ class InsightService(
     /**
      * Get report execution status
      */
-    fun getReportExecution(executionId: String): ReportExecution? = reportExecutions[executionId]
+    suspend fun getReportExecution(executionId: String): ReportExecution? = reportExecutionRepository.findById(executionId)
     
     // ============================================================================
     // Report Template Management
@@ -306,23 +364,24 @@ class InsightService(
             createdBy = createdBy
         )
         
-        reportTemplates[template.id] = template
-        return template
+        return reportTemplateRepository.save(template)
     }
     
     /**
      * Get all report templates
      */
-    fun getReportTemplates(category: String? = null): List<ReportTemplate> {
-        return reportTemplates.values.filter { template ->
-            category == null || template.category == category
+    suspend fun getReportTemplates(category: String? = null): List<ReportTemplate> {
+        return if (category != null) {
+            reportTemplateRepository.findByCategory(category)
+        } else {
+            reportTemplateRepository.findAll()
         }.sortedBy { it.name }
     }
     
     /**
      * Get report template by ID
      */
-    fun getReportTemplate(id: String): ReportTemplate? = reportTemplates[id]
+    suspend fun getReportTemplate(id: String): ReportTemplate? = reportTemplateRepository.findById(id)
     
     // ============================================================================
     // Dashboard Management
@@ -353,35 +412,43 @@ class InsightService(
             tags = tags
         )
         
-        dashboards[dashboard.id] = dashboard
-        return dashboard
+        return dashboardRepository.save(dashboard)
     }
     
     /**
      * Get all dashboards with optional filtering
      */
-    fun getDashboards(
+    suspend fun getDashboards(
         createdBy: String? = null,
         isPublic: Boolean? = null,
         tags: List<String> = emptyList()
     ): List<Dashboard> {
-        return dashboards.values.filter { dashboard ->
-            (createdBy == null || dashboard.createdBy == createdBy || dashboard.isPublic) &&
-            (isPublic == null || dashboard.isPublic == isPublic) &&
-            (tags.isEmpty() || dashboard.tags.any { it in tags })
+        // Apply filters based on parameters
+        val dashboards = when {
+            createdBy != null && isPublic == null -> dashboardRepository.findByCreatedByOrPublic(createdBy)
+            isPublic != null && isPublic -> dashboardRepository.findPublic()
+            createdBy != null -> dashboardRepository.findByCreatedBy(createdBy)
+            else -> dashboardRepository.findAll()
+        }
+        
+        // Apply tag filtering if needed
+        return if (tags.isNotEmpty()) {
+            dashboards.filter { dashboard -> dashboard.tags.any { it in tags } }
+        } else {
+            dashboards
         }.sortedByDescending { it.createdAt }
     }
     
     /**
      * Get dashboard by ID
      */
-    fun getDashboard(id: String): Dashboard? = dashboards[id]
+    suspend fun getDashboard(id: String): Dashboard? = dashboardRepository.findById(id)
     
     /**
      * Get dashboard data for real-time updates
      */
     suspend fun getDashboardData(request: DashboardDataRequest): DashboardDataResponse {
-        val dashboard = dashboards[request.dashboardId]
+        val dashboard = dashboardRepository.findById(request.dashboardId)
             ?: throw IllegalArgumentException("Dashboard not found: ${request.dashboardId}")
         
         return analyticsEngine.getDashboardData(dashboard)
@@ -398,7 +465,7 @@ class InsightService(
         layout: DashboardLayout? = null,
         tags: List<String>? = null
     ): Dashboard? {
-        val existing = dashboards[id] ?: return null
+        val existing = dashboardRepository.findById(id) ?: return null
         
         val updated = existing.copy(
             name = name ?: existing.name,
@@ -409,7 +476,7 @@ class InsightService(
             lastModified = System.currentTimeMillis()
         )
         
-        dashboards[id] = updated
+        dashboardRepository.update(updated)
         return updated
     }
     
@@ -440,17 +507,19 @@ class InsightService(
             thresholds = thresholds
         )
         
-        metrics[metric.id] = metric
-        return metric
+        return metricRepository.save(metric)
     }
     
     /**
      * Get all metrics
      */
-    fun getMetrics(category: String? = null, isActive: Boolean? = null): List<Metric> {
-        return metrics.values.filter { metric ->
-            (category == null || metric.category == category) &&
-            (isActive == null || metric.isActive == isActive)
+    suspend fun getMetrics(category: String? = null, isActive: Boolean? = null): List<Metric> {
+        return when {
+            category != null && isActive != null -> metricRepository.findByCategory(category).filter { it.isActive == isActive }
+            category != null -> metricRepository.findByCategory(category)
+            isActive != null && isActive -> metricRepository.findActive()
+            isActive != null && !isActive -> metricRepository.findAll().filter { !it.isActive }
+            else -> metricRepository.findAll()
         }.sortedBy { it.name }
     }
     
@@ -484,16 +553,17 @@ class InsightService(
             historicalData = historicalData
         )
         
-        kpis[kpi.id] = kpi
-        return kpi
+        return kpiRepository.save(kpi)
     }
     
     /**
      * Get all KPIs
      */
-    fun getKPIs(category: String? = null): List<KPI> {
-        return kpis.values.filter { kpi ->
-            category == null || kpi.category == category
+    suspend fun getKPIs(category: String? = null): List<KPI> {
+        return if (category != null) {
+            kpiRepository.findByCategory(category)
+        } else {
+            kpiRepository.findAll()
         }.sortedBy { it.name }
     }
     
@@ -511,31 +581,45 @@ class InsightService(
     /**
      * Get usage statistics
      */
-    fun getUsageStatistics(): Map<String, Any> {
+    suspend fun getUsageStatistics(): Map<String, Any> {
+        val totalQueries = analyticsQueryRepository.count()
+        val totalReports = reportRepository.count()
+        val totalDashboards = dashboardRepository.count()
+        val totalMetrics = metricRepository.count()
+        val totalKpis = kpiRepository.count()
+        
+        val activeQueries = analyticsQueryRepository.findActive().size
+        val activeReports = reportRepository.findActive().size
+        
+        // For query and report executions, we'd need to implement time-based queries
+        // This is a simplified version
+        val now = System.currentTimeMillis()
+        val oneDayAgo = now - 86400000
+        
+        val queryExecutionsToday = queryExecutionRepository.findByTimeRange(oneDayAgo, now).size
+        val reportGenerationsToday = reportExecutionRepository.findByTimeRange(oneDayAgo, now).size
+        
         return mapOf(
-            "total_queries" to queries.size,
-            "total_reports" to reports.size,
-            "total_dashboards" to dashboards.size,
-            "total_metrics" to metrics.size,
-            "total_kpis" to kpis.size,
-            "active_queries" to queries.values.count { it.isActive },
-            "active_reports" to reports.values.count { it.isActive },
-            "query_executions_today" to executions.values.count {
-                it.startTime > System.currentTimeMillis() - 86400000
-            },
-            "report_generations_today" to reportExecutions.values.count {
-                it.startTime > System.currentTimeMillis() - 86400000
-            }
+            "total_queries" to totalQueries,
+            "total_reports" to totalReports,
+            "total_dashboards" to totalDashboards,
+            "total_metrics" to totalMetrics,
+            "total_kpis" to totalKpis,
+            "active_queries" to activeQueries,
+            "active_reports" to activeReports,
+            "query_executions_today" to queryExecutionsToday,
+            "report_generations_today" to reportGenerationsToday
         )
     }
     
     /**
      * Get performance analytics
      */
-    fun getPerformanceAnalytics(): Map<String, Any> {
-        val recentExecutions = executions.values.filter {
-            it.endTime != null && it.endTime!! > System.currentTimeMillis() - 3600000
-        }
+    suspend fun getPerformanceAnalytics(): Map<String, Any> {
+        val now = System.currentTimeMillis()
+        val oneHourAgo = now - 3600000
+        
+        val recentExecutions = queryExecutionRepository.findByTimeRange(oneHourAgo, now)
         
         val avgExecutionTime = if (recentExecutions.isNotEmpty()) {
             recentExecutions.map { it.executionTimeMs }.average()
@@ -571,18 +655,23 @@ class InsightService(
      */
     suspend fun detectAnomalies(metricIds: List<String>): List<Map<String, Any>> {
         val metricValues = metricIds.flatMap { metricId ->
-            metrics[metricId]?.let { metric ->
-                // In a real implementation, this would fetch actual metric values from a database
+            val metric = metricRepository.findById(metricId)
+            if (metric != null) {
+                // In a real implementation, this would fetch actual metric values from the database
                 // For now, we'll generate some sample data
                 (0..10).map { i ->
                     MetricValue(
+                        id = generateId("metric_value"),
                         metricId = metric.id,
                         value = 100.0 + (Math.random() * 50 - 25), // Base value with some variation
                         timestamp = System.currentTimeMillis() - (i * 3600000), // Hourly data points
-                        dimensions = mapOf("service" to "api", "environment" to "production")
+                        dimensions = mapOf("service" to "api", "environment" to "production"),
+                        metadata = emptyMap()
                     )
                 }
-            } ?: emptyList()
+            } else {
+                emptyList()
+            }
         }
         
         return analyticsEngine.detectAnomalies(metricValues)
@@ -616,16 +705,18 @@ class InsightService(
         startTime: Long = System.currentTimeMillis() - 7 * 86400000,
         endTime: Long = System.currentTimeMillis()
     ): Map<String, Any> {
-        val metric = metrics[metricId] ?: throw IllegalArgumentException("Metric not found: $metricId")
+        val metric = metricRepository.findById(metricId) ?: throw IllegalArgumentException("Metric not found: $metricId")
         
-        // In a real implementation, this would fetch actual metric values from a database
+        // In a real implementation, this would fetch actual metric values from the database
         // For now, we'll generate some sample data
         val metricValues = (0..24).map { i ->
             MetricValue(
+                id = generateId("metric_value"),
                 metricId = metric.id,
                 value = 100.0 + (i * 2) + (Math.random() * 20 - 10), // Increasing trend with noise
                 timestamp = startTime + ((endTime - startTime) / 24 * i),
-                dimensions = mapOf("service" to "api", "environment" to "production")
+                dimensions = mapOf("service" to "api", "environment" to "production"),
+                metadata = emptyMap()
             )
         }
         
@@ -725,9 +816,16 @@ class InsightService(
         executionId: String
     ) {
         try {
-            delay(2000) // Simulate report generation time
             val outputPath = generateReportSync(report, template, request)
             updateReportExecution(executionId, ExecutionStatus.COMPLETED, outputPath)
+            
+            // Send notification if recipients are specified
+            if (report.recipients.isNotEmpty()) {
+                val updatedExecution = reportExecutionRepository.findById(executionId)
+                if (updatedExecution != null) {
+                    notificationService.sendReportNotification(report, updatedExecution, report.recipients)
+                }
+            }
         } catch (e: Exception) {
             updateReportExecution(executionId, ExecutionStatus.FAILED, errorMessage = e.message)
         }
@@ -738,171 +836,40 @@ class InsightService(
         template: ReportTemplate,
         request: ReportGenerationRequest
     ): String {
-        // Simulate report generation
-        val outputDir = File(configuration.reportOutputPath)
-        if (!outputDir.exists()) {
-            outputDir.mkdirs()
-        }
+        // Use the report engine to generate the report
+        val format = request.format ?: report.format
+        val parameters = request.parameters.ifEmpty { report.parameters }
         
-        val filename = "report_${report.id}_${System.currentTimeMillis()}.${request.format.name.lowercase()}"
-        val outputPath = File(outputDir, filename).absolutePath
-        
-        // Generate report content based on template and parameters
-        val reportContent = processReportTemplate(template, request.parameters)
-        
-        // Write to file (simplified for demo)
-        File(outputPath).writeText(reportContent)
-        
-        return outputPath
+        return reportEngine.generateReport(
+            report = report,
+            template = template,
+            parameters = parameters,
+            format = format
+        )
     }
     
-    private fun processReportTemplate(template: ReportTemplate, parameters: Map<String, String>): String {
-        var content = template.templateContent
-        
-        // Replace parameters in template
-        parameters.forEach { (key, value) ->
-            content = content.replace("{{$key}}", value)
-            content = content.replace("\${$key}", value)
-        }
-        
-        // Add timestamp
-        content = content.replace("{{timestamp}}", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-        
-        return content
-    }
-    
-    private fun updateReportExecution(
+    private suspend fun updateReportExecution(
         executionId: String,
         status: ExecutionStatus,
         outputPath: String? = null,
         errorMessage: String? = null
     ) {
-        reportExecutions[executionId]?.let { execution ->
-            reportExecutions[executionId] = execution.copy(
-                status = status,
-                endTime = System.currentTimeMillis(),
-                outputPath = outputPath,
-                fileSize = if (outputPath != null) File(outputPath).length() else 0,
-                errorMessage = errorMessage
-            )
-        }
-    }
-    
-    private fun initializeDefaultData() {
-        // Create default report templates
-        createDefaultReportTemplates()
+        val execution = reportExecutionRepository.findById(executionId) ?: return
         
-        // Create sample queries
-        createSampleQueries()
-        
-        // Create sample dashboards
-        createSampleDashboards()
-        
-        // Create sample metrics and KPIs
-        createSampleMetricsAndKPIs()
-    }
-    
-    private fun createDefaultReportTemplates() {
-        val systemOverviewTemplate = ReportTemplate(
-            id = "system_overview",
-            name = "System Overview Report",
-            description = "Comprehensive system overview with key metrics",
-            templateContent = """
-                # System Overview Report
-                Generated: {{timestamp}}
-                
-                ## Key Metrics
-                - Total Users: {{total_users}}
-                - Active Workflows: {{active_workflows}}
-                - Completed Tasks: {{completed_tasks}}
-                - System Uptime: {{system_uptime}}%
-                
-                ## Performance Summary
-                - Average Response Time: {{avg_response_time}}ms
-                - Error Rate: {{error_rate}}%
-                - Throughput: {{throughput}} req/min
-            """.trimIndent(),
-            supportedFormats = listOf(ReportFormat.PDF, ReportFormat.HTML),
-            category = "system",
-            createdBy = "system"
+        val updated = execution.copy(
+            status = status,
+            endTime = System.currentTimeMillis(),
+            outputPath = outputPath,
+            fileSize = if (outputPath != null) File(outputPath).length() else 0,
+            errorMessage = errorMessage
         )
         
-        reportTemplates[systemOverviewTemplate.id] = systemOverviewTemplate
+        reportExecutionRepository.update(updated)
     }
     
-    private fun createSampleQueries() {
-        val userActivityQuery = AnalyticsQuery(
-            id = "user_activity",
-            name = "User Activity Analysis",
-            description = "Analyze user activity patterns",
-            queryText = "SELECT * FROM user_activity WHERE created_at > {{start_date}}",
-            queryType = QueryType.SELECT,
-            createdBy = "system",
-            tags = listOf("users", "activity")
-        )
-        
-        queries[userActivityQuery.id] = userActivityQuery
-    }
-    
-    private fun createSampleDashboards() {
-        val systemDashboard = Dashboard(
-            id = "system_dashboard",
-            name = "System Overview Dashboard",
-            description = "Real-time system metrics and performance",
-            widgets = listOf(
-                DashboardWidget(
-                    id = "cpu_usage",
-                    type = WidgetType.GAUGE,
-                    title = "CPU Usage",
-                    configuration = WidgetConfiguration(),
-                    position = WidgetPosition(0, 0, 6, 4)
-                ),
-                DashboardWidget(
-                    id = "memory_usage",
-                    type = WidgetType.GAUGE,
-                    title = "Memory Usage",
-                    configuration = WidgetConfiguration(),
-                    position = WidgetPosition(6, 0, 6, 4)
-                )
-            ),
-            layout = DashboardLayout(),
-            permissions = DashboardPermissions(owner = "system", isPublic = true),
-            createdBy = "system",
-            isPublic = true
-        )
-        
-        dashboards[systemDashboard.id] = systemDashboard
-    }
-    
-    private fun createSampleMetricsAndKPIs() {
-        val responseTimeMetric = Metric(
-            id = "response_time",
-            name = "Average Response Time",
-            description = "Average API response time",
-            category = "performance",
-            unit = "ms",
-            aggregationType = AggregationType.AVG,
-            queryId = "response_time_query",
-            thresholds = listOf(
-                MetricThreshold(ThresholdLevel.WARNING, ComparisonOperator.GREATER_THAN, 200.0),
-                MetricThreshold(ThresholdLevel.CRITICAL, ComparisonOperator.GREATER_THAN, 500.0)
-            )
-        )
-        
-        metrics[responseTimeMetric.id] = responseTimeMetric
-        
-        val uptimeKPI = KPI(
-            id = "system_uptime",
-            name = "System Uptime",
-            description = "Overall system availability",
-            targetValue = 99.9,
-            currentValue = 99.8,
-            unit = "%",
-            trend = TrendDirection.STABLE,
-            category = "reliability"
-        )
-        
-        kpis[uptimeKPI.id] = uptimeKPI
+    private suspend fun initializeDefaultData() {
+        // Simplified initialization for testing purposes
+        // In a production environment, this would be done through migrations or admin tools
     }
     
     private fun startBackgroundTasks() {
@@ -925,91 +892,111 @@ class InsightService(
     
     private suspend fun processScheduledReports() {
         val now = System.currentTimeMillis()
-        reports.values.filter { report ->
-            report.isActive && 
-            report.schedule != null && 
-            report.schedule.enabled &&
-            (report.schedule.nextExecution ?: 0) <= now
-        }.forEach { report ->
-            try {
-                generateReport(
-                    ReportGenerationRequest(
-                        reportId = report.id,
-                        parameters = report.parameters,
-                        format = report.format,
-                        async = true
-                    ),
-                    "scheduler"
-                )
-            } catch (e: Exception) {
-                // Log error but continue processing other reports
+        try {
+            val scheduledReports = reportRepository.findScheduledBefore(now)
+            
+            // Let the report scheduler handle the scheduling
+            scheduledReports.forEach { report ->
+                reportScheduler.scheduleReport(report)
             }
+        } catch (e: Exception) {
+            // Log error but continue processing
+            logger.error("Error processing scheduled reports: ${e.message}", e)
         }
     }
     
     private suspend fun collectMetrics() {
-        // Collect system metrics and update KPIs
-        val systemMetrics = analyticsEngine.getSystemAnalytics()
-        
-        // Update KPIs based on current metrics
-        kpis.values.forEach { kpi ->
-            try {
-                when (kpi.id) {
-                    "system_uptime" -> {
-                        val currentUptime = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("uptime_percentage") as? Double ?: 99.8
-                        updateKPI(kpi.id, currentUptime)
+        try {
+            // Collect system metrics
+            val systemMetrics = analyticsEngine.getSystemAnalytics()
+            
+            // Update KPIs based on current metrics
+            val kpis = kpiRepository.findAll()
+            
+            kpis.forEach { kpi ->
+                try {
+                    // Extract relevant metric value based on KPI category
+                    val newValue = when (kpi.category) {
+                        "performance" -> {
+                            val performanceStats = systemMetrics["performance_stats"] as? Map<*, *>
+                            when (kpi.name) {
+                                "API Response Time" -> (performanceStats?.get("avg_query_time") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Error Rate" -> (performanceStats?.get("error_rate") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Throughput" -> (performanceStats?.get("throughput") as? Number)?.toDouble() ?: kpi.currentValue
+                                else -> kpi.currentValue
+                            }
+                        }
+                        "reliability" -> {
+                            val systemStats = systemMetrics["system_metrics"] as? Map<*, *>
+                            when (kpi.name) {
+                                "System Uptime" -> (systemStats?.get("uptime_percentage") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Availability" -> (systemStats?.get("availability") as? Number)?.toDouble() ?: kpi.currentValue
+                                else -> kpi.currentValue
+                            }
+                        }
+                        "usage" -> {
+                            val usageStats = systemMetrics["usage_analytics"] as? Map<*, *>
+                            when (kpi.name) {
+                                "Active Users" -> (usageStats?.get("active_users") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Query Volume" -> (usageStats?.get("query_volume") as? Number)?.toDouble() ?: kpi.currentValue
+                                else -> kpi.currentValue
+                            }
+                        }
+                        "resource" -> {
+                            val resourceStats = systemMetrics["system_metrics"] as? Map<*, *>
+                            when (kpi.name) {
+                                "CPU Usage" -> (resourceStats?.get("cpu_usage") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Memory Usage" -> (resourceStats?.get("memory_usage") as? Number)?.toDouble() ?: kpi.currentValue
+                                "Disk Usage" -> (resourceStats?.get("disk_usage") as? Number)?.toDouble() ?: kpi.currentValue
+                                else -> kpi.currentValue
+                            }
+                        }
+                        else -> kpi.currentValue
                     }
-                    "api_response_time" -> {
-                        val responseTime = (systemMetrics["performance_stats"] as? Map<*, *>)?.get("avg_query_time") as? Number ?: 150
-                        updateKPI(kpi.id, responseTime.toDouble())
+                    
+                    // Calculate trend direction
+                    val trend = when {
+                        newValue > kpi.currentValue -> TrendDirection.UP
+                        newValue < kpi.currentValue -> TrendDirection.DOWN
+                        else -> TrendDirection.STABLE
                     }
-                    "error_rate" -> {
-                        val errorRate = (systemMetrics["usage_analytics"] as? Map<*, *>)?.get("error_rate") as? Double ?: 0.02
-                        updateKPI(kpi.id, errorRate * 100) // Convert to percentage
+                    
+                    // Create historical data point
+                    val dataPoint = KPIDataPoint(
+                        timestamp = System.currentTimeMillis(),
+                        value = newValue,
+                        target = kpi.targetValue
+                    )
+                    
+                    // Update KPI with new value and trend
+                    val updatedKPI = kpi.copy(
+                        currentValue = newValue,
+                        trend = trend,
+                        lastUpdated = System.currentTimeMillis(),
+                        historicalData = (kpi.historicalData + dataPoint).takeLast(100) // Keep last 100 data points
+                    )
+                    
+                    // Save updated KPI
+                    kpiRepository.update(updatedKPI)
+                    
+                    // Store metric value in the database
+                    if (kpi.category == "performance" || kpi.category == "resource") {
+                        val metricValue = MetricValue(
+                            id = generateId("metric_value"),
+                            metricId = kpi.id,
+                            value = newValue,
+                            timestamp = System.currentTimeMillis(),
+                            dimensions = mapOf("source" to "system_metrics"),
+                            metadata = emptyMap()
+                        )
+                        metricValueRepository.save(metricValue)
                     }
-                    "cpu_usage" -> {
-                        val cpuUsage = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("cpu_usage") as? Number ?: 50
-                        updateKPI(kpi.id, cpuUsage.toDouble())
-                    }
-                    "memory_usage" -> {
-                        val memoryUsage = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("memory_usage") as? Number ?: 65
-                        updateKPI(kpi.id, memoryUsage.toDouble())
-                    }
+                } catch (e: Exception) {
+                    // Log error but continue processing other KPIs
+                    println("Error updating KPI ${kpi.id}: ${e.message}")
                 }
-            } catch (e: Exception) {
-                // Log error but continue processing other KPIs
             }
+        } catch (e: Exception) {
+            // Log error but don't crash the background task
+            println("Error collecting metrics: ${e.message}")
         }
-    }
-    
-    /**
-     * Update a KPI with a new value
-     */
-    private fun updateKPI(kpiId: String, newValue: Double) {
-        kpis[kpiId]?.let { kpi ->
-            // Calculate trend direction
-            val trend = when {
-                newValue > kpi.currentValue -> TrendDirection.UP
-                newValue < kpi.currentValue -> TrendDirection.DOWN
-                else -> TrendDirection.STABLE
-            }
-            
-            // Create historical data point
-            val dataPoint = KPIDataPoint(
-                timestamp = System.currentTimeMillis(),
-                value = newValue,
-                target = kpi.targetValue
-            )
-            
-            // Update KPI with new value and trend
-            val updatedKPI = kpi.copy(
-                currentValue = newValue,
-                trend = trend,
-                lastUpdated = System.currentTimeMillis(),
-                historicalData = (kpi.historicalData + dataPoint).takeLast(100) // Keep last 100 data points
-            )
-            
-            kpis[kpiId] = updatedKPI
-        }
-    }
-}
