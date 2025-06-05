@@ -1,5 +1,7 @@
 package com.ataiva.eden.integration
 
+import com.ataiva.eden.integration.reliability.ReliabilityRegressionTest
+import com.ataiva.eden.integration.security.SecurityRegressionTest
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import java.net.http.HttpClient
@@ -98,6 +100,20 @@ class RegressionTestSuite {
             testRateLimiting()
             testSecurityHeaders()
             testAuditLogging()
+            
+            // Run comprehensive security regression tests
+            runSecurityRegressionTests()
+        }
+        
+        // Phase 4A: Reliability and Error Handling
+        runTestPhase("Reliability and Error Handling") {
+            testServiceFailureRecovery()
+            testNetworkPartitionHandling()
+            testDatabaseFailureRecovery()
+            testCircuitBreakerFunctionality()
+            
+            // Run comprehensive reliability regression tests
+            runReliabilityRegressionTests()
         }
         
         // Phase 5: Data Consistency and Integrity
@@ -1194,15 +1210,17 @@ val taskResponse = makeAuthenticatedRequest("POST", "http://localhost:8083/api/v
         val hasIntegrationTests = testResults.keys.any { it.contains("Integration") || it.contains("→") }
         val hasPerformanceTests = testResults.keys.any { it.contains("Performance") }
         val hasSecurityTests = testResults.keys.any { it.contains("Security") || it.contains("Authentication") }
+        val hasReliabilityTests = testResults.keys.any { it.contains("Reliability") || it.contains("Error Handling") }
         
         assertTrue(hasIntegrationTests, "Should include cross-service integration tests")
         assertTrue(hasPerformanceTests, "Should include performance regression tests")
         assertTrue(hasSecurityTests, "Should include security regression tests")
+        assertTrue(hasReliabilityTests, "Should include reliability and error handling tests")
         
         println("  ✅ All regression test validation criteria met!")
         println("\n🎉 EDEN DEVOPS SUITE REGRESSION TESTING COMPLETED SUCCESSFULLY!")
         println("   The platform is ready for production deployment with confidence.")
-        println("   All critical functionality, performance, and security aspects validated.")
+        println("   All critical functionality, performance, security, and reliability aspects validated.")
     }
     
     // Helper methods
@@ -1282,6 +1300,100 @@ val taskResponse = makeAuthenticatedRequest("POST", "http://localhost:8083/api/v
                 override fun sslSession() = null
                 override fun uri() = URI.create(url)
             }
+        }
+    }
+    
+    /**
+     * Runs the comprehensive security regression test suite
+     */
+    private suspend fun runSecurityRegressionTests() {
+        println("\n📋 Running Comprehensive Security Regression Tests")
+        
+        val securityTestStartTime = System.currentTimeMillis()
+        
+        try {
+            // Create an instance of the SecurityRegressionTest
+            val securityTests = SecurityRegressionTest()
+            
+            // Run all security regression tests
+            executeTest("All Endpoints Require Authentication") {
+                securityTests.`all endpoints require proper authentication`()
+            }
+            
+            executeTest("User Permissions Enforcement") {
+                securityTests.`user permissions are enforced correctly`()
+            }
+            
+            executeTest("Input Validation Against Injection") {
+                securityTests.`input validation prevents injection attacks`()
+            }
+            
+            executeTest("Sensitive Data Encryption") {
+                securityTests.`sensitive data is properly encrypted`()
+            }
+            
+            executeTest("API Rate Limiting") {
+                securityTests.`API rate limiting prevents abuse`()
+            }
+            
+            executeTest("Audit Logging") {
+                securityTests.`audit logging captures all security events`()
+            }
+            
+            val securityTestDuration = System.currentTimeMillis() - securityTestStartTime
+            println("✅ Security Regression Tests completed in ${securityTestDuration}ms")
+        } catch (e: Exception) {
+            val securityTestDuration = System.currentTimeMillis() - securityTestStartTime
+            println("❌ Security Regression Tests failed after ${securityTestDuration}ms: ${e.message}")
+            testResults["Security_Regression_Tests"] = TestResult(
+                testName = "Security Regression Tests",
+                status = TestStatus.FAILED,
+                duration = securityTestDuration,
+                message = e.message
+            )
+        }
+    }
+    
+    /**
+     * Runs the comprehensive reliability regression test suite
+     */
+    private suspend fun runReliabilityRegressionTests() {
+        println("\n📋 Running Comprehensive Reliability Regression Tests")
+        
+        val reliabilityTestStartTime = System.currentTimeMillis()
+        
+        try {
+            // Create an instance of the ReliabilityRegressionTest
+            val reliabilityTests = ReliabilityRegressionTest()
+            
+            // Run all reliability regression tests
+            executeTest("Service Failure and Recovery") {
+                reliabilityTests.`service failure and recovery testing`()
+            }
+            
+            executeTest("Database Connection Failure Handling") {
+                reliabilityTests.`database connection failure handling`()
+            }
+            
+            executeTest("Network Timeout and Retry Mechanism") {
+                reliabilityTests.`network timeout and retry mechanism testing`()
+            }
+            
+            executeTest("Data Corruption Prevention and Recovery") {
+                reliabilityTests.`data corruption prevention and recovery`()
+            }
+            
+            val reliabilityTestDuration = System.currentTimeMillis() - reliabilityTestStartTime
+            println("✅ Reliability Regression Tests completed in ${reliabilityTestDuration}ms")
+        } catch (e: Exception) {
+            val reliabilityTestDuration = System.currentTimeMillis() - reliabilityTestStartTime
+            println("❌ Reliability Regression Tests failed after ${reliabilityTestDuration}ms: ${e.message}")
+            testResults["Reliability_Regression_Tests"] = TestResult(
+                testName = "Reliability Regression Tests",
+                status = TestStatus.FAILED,
+                duration = reliabilityTestDuration,
+                message = e.message
+            )
         }
     }
 }
