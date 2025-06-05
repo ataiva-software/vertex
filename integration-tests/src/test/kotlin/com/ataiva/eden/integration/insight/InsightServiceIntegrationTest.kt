@@ -636,6 +636,123 @@ class InsightServiceIntegrationTest {
             assertTrue(performance.containsKey("avg_query_execution_time"))
             assertTrue(performance.containsKey("query_success_rate"))
         }
+        
+        @Test
+        @DisplayName("Should analyze performance trends")
+        fun `should analyze performance trends`() = runBlocking {
+            // When
+            val response = client.get("$baseUrl/api/v1/analytics/trends")
+            
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val result = response.body<ApiResponse<Map<String, Any>>>()
+            assertTrue(result.success)
+            assertNotNull(result.data)
+            
+            val trends = result.data!!
+            assertTrue(trends.containsKey("response_time_trend"))
+            assertTrue(trends.containsKey("error_rate_trend"))
+            assertTrue(trends.containsKey("throughput_trend"))
+        }
+        
+        @Test
+        @DisplayName("Should detect anomalies")
+        fun `should detect anomalies`() = runBlocking {
+            // Given
+            // First create a metric
+            val createMetricResponse = client.post("$baseUrl/api/v1/metrics") {
+                contentType(ContentType.Application.Json)
+                setBody(CreateMetricRequest(
+                    name = "Test Metric",
+                    description = "Test metric for anomaly detection",
+                    category = "test",
+                    unit = "count",
+                    aggregationType = AggregationType.COUNT,
+                    queryId = "test_query"
+                ))
+            }
+            
+            val metric = createMetricResponse.body<ApiResponse<Metric>>().data!!
+            
+            // When
+            val response = client.post("$baseUrl/api/v1/analytics/anomalies") {
+                contentType(ContentType.Application.Json)
+                setBody(AnomalyDetectionRequest(
+                    metricIds = listOf(metric.id)
+                ))
+            }
+            
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val result = response.body<ApiResponse<List<Map<String, Any>>>>()
+            assertTrue(result.success)
+            assertNotNull(result.data)
+        }
+        
+        @Test
+        @DisplayName("Should generate insights")
+        fun `should generate insights`() = runBlocking {
+            // When
+            val response = client.get("$baseUrl/api/v1/analytics/insights")
+            
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val result = response.body<ApiResponse<List<Map<String, Any>>>>()
+            assertTrue(result.success)
+            assertNotNull(result.data)
+        }
+        
+        @Test
+        @DisplayName("Should predict resource usage")
+        fun `should predict resource usage`() = runBlocking {
+            // When
+            val response = client.get("$baseUrl/api/v1/analytics/predict/resources?horizonHours=24")
+            
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val result = response.body<ApiResponse<Map<String, Any>>>()
+            assertTrue(result.success)
+            assertNotNull(result.data)
+            
+            val prediction = result.data!!
+            assertTrue(prediction.containsKey("horizon_hours"))
+            assertTrue(prediction.containsKey("cpu_prediction"))
+            assertTrue(prediction.containsKey("memory_prediction"))
+        }
+        
+        @Test
+        @DisplayName("Should analyze metric trend")
+        fun `should analyze metric trend`() = runBlocking {
+            // Given
+            // First create a metric
+            val createMetricResponse = client.post("$baseUrl/api/v1/metrics") {
+                contentType(ContentType.Application.Json)
+                setBody(CreateMetricRequest(
+                    name = "CPU Usage",
+                    description = "System CPU usage",
+                    category = "system",
+                    unit = "%",
+                    aggregationType = AggregationType.AVG,
+                    queryId = "cpu_query"
+                ))
+            }
+            
+            val metric = createMetricResponse.body<ApiResponse<Metric>>().data!!
+            
+            // When
+            val response = client.get("$baseUrl/api/v1/analytics/metrics/${metric.id}/trend")
+            
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val result = response.body<ApiResponse<Map<String, Any>>>()
+            assertTrue(result.success)
+            assertNotNull(result.data)
+            
+            val trend = result.data!!
+            assertTrue(trend.containsKey("metric"))
+            assertTrue(trend.containsKey("trend"))
+            assertTrue(trend.containsKey("data"))
+        }
     }
     
     // ============================================================================
@@ -861,4 +978,105 @@ data class UpdateQueryRequest(
 
 @kotlinx.serialization.Serializable
 data class ExecuteQueryRequest(
-    val parameters: Map<String, String>
+    val parameters: Map<String, String> = emptyMap(),
+    val executedBy: String = "system"
+)
+
+@kotlinx.serialization.Serializable
+data class QueryRequest(
+    val queryText: String,
+    val parameters: Map<String, String> = emptyMap(),
+    val limit: Int = 100
+)
+
+@kotlinx.serialization.Serializable
+data class QueryResponse(
+    val success: Boolean,
+    val data: List<Map<String, Any?>>,
+    val metadata: Map<String, Any?>,
+    val executionId: String,
+    val executionTime: Long
+)
+
+@kotlinx.serialization.Serializable
+data class CreateReportTemplateRequest(
+    val name: String,
+    val description: String? = null,
+    val templateContent: String,
+    val category: String,
+    val createdBy: String,
+    val tags: List<String> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class CreateReportRequest(
+    val name: String,
+    val description: String? = null,
+    val templateId: String,
+    val parameters: Map<String, String> = emptyMap(),
+    val format: ReportFormat = ReportFormat.PDF,
+    val createdBy: String,
+    val tags: List<String> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class ReportGenerationRequest(
+    val reportId: String,
+    val parameters: Map<String, String> = emptyMap(),
+    val async: Boolean = false
+)
+
+@kotlinx.serialization.Serializable
+data class ReportGenerationResponse(
+    val success: Boolean,
+    val executionId: String? = null,
+    val message: String? = null,
+    val reportUrl: String? = null
+)
+
+@kotlinx.serialization.Serializable
+data class CreateMetricRequest(
+    val name: String,
+    val description: String? = null,
+    val category: String,
+    val unit: String,
+    val aggregationType: AggregationType,
+    val queryId: String,
+    val thresholds: List<MetricThreshold> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class CreateKPIRequest(
+    val name: String,
+    val description: String? = null,
+    val targetValue: Double,
+    val currentValue: Double,
+    val unit: String,
+    val category: String,
+    val tags: List<String> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class AnomalyDetectionRequest(
+    val metricIds: List<String>,
+    val timeRangeHours: Int = 24,
+    val sensitivity: Double = 0.8
+)
+
+@kotlinx.serialization.Serializable
+data class ServiceInfo(
+    val name: String,
+    val version: String,
+    val status: String,
+    val uptime: Long,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@kotlinx.serialization.Serializable
+data class HealthCheck(
+    val status: String,
+    val service: String,
+    val uptime: Long,
+    val timestamp: Long = System.currentTimeMillis(),
+    val checks: Map<String, Boolean> = emptyMap()
+)

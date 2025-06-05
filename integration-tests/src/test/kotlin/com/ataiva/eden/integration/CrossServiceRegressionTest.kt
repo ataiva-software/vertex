@@ -37,6 +37,9 @@ class CrossServiceRegressionTest {
     private val testUserId = "regression-test-user"
     private val testOrgId = "regression-test-org"
     
+    // Timeout for async operations
+    private val defaultTimeout = 5000L // 5 seconds
+    
     @Test
     fun `complete DevOps workflow - vault secret to flow execution to task completion`() = runTest {
         // This test validates the core workflow: Vault → Flow → Task service integration
@@ -601,6 +604,346 @@ class CrossServiceRegressionTest {
         // and provides comprehensive regression coverage for the entire platform
     }
     
+    @Test
+    fun `hub service integrates with insight service for analytics`() = runTest {
+        // This test validates: Hub Service → Insight Service integration
+        
+        // 1. Create hub integrations and webhooks
+        val integrationRequest = mapOf(
+            "name" to "Analytics Integration Test",
+            "type" to "GITHUB",
+            "configuration" to mapOf("baseUrl" to "https://api.github.com"),
+            "userId" to testUserId
+        )
+        
+        val integrationResponse = createHubIntegration(integrationRequest)
+        assertEquals(201, integrationResponse.statusCode())
+        
+        val integrationResult = json.decodeFromString<Map<String, Any>>(integrationResponse.body())
+        val integrationId = (integrationResult["data"] as Map<String, Any>)["id"] as String
+        
+        val webhookRequest = mapOf(
+            "name" to "Analytics Webhook Test",
+            "url" to "https://httpbin.org/post",
+            "events" to listOf("repository.push", "pull_request.created"),
+            "userId" to testUserId
+        )
+        
+        val webhookResponse = createHubWebhook(webhookRequest)
+        assertEquals(201, webhookResponse.statusCode())
+        
+        val webhookResult = json.decodeFromString<Map<String, Any>>(webhookResponse.body())
+        val webhookId = (webhookResult["data"] as Map<String, Any>)["id"] as String
+        
+        // 2. Generate webhook events
+        val eventPayload = mapOf(
+            "event" to "repository.push",
+            "payload" to mapOf(
+                "repository" to "test-repo",
+                "branch" to "main",
+                "commits" to listOf(
+                    mapOf("id" to "abc123", "message" to "Test commit")
+                )
+            )
+        )
+        
+        repeat(3) {
+            val deliveryResponse = deliverHubWebhook(webhookId, eventPayload)
+            assertEquals(202, deliveryResponse.statusCode())
+        }
+        
+        // 3. Wait for events to be processed and indexed
+        Thread.sleep(defaultTimeout)
+        
+        // 4. Query Insight Service for Hub analytics
+        val analyticsResponse = getInsightAnalytics(mapOf(
+            "userId" to testUserId,
+            "service" to "hub",
+            "timeRange" to "LAST_HOUR"
+        ))
+        assertEquals(200, analyticsResponse.statusCode())
+        
+        val analyticsResult = json.decodeFromString<Map<String, Any>>(analyticsResponse.body())
+        val hubAnalytics = (analyticsResult["data"] as Map<String, Any>)["hubMetrics"] as Map<String, Any>
+        
+        // 5. Verify Hub metrics are captured in Insight Service
+        assertTrue(hubAnalytics.containsKey("totalIntegrations"))
+        assertTrue(hubAnalytics.containsKey("totalWebhooks"))
+        assertTrue(hubAnalytics.containsKey("webhookDeliveries"))
+        assertTrue(hubAnalytics.containsKey("eventTypes"))
+        
+        val totalIntegrations = hubAnalytics["totalIntegrations"] as Int
+        val totalWebhooks = hubAnalytics["totalWebhooks"] as Int
+        val webhookDeliveries = hubAnalytics["webhookDeliveries"] as Int
+        
+        assertTrue(totalIntegrations >= 1)
+        assertTrue(totalWebhooks >= 1)
+        assertTrue(webhookDeliveries >= 3)
+        
+        // Cleanup
+        deleteHubIntegration(integrationId, testUserId)
+        deleteHubWebhook(webhookId, testUserId)
+    }
+    
+    @Test
+    fun `insight service provides cross-service data correlation`() = runTest {
+        // This test validates: Insight Service's ability to correlate data across services
+        
+        // 1. Create related data across multiple services
+        val projectName = "cross-service-test-${System.currentTimeMillis()}"
+        
+        // Create a vault secret for the project
+        val secretResponse = createVaultSecret(mapOf(
+            "name" to "$projectName-secret",
+            "value" to "project-api-key",
+            "metadata" to mapOf("project" to projectName),
+            "userId" to testUserId
+        ))
+        assertEquals(201, secretResponse.statusCode())
+        
+        // Create a task related to the project
+        val taskResponse = createTask(mapOf(
+            "name" to "$projectName Deployment",
+            "description" to "Deploy $projectName to production",
+            "metadata" to mapOf("project" to projectName),
+            "userId" to testUserId
+        ))
+        assertEquals(201, taskResponse.statusCode())
+        
+        // Create a workflow for the project
+        val workflowResponse = createFlowWorkflow(mapOf(
+            "name" to "$projectName CI/CD",
+            "description" to "CI/CD pipeline for $projectName",
+            "metadata" to mapOf("project" to projectName),
+            "steps" to listOf(
+                mapOf("type" to "SHELL_COMMAND", "name" to "Build", "command" to "echo 'Building $projectName'")
+            ),
+            "userId" to testUserId
+        ))
+        assertEquals(201, workflowResponse.statusCode())
+        
+        // Create a hub integration for the project
+        val integrationResponse = createHubIntegration(mapOf(
+            "name" to "$projectName GitHub",
+            "type" to "GITHUB",
+            "metadata" to mapOf("project" to projectName),
+            "userId" to testUserId
+        ))
+        assertEquals(201, integrationResponse.statusCode())
+        
+        // 2. Wait for data to be indexed
+        Thread.sleep(defaultTimeout)
+        
+        // 3. Request cross-service correlation by project
+        val correlationResponse = getInsightCorrelation(mapOf(
+            "userId" to testUserId,
+            "correlationType" to "PROJECT",
+            "projectName" to projectName
+        ))
+        assertEquals(200, correlationResponse.statusCode())
+        
+        val correlationResult = json.decodeFromString<Map<String, Any>>(correlationResponse.body())
+        val projectData = correlationResult["data"] as Map<String, Any>
+        
+        // 4. Verify correlation results contain data from all services
+        assertTrue(projectData.containsKey("secrets"))
+        assertTrue(projectData.containsKey("tasks"))
+        assertTrue(projectData.containsKey("workflows"))
+        assertTrue(projectData.containsKey("integrations"))
+        
+        val secrets = projectData["secrets"] as List<Map<String, Any>>
+        val tasks = projectData["tasks"] as List<Map<String, Any>>
+        val workflows = projectData["workflows"] as List<Map<String, Any>>
+        val integrations = projectData["integrations"] as List<Map<String, Any>>
+        
+        assertEquals(1, secrets.size)
+        assertEquals(1, tasks.size)
+        assertEquals(1, workflows.size)
+        assertEquals(1, integrations.size)
+        
+        assertEquals("$projectName-secret", secrets[0]["name"])
+        assertTrue((tasks[0]["name"] as String).contains(projectName))
+        assertTrue((workflows[0]["name"] as String).contains(projectName))
+        assertTrue((integrations[0]["name"] as String).contains(projectName))
+    }
+    
+    @Test
+    fun `hub service webhook triggers insight service analytics`() = runTest {
+        // This test validates: Hub Service webhook → Insight Service analytics pipeline
+        
+        // 1. Create a webhook in Hub Service that sends to Insight Service
+        val webhookRequest = mapOf(
+            "name" to "Insight Analytics Webhook",
+            "url" to "$insightServiceUrl/api/v1/events/ingest",
+            "events" to listOf("code.commit", "deployment.complete"),
+            "secret" to "insight-webhook-secret",
+            "userId" to testUserId
+        )
+        
+        val webhookResponse = createHubWebhook(webhookRequest)
+        assertEquals(201, webhookResponse.statusCode())
+        
+        val webhookResult = json.decodeFromString<Map<String, Any>>(webhookResponse.body())
+        val webhookId = (webhookResult["data"] as Map<String, Any>)["id"] as String
+        
+        // 2. Deliver webhook events
+        val commitEvent = mapOf(
+            "event" to "code.commit",
+            "payload" to mapOf(
+                "repository" to "test-repo",
+                "branch" to "main",
+                "author" to "test-user",
+                "message" to "Test commit",
+                "timestamp" to System.currentTimeMillis()
+            )
+        )
+        
+        val deployEvent = mapOf(
+            "event" to "deployment.complete",
+            "payload" to mapOf(
+                "service" to "test-service",
+                "environment" to "production",
+                "version" to "1.0.0",
+                "status" to "success",
+                "timestamp" to System.currentTimeMillis()
+            )
+        )
+        
+        // Deliver commit event
+        val commitResponse = deliverHubWebhook(webhookId, commitEvent)
+        assertEquals(202, commitResponse.statusCode())
+        
+        // Deliver deployment event
+        val deployResponse = deliverHubWebhook(webhookId, deployEvent)
+        assertEquals(202, deployResponse.statusCode())
+        
+        // 3. Wait for events to be processed
+        Thread.sleep(defaultTimeout)
+        
+        // 4. Query Insight Service for the processed events
+        val eventsResponse = getInsightEvents(mapOf(
+            "userId" to testUserId,
+            "limit" to 10
+        ))
+        assertEquals(200, eventsResponse.statusCode())
+        
+        val eventsResult = json.decodeFromString<Map<String, Any>>(eventsResponse.body())
+        val events = eventsResult["data"] as List<Map<String, Any>>
+        
+        // 5. Verify events were processed
+        assertTrue(events.any { it["type"] == "code.commit" })
+        assertTrue(events.any { it["type"] == "deployment.complete" })
+        
+        // 6. Request analytics based on these events
+        val analyticsResponse = getInsightAnalytics(mapOf(
+            "userId" to testUserId,
+            "eventTypes" to listOf("code.commit", "deployment.complete"),
+            "timeRange" to "LAST_HOUR"
+        ))
+        assertEquals(200, analyticsResponse.statusCode())
+        
+        val analyticsResult = json.decodeFromString<Map<String, Any>>(analyticsResponse.body())
+        val analytics = analyticsResult["data"] as Map<String, Any>
+        
+        // 7. Verify analytics were generated
+        assertTrue(analytics.containsKey("eventCounts"))
+        val eventCounts = analytics["eventCounts"] as Map<String, Any>
+        assertTrue(eventCounts.containsKey("code.commit"))
+        assertTrue(eventCounts.containsKey("deployment.complete"))
+        
+        // Cleanup
+        deleteHubWebhook(webhookId, testUserId)
+    }
+    
+    @Test
+    fun `error handling and recovery across service boundaries`() = runTest {
+        // This test validates error handling and recovery between services
+        
+        // 1. Create a webhook with an invalid URL to test error handling
+        val invalidWebhookRequest = mapOf(
+            "name" to "Error Test Webhook",
+            "url" to "https://non-existent-service-12345.example.com/webhook",
+            "events" to listOf("test.event"),
+            "userId" to testUserId
+        )
+        
+        val webhookResponse = createHubWebhook(invalidWebhookRequest)
+        assertEquals(201, webhookResponse.statusCode())
+        
+        val webhookResult = json.decodeFromString<Map<String, Any>>(webhookResponse.body())
+        val webhookId = (webhookResult["data"] as Map<String, Any>)["id"] as String
+        
+        // 2. Deliver webhook to trigger error
+        val eventPayload = mapOf(
+            "event" to "test.event",
+            "payload" to mapOf("message" to "This should fail")
+        )
+        
+        val deliveryResponse = deliverHubWebhook(webhookId, eventPayload)
+        assertEquals(202, deliveryResponse.statusCode()) // Accepted for processing
+        
+        // 3. Wait for delivery attempt and retry
+        Thread.sleep(defaultTimeout)
+        
+        // 4. Check webhook delivery status - should show failed attempts
+        val deliveriesResponse = listHubWebhookDeliveries(webhookId)
+        assertEquals(200, deliveriesResponse.statusCode())
+        
+        val deliveriesResult = json.decodeFromString<Map<String, Any>>(deliveriesResponse.body())
+        val deliveries = deliveriesResult["data"] as List<Map<String, Any>>
+        
+        assertTrue(deliveries.isNotEmpty())
+        val delivery = deliveries.first()
+        assertEquals("FAILED", delivery["status"])
+        assertTrue((delivery["attempts"] as Int) > 0)
+        
+        // 5. Check error logs in Insight Service
+        val errorLogsResponse = getInsightErrorLogs(mapOf(
+            "service" to "hub",
+            "errorType" to "WEBHOOK_DELIVERY_FAILURE",
+            "limit" to 10
+        ))
+        assertEquals(200, errorLogsResponse.statusCode())
+        
+        val logsResult = json.decodeFromString<Map<String, Any>>(errorLogsResponse.body())
+        val logs = logsResult["data"] as List<Map<String, Any>>
+        
+        assertTrue(logs.isNotEmpty())
+        val errorLog = logs.first()
+        assertEquals("hub", errorLog["service"])
+        assertEquals("WEBHOOK_DELIVERY_FAILURE", errorLog["errorType"])
+        assertTrue((errorLog["details"] as Map<String, Any>).containsKey("webhookId"))
+        
+        // 6. Update webhook with valid URL to test recovery
+        val updateRequest = mapOf(
+            "id" to webhookId,
+            "url" to "https://httpbin.org/post",
+            "userId" to testUserId
+        )
+        
+        val updateResponse = updateHubWebhook(webhookId, updateRequest)
+        assertEquals(200, updateResponse.statusCode())
+        
+        // 7. Retry delivery with fixed webhook
+        val retryResponse = retryHubWebhookDelivery(webhookId, delivery["id"] as String)
+        assertEquals(202, retryResponse.statusCode())
+        
+        // 8. Wait for retry to complete
+        Thread.sleep(defaultTimeout)
+        
+        // 9. Check delivery status again - should be successful
+        val updatedDeliveriesResponse = listHubWebhookDeliveries(webhookId)
+        val updatedDeliveriesResult = json.decodeFromString<Map<String, Any>>(updatedDeliveriesResponse.body())
+        val updatedDeliveries = updatedDeliveriesResult["data"] as List<Map<String, Any>>
+        
+        // Either the original delivery was retried successfully or a new one was created
+        val successfulDelivery = updatedDeliveries.find { it["status"] == "DELIVERED" }
+        assertNotNull(successfulDelivery, "Should have at least one successful delivery after retry")
+        
+        // Cleanup
+        deleteHubWebhook(webhookId, testUserId)
+    }
+    
     // ================================
     // Helper Methods for HTTP Requests
     // ================================
@@ -661,8 +1004,7 @@ class CrossServiceRegressionTest {
         return makeRequest("POST", "$hubServiceUrl/api/v1/integrations", request)
     }
     
-    private fun createHubNotificationTemplate(request: Map<String, Any>):
-private fun createHubNotificationTemplate(request: Map<String, Any>): HttpResponse<String> {
+    private fun createHubNotificationTemplate(request: Map<String, Any>): HttpResponse<String> {
         return makeRequest("POST", "$hubServiceUrl/api/v1/notifications/templates", request)
     }
     
@@ -694,7 +1036,22 @@ private fun createHubNotificationTemplate(request: Map<String, Any>): HttpRespon
     }
     
     private fun getInsightCorrelation(params: Map<String, Any>): HttpResponse<String> {
-        return makeRequest("POST", "$insightServiceUrl/api/v1/analytics/correlation", params)
+        val queryString = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+        return makeRequest("GET", "$insightServiceUrl/api/v1/correlation?$queryString")
+    }
+    
+    private fun getInsightEvents(params: Map<String, Any>): HttpResponse<String> {
+        val queryString = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+        return makeRequest("GET", "$insightServiceUrl/api/v1/events?$queryString")
+    }
+    
+    private fun getInsightErrorLogs(params: Map<String, Any>): HttpResponse<String> {
+        val queryString = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+        return makeRequest("GET", "$insightServiceUrl/api/v1/errors?$queryString")
+    }
+    
+    private fun getInsightDashboard(userId: String): HttpResponse<String> {
+        return makeRequest("GET", "$insightServiceUrl/api/v1/dashboards/default?userId=$userId")
     }
     
     // Monitor Service helpers

@@ -515,6 +515,162 @@ class PerformanceRegressionTest {
     }
     
     @Test
+    fun `Insight Service query performance under load`() = runTest {
+        val queryTimes = mutableListOf<Long>()
+        
+        // 1. Create test data for analytics
+        repeat(20) { i ->
+            // Create some test events
+            val eventRequest = mapOf(
+                "type" to "test.event",
+                "source" to "performance-test",
+                "data" to mapOf(
+                    "testId" to i,
+                    "timestamp" to System.currentTimeMillis(),
+                    "value" to (i * 10)
+                ),
+                "userId" to "perf-test-user"
+            )
+            
+            makeRequest("POST", "$insightServiceUrl/api/v1/events", eventRequest)
+        }
+        
+        // Wait for events to be indexed
+        Thread.sleep(2000)
+        
+        // 2. Test concurrent analytics queries
+        val queryJobs = (1..concurrentUsers).map { userId ->
+            async {
+                repeat(5) { queryIndex ->
+                    val queryTypes = listOf(
+                        mapOf("type" to "summary", "userId" to "perf-test-user"),
+                        mapOf("type" to "events", "userId" to "perf-test-user", "limit" to 10),
+                        mapOf("type" to "metrics", "userId" to "perf-test-user", "metric" to "event_count"),
+                        mapOf("type" to "correlation", "userId" to "perf-test-user", "services" to listOf("hub", "vault"))
+                    )
+                    
+                    val query = queryTypes[queryIndex % queryTypes.size]
+                    
+                    val queryTime = measureTime {
+                        val queryString = query.entries.joinToString("&") {
+                            val value = it.value
+                            if (value is List<*>) {
+                                "${it.key}=${value.joinToString(",")}"
+                            } else {
+                                "${it.key}=${it.value}"
+                            }
+                        }
+                        makeRequest("GET", "$insightServiceUrl/api/v1/analytics?$queryString")
+                    }.inWholeMilliseconds
+                    
+                    synchronized(queryTimes) {
+                        queryTimes.add(queryTime)
+                    }
+                }
+            }
+        }
+        
+        queryJobs.awaitAll()
+        
+        // 3. Analyze analytics query performance
+        val avgQueryTime = queryTimes.average()
+        val p95QueryTime = queryTimes.sorted()[((queryTimes.size * 0.95).toInt())]
+        val maxQueryTime = queryTimes.maxOrNull() ?: 0L
+        
+        println("Insight Analytics Query Performance:")
+        println("Total Queries: ${queryTimes.size}")
+        println("Avg: ${avgQueryTime.toInt()}ms, P95: ${p95QueryTime}ms, Max: ${maxQueryTime}ms")
+        
+        // 4. Assert performance requirements
+        assertTrue(p95QueryTime <= 1000L, "Analytics query P95 should be <= 1000ms, got ${p95QueryTime}ms")
+        assertTrue(maxQueryTime <= 3000L, "Max analytics query time should be <= 3000ms, got ${maxQueryTime}ms")
+    }
+    
+    @Test
+    fun `Hub Service integration operations performance`() = runTest {
+        val operationTimes = mutableListOf<Long>()
+        
+        // 1. Create test integrations
+        val integrationIds = mutableListOf<String>()
+        repeat(5) { i ->
+            val integrationRequest = mapOf(
+                "name" to "Performance Test Integration $i",
+                "type" to "GITHUB",
+                "description" to "Integration for performance testing",
+                "configuration" to mapOf("baseUrl" to "https://api.github.com"),
+                "userId" to "perf-test-user"
+            )
+            
+            val response = makeRequest("POST", "$hubServiceUrl/api/v1/integrations", integrationRequest)
+            if (response.statusCode() == 201) {
+                val result = json.decodeFromString<Map<String, Any>>(response.body())
+                val integrationId = (result["data"] as Map<String, Any>)["id"] as String
+                integrationIds.add(integrationId)
+            }
+        }
+        
+        // 2. Test concurrent integration operations
+        val operationJobs = (1..concurrentUsers).map { userId ->
+            async {
+                repeat(10) { operationIndex ->
+                    val integrationId = integrationIds[operationIndex % integrationIds.size]
+                    
+                    val operations = listOf(
+                        { // List repositories
+                            makeRequest("POST", "$hubServiceUrl/api/v1/integrations/$integrationId/execute", mapOf(
+                                "operation" to "listRepositories",
+                                "parameters" to mapOf("type" to "all")
+                            ))
+                        },
+                        { // Get user info
+                            makeRequest("POST", "$hubServiceUrl/api/v1/integrations/$integrationId/execute", mapOf(
+                                "operation" to "getUserInfo",
+                                "parameters" to mapOf("username" to "test-user")
+                            ))
+                        },
+                        { // List branches
+                            makeRequest("POST", "$hubServiceUrl/api/v1/integrations/$integrationId/execute", mapOf(
+                                "operation" to "listBranches",
+                                "parameters" to mapOf("repo" to "test/repo")
+                            ))
+                        }
+                    )
+                    
+                    val operation = operations[operationIndex % operations.size]
+                    
+                    val operationTime = measureTime {
+                        operation()
+                    }.inWholeMilliseconds
+                    
+                    synchronized(operationTimes) {
+                        operationTimes.add(operationTime)
+                    }
+                }
+            }
+        }
+        
+        operationJobs.awaitAll()
+        
+        // 3. Analyze integration operation performance
+        val avgOperationTime = operationTimes.average()
+        val p95OperationTime = operationTimes.sorted()[((operationTimes.size * 0.95).toInt())]
+        val maxOperationTime = operationTimes.maxOrNull() ?: 0L
+        
+        println("Hub Integration Operation Performance:")
+        println("Total Operations: ${operationTimes.size}")
+        println("Avg: ${avgOperationTime.toInt()}ms, P95: ${p95OperationTime}ms, Max: ${maxOperationTime}ms")
+        
+        // 4. Assert performance requirements
+        assertTrue(p95OperationTime <= 1000L, "Integration operation P95 should be <= 1000ms, got ${p95OperationTime}ms")
+        assertTrue(maxOperationTime <= 3000L, "Max integration operation time should be <= 3000ms, got ${maxOperationTime}ms")
+        
+        // 5. Cleanup
+        integrationIds.forEach { id ->
+            makeRequest("DELETE", "$hubServiceUrl/api/v1/integrations/$id?userId=perf-test-user")
+        }
+    }
+    
+    @Test
     fun `Memory usage stability under extended load`() = runTest {
         val runtime = Runtime.getRuntime()
         val initialMemory = runtime.totalMemory() - runtime.freeMemory()

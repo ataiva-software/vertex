@@ -3,6 +3,7 @@ package com.ataiva.eden.monitoring
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
+import kotlinx.datetime.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,7 +45,7 @@ class DefaultMetricsCollector : MetricsCollector {
     }
     
     override suspend fun recordMetric(metric: Metric) {
-        metrics.emit(metric.copy(timestamp = System.currentTimeMillis()))
+        metrics.emit(metric.copy(timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()))
     }
     
     override suspend fun recordCounter(name: String, value: Double, tags: Map<String, String>) {
@@ -126,12 +127,12 @@ class DefaultMetricsCollector : MetricsCollector {
                 alerts.values.forEach { alertRule ->
                     if (shouldTriggerAlert(metric, alertRule)) {
                         val alert = Alert(
-                            id = "${alertRule.id}-${System.currentTimeMillis()}",
+                            id = "${alertRule.id}-${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                             ruleId = alertRule.id,
                             severity = alertRule.severity,
                             message = generateAlertMessage(metric, alertRule),
                             metric = metric,
-                            timestamp = System.currentTimeMillis()
+                            timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
                         )
                         activeAlerts.emit(alert)
                     }
@@ -145,7 +146,7 @@ class DefaultMetricsCollector : MetricsCollector {
             delay(30.seconds)
             
             val recentMetrics = metrics.replayCache.filter { 
-                System.currentTimeMillis() - it.timestamp < 30_000 
+                kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - it.timestamp < 30_000 
             }
             
             val aggregated = aggregateMetricsWindow(recentMetrics, 30.seconds)
@@ -195,8 +196,8 @@ class DefaultMetricsCollector : MetricsCollector {
         val groupedMetrics = metrics.groupBy { "${it.name}-${it.type}" }
         
         return AggregatedMetric(
-            windowStart = System.currentTimeMillis() - window.inWholeMilliseconds,
-            windowEnd = System.currentTimeMillis(),
+            windowStart = kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - window.inWholeMilliseconds,
+            windowEnd = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
             windowDuration = window,
             metrics = groupedMetrics.map { (key, metricList) ->
                 val sample = metricList.first()
@@ -221,7 +222,7 @@ class DefaultMetricsCollector : MetricsCollector {
 // Extension function for windowing metrics by time
 private fun Flow<Metric>.windowedBy(duration: Duration): Flow<List<Metric>> = flow {
     val window = mutableListOf<Metric>()
-    var windowStart = System.currentTimeMillis()
+    var windowStart = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
     
     collect { metric ->
         if (metric.timestamp - windowStart >= duration.inWholeMilliseconds) {
@@ -253,7 +254,7 @@ data class Metric(
     val type: MetricType,
     val value: Double,
     val tags: Map<String, String> = emptyMap(),
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
 )
 
 @Serializable
@@ -366,11 +367,11 @@ object MetricsUtils {
         tags: Map<String, String> = emptyMap(),
         block: () -> T
     ): T {
-        val start = System.currentTimeMillis()
+        val start = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
         return try {
             block()
         } finally {
-            val duration = (System.currentTimeMillis() - start).seconds
+            val duration = (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - start).seconds
             recordTimer(name, duration, tags)
         }
     }

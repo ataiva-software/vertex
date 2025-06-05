@@ -95,7 +95,7 @@ fun Application.configureRouting() {
                     healthChecks.add(mapOf(
                         "service" to service.name,
                         "status" to "error",
-                        "error" to e.message,
+                        "error" to (e.message ?: "Unknown error"),
                         "url" to service.url
                     ))
                 }

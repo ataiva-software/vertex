@@ -60,7 +60,7 @@ class NotificationEngine(
                 variables.addAll(extractVariables(request.subject))
             }
             
-            val templateId = secureRandom.nextUuid()
+            val templateId = SecureRandom.generateUuid()
             val template = NotificationTemplateInstance(
                 id = templateId,
                 name = request.name,
@@ -175,7 +175,7 @@ class NotificationEngine(
                 return HubResult.Error("Notification body cannot be empty")
             }
             
-            val deliveryId = secureRandom.nextUuid()
+            val deliveryId = SecureRandom.generateUuid()
             val delivery = NotificationDeliveryInstance(
                 id = deliveryId,
                 type = request.type,

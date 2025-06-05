@@ -507,6 +507,140 @@ class SecurityRegressionTest {
     }
     
     @Test
+    fun `hub service authentication and authorization`() = runTest {
+        // Test Hub Service authentication and authorization controls
+        
+        // 1. Test unauthenticated access to Hub Service endpoints
+        val hubEndpoints = listOf(
+            "GET" to "$hubServiceUrl/api/v1/integrations",
+            "GET" to "$hubServiceUrl/api/v1/webhooks",
+            "GET" to "$hubServiceUrl/api/v1/notifications/templates",
+            "POST" to "$hubServiceUrl/api/v1/integrations",
+            "POST" to "$hubServiceUrl/api/v1/webhooks"
+        )
+        
+        hubEndpoints.forEach { (method, url) ->
+            val response = makeUnauthenticatedRequest(method, url)
+            assertTrue(
+                response.statusCode() == 401 || response.statusCode() == 403,
+                "Hub endpoint $method $url should require authentication, got ${response.statusCode()}"
+            )
+        }
+        
+        // 2. Test authenticated access with proper permissions
+        val validToken = authenticateUser("test-user", "test-password")
+        
+        // Create an integration
+        val integrationResponse = makeRequestWithToken("POST", "$hubServiceUrl/api/v1/integrations", validToken, mapOf(
+            "name" to "Security Test Integration",
+            "type" to "GITHUB",
+            "configuration" to mapOf("baseUrl" to "https://api.github.com"),
+            "userId" to testUserId
+        ))
+        assertEquals(201, integrationResponse.statusCode())
+        
+        val integrationResult = json.decodeFromString<Map<String, Any>>(integrationResponse.body())
+        val integrationId = (integrationResult["data"] as Map<String, Any>)["id"] as String
+        
+        // 3. Test cross-user access prevention
+        val otherUserToken = authenticateUser("other-user", "other-password")
+        
+        val unauthorizedAccessResponse = makeRequestWithToken("GET",
+            "$hubServiceUrl/api/v1/integrations/$integrationId", otherUserToken)
+        assertTrue(unauthorizedAccessResponse.statusCode() in listOf(403, 404),
+            "Cross-user access to Hub integration should be prevented")
+        
+        // 4. Test role-based access control
+        val readOnlyToken = authenticateUser("readonly-user", "readonly-password")
+        
+        val deleteResponse = makeRequestWithToken("DELETE",
+            "$hubServiceUrl/api/v1/integrations/$integrationId", readOnlyToken)
+        assertEquals(403, deleteResponse.statusCode(),
+            "Read-only user should not be able to delete integrations")
+        
+        // Cleanup
+        makeRequestWithToken("DELETE", "$hubServiceUrl/api/v1/integrations/$integrationId", validToken)
+        
+        println("✅ Hub Service security controls validated")
+    }
+    
+    @Test
+    fun `insight service data access controls`() = runTest {
+        // Test Insight Service data access controls and security
+        
+        // 1. Test unauthenticated access to Insight Service endpoints
+        val insightEndpoints = listOf(
+            "GET" to "$insightServiceUrl/api/v1/analytics",
+            "GET" to "$insightServiceUrl/api/v1/events",
+            "GET" to "$insightServiceUrl/api/v1/dashboards",
+            "POST" to "$insightServiceUrl/api/v1/queries",
+            "POST" to "$insightServiceUrl/api/v1/reports"
+        )
+        
+        insightEndpoints.forEach { (method, url) ->
+            val response = makeUnauthenticatedRequest(method, url)
+            assertTrue(
+                response.statusCode() == 401 || response.statusCode() == 403,
+                "Insight endpoint $method $url should require authentication, got ${response.statusCode()}"
+            )
+        }
+        
+        // 2. Test data isolation between users
+        val user1Token = authenticateUser("user1", "password1")
+        val user2Token = authenticateUser("user2", "password2")
+        
+        // Create data for user1
+        val createQueryResponse = makeRequestWithToken("POST", "$insightServiceUrl/api/v1/queries", user1Token, mapOf(
+            "name" to "Security Test Query",
+            "queryText" to "SELECT * FROM test_data",
+            "userId" to "user1"
+        ))
+        assertEquals(201, createQueryResponse.statusCode())
+        
+        val queryResult = json.decodeFromString<Map<String, Any>>(createQueryResponse.body())
+        val queryId = (queryResult["data"] as Map<String, Any>)["id"] as String
+        
+        // Try to access user1's query as user2
+        val unauthorizedAccessResponse = makeRequestWithToken("GET",
+            "$insightServiceUrl/api/v1/queries/$queryId", user2Token)
+        assertTrue(unauthorizedAccessResponse.statusCode() in listOf(403, 404),
+            "Cross-user access to Insight queries should be prevented")
+        
+        // 3. Test SQL injection prevention in analytics queries
+        val sqlInjectionPayloads = listOf(
+            "'; DROP TABLE events; --",
+            "' UNION SELECT * FROM users --",
+            "' OR '1'='1"
+        )
+        
+        sqlInjectionPayloads.forEach { payload ->
+            val injectionResponse = makeRequestWithToken("POST", "$insightServiceUrl/api/v1/queries", user1Token, mapOf(
+                "name" to "Injection Test",
+                "queryText" to payload,
+                "userId" to "user1"
+            ))
+            
+            assertTrue(injectionResponse.statusCode() in listOf(400, 422),
+                "SQL injection payload should be rejected, got ${injectionResponse.statusCode()}")
+        }
+        
+        // 4. Test sensitive data handling
+        val analyticsResponse = makeRequestWithToken("GET",
+            "$insightServiceUrl/api/v1/analytics?userId=user1&includeSecrets=true", user1Token)
+        
+        if (analyticsResponse.statusCode() == 200) {
+            val analyticsResult = json.decodeFromString<Map<String, Any>>(analyticsResponse.body())
+            val analyticsData = analyticsResult["data"] as Map<String, Any>
+            
+            // Verify no raw secrets are exposed in analytics
+            assertFalse(analyticsResponse.body().contains("super-secret"),
+                "Analytics should not expose raw secret values")
+        }
+        
+        println("✅ Insight Service security controls validated")
+    }
+    
+    @Test
     fun `audit logging for security events`() = runTest {
         // Test that security-relevant events are properly logged
         

@@ -21,8 +21,10 @@ integration-tests/
 │   ├── PerformanceRegressionTest.kt           # Performance validation tests
 │   ├── SecurityRegressionTest.kt              # Security control tests
 │   ├── RegressionTestSuite.kt                 # Comprehensive test orchestrator
-│   └── hub/
-│       └── HubServiceIntegrationTest.kt       # Hub service specific tests
+│   ├── hub/
+│   │   └── HubServiceIntegrationTest.kt       # Hub service specific tests
+│   └── insight/
+│       └── InsightServiceIntegrationTest.kt   # Insight service specific tests
 ├── build.gradle.kts                           # Test build configuration
 └── README.md                                  # This file
 ```
@@ -65,7 +67,9 @@ integration-tests/
 **Test Scenarios:**
 - **Vault → Flow Integration** - Secret retrieval in workflows
 - **Hub → Sync Integration** - Webhook-triggered data synchronization
+- **Hub → External Systems** - Integration with AWS, GitHub, Jira, and Slack
 - **Insight Service Data Flow** - Analytics across all service data
+- **Insight → Dashboard Integration** - Real-time dashboard data updates
 - **Monitor → Hub Notifications** - Alert-triggered notifications
 - **CLI → API Gateway Routing** - Command-line interface integration
 - **End-to-End DevOps Pipeline** - Complete deployment workflow
@@ -85,9 +89,11 @@ integration-tests/
 **Test Scenarios:**
 - **API Gateway Performance** - 50 concurrent users, 10 requests each
 - **Vault Encryption Performance** - Encryption/decryption under load
-- **Hub Webhook Performance** - High-volume webhook delivery
+- **Hub Webhook Performance** - High-volume webhook delivery (100+ concurrent)
+- **Hub Integration Performance** - External system operation execution
 - **Flow Execution Performance** - Workflow execution times
-- **Insight Query Performance** - Analytics query response times
+- **Insight Query Performance** - Analytics query response times (complex queries)
+- **Insight Dashboard Performance** - Real-time dashboard data updates
 - **Database Performance** - Connection pooling and query optimization
 - **Memory Stability** - Memory usage under extended load
 
@@ -122,7 +128,48 @@ integration-tests/
 - Security headers are present in responses
 - Failed authentication attempts are logged
 
-### 4. Comprehensive Test Suite
+### 4. Service-Specific Tests
+
+#### Hub Service Tests
+
+**File:** [`hub/HubServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/eden/integration/hub/HubServiceIntegrationTest.kt)
+
+**Purpose:** Validate the Hub Service's integration capabilities, webhook management, notification system, and event processing.
+
+**Test Scenarios:**
+- **Integration Management** - Create, test, update, and delete integrations
+- **External System Connectors** - AWS, GitHub, Jira, and Slack integration
+- **Webhook Management** - Registration, delivery, and security
+- **Notification System** - Template management and multi-channel delivery
+- **Event Processing** - Subscription, publishing, and delivery
+
+**Success Criteria:**
+- All integration types function correctly
+- Webhooks are delivered securely and reliably
+- Notifications are delivered to all channels
+- Events are properly processed and delivered
+
+#### Insight Service Tests
+
+**File:** [`insight/InsightServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/eden/integration/insight/InsightServiceIntegrationTest.kt)
+
+**Purpose:** Validate the Insight Service's analytics capabilities, reporting, dashboard management, and KPI tracking.
+
+**Test Scenarios:**
+- **Query Management** - Create, execute, and manage analytics queries
+- **Report Generation** - Template-based report generation in multiple formats
+- **Dashboard Management** - Dashboard creation and real-time data updates
+- **Metrics and KPIs** - Metric definition and KPI tracking
+- **Performance Analytics** - System and application performance metrics
+
+**Success Criteria:**
+- Queries execute correctly and return valid results
+- Reports generate in all supported formats
+- Dashboards update with real-time data
+- Metrics and KPIs track accurately
+- Performance analytics provide meaningful insights
+
+### 5. Comprehensive Test Suite
 
 **File:** [`RegressionTestSuite.kt`](src/test/kotlin/com/ataiva/eden/integration/RegressionTestSuite.kt)
 

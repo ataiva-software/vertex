@@ -62,7 +62,7 @@ class WebhookService(
                 return HubResult.Error("At least one event must be specified")
             }
             
-            val webhookId = secureRandom.nextUuid()
+            val webhookId = SecureRandom.generateUuid()
             val webhook = WebhookInstance(
                 id = webhookId,
                 name = request.name,
@@ -187,7 +187,7 @@ class WebhookService(
                 return HubResult.Error("Webhook is not configured for event: ${request.event}")
             }
             
-            val deliveryId = secureRandom.nextUuid()
+            val deliveryId = SecureRandom.generateUuid()
             val delivery = WebhookDeliveryInstance(
                 id = deliveryId,
                 webhookId = request.webhookId,

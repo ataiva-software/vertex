@@ -461,6 +461,85 @@ class InsightController(private val insightService: InsightService) {
                     call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<Map<String, Any>>(e.message ?: "Failed to get performance analytics"))
                 }
             }
+            
+            // Performance trends analysis
+            get("/trends") {
+                try {
+                    val startTime = call.request.queryParameters["startTime"]?.toLongOrNull()
+                    val endTime = call.request.queryParameters["endTime"]?.toLongOrNull()
+                    
+                    val trends = insightService.analyzePerformanceTrends(
+                        startTime ?: (System.currentTimeMillis() - 7 * 86400000),
+                        endTime ?: System.currentTimeMillis()
+                    )
+                    
+                    call.respond(HttpStatusCode.OK, ApiResponse.success(trends))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<Map<String, Any>>(e.message ?: "Failed to analyze performance trends"))
+                }
+            }
+            
+            // Anomaly detection
+            post("/anomalies") {
+                try {
+                    val request = call.receive<AnomalyDetectionRequest>()
+                    val anomalies = insightService.detectAnomalies(request.metricIds)
+                    call.respond(HttpStatusCode.OK, ApiResponse.success(anomalies))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<List<Map<String, Any>>>(e.message ?: "Failed to detect anomalies"))
+                }
+            }
+            
+            // Insights generation
+            get("/insights") {
+                try {
+                    val startTime = call.request.queryParameters["startTime"]?.toLongOrNull()
+                    val endTime = call.request.queryParameters["endTime"]?.toLongOrNull()
+                    val service = call.request.queryParameters["service"] ?: "all"
+                    val environment = call.request.queryParameters["environment"] ?: "production"
+                    
+                    val context = mapOf(
+                        "start_time" to (startTime ?: (System.currentTimeMillis() - 7 * 86400000)),
+                        "end_time" to (endTime ?: System.currentTimeMillis()),
+                        "dimensions" to mapOf("service" to service, "environment" to environment)
+                    )
+                    
+                    val insights = insightService.generateInsights(context)
+                    call.respond(HttpStatusCode.OK, ApiResponse.success(insights))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<List<Map<String, Any>>>(e.message ?: "Failed to generate insights"))
+                }
+            }
+            
+            // Resource usage prediction
+            get("/predict/resources") {
+                try {
+                    val horizonHours = call.request.queryParameters["horizonHours"]?.toIntOrNull() ?: 24
+                    val prediction = insightService.predictResourceUsage(horizonHours)
+                    call.respond(HttpStatusCode.OK, ApiResponse.success(prediction))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<Map<String, Any>>(e.message ?: "Failed to predict resource usage"))
+                }
+            }
+            
+            // Metric trend analysis
+            get("/metrics/{id}/trend") {
+                try {
+                    val metricId = call.parameters["id"] ?: throw IllegalArgumentException("Metric ID is required")
+                    val startTime = call.request.queryParameters["startTime"]?.toLongOrNull()
+                    val endTime = call.request.queryParameters["endTime"]?.toLongOrNull()
+                    
+                    val trend = insightService.getMetricTrend(
+                        metricId,
+                        startTime ?: (System.currentTimeMillis() - 7 * 86400000),
+                        endTime ?: System.currentTimeMillis()
+                    )
+                    
+                    call.respond(HttpStatusCode.OK, ApiResponse.success(trend))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, ApiResponse.error<Map<String, Any>>(e.message ?: "Failed to get metric trend"))
+                }
+            }
         }
     }
     
@@ -658,6 +737,14 @@ data class CreateKPIRequest(
     val unit: String? = null,
     val category: String,
     val historicalData: List<KPIDataPoint> = emptyList()
+)
+
+@Serializable
+data class AnomalyDetectionRequest(
+    val metricIds: List<String>,
+    val sensitivity: Double = 1.0,
+    val startTime: Long? = null,
+    val endTime: Long? = null
 )
 
 @Serializable

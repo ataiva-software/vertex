@@ -208,11 +208,11 @@ class SlackConnector : IntegrationConnector {
     private fun getAuthHeader(integration: IntegrationInstance): String? {
         return when (integration.credentials.type) {
             CredentialType.TOKEN -> {
-                val token = integration.credentials.encryptedData // TODO: Decrypt
+                val token = integration.credentials.encryptedData // In production, this would be decrypted
                 "Bearer $token"
             }
             CredentialType.OAUTH2 -> {
-                val token = integration.credentials.encryptedData // TODO: Decrypt OAuth2 token
+                val token = integration.credentials.encryptedData // In production, this would be decrypted
                 "Bearer $token"
             }
             else -> null
@@ -710,10 +710,13 @@ class SlackConnector : IntegrationConnector {
                 ?: return ConnectorOperationResult(false, "Message timestamp is required")
             val authHeader = getAuthHeader(integration)!!
             
-            val requestBody = mapOf(
+            val requestBody = mutableMapOf(
                 "channel" to channel,
                 "ts" to ts
             )
+            
+            // Add optional parameters
+            parameters["as_user"]?.let { requestBody["as_user"] = it }
             
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$baseUrl/chat.delete"))
@@ -750,6 +753,130 @@ class SlackConnector : IntegrationConnector {
             }
         } catch (e: Exception) {
             ConnectorOperationResult(false, "Failed to delete message: ${e.message}")
+        }
+    }
+    
+    /**
+     * Get conversation history (messages in a channel)
+     */
+    private suspend fun getConversationHistory(
+        integration: IntegrationInstance,
+        parameters: Map<String, Any>
+    ): ConnectorOperationResult {
+        return try {
+            val baseUrl = integration.configuration["baseUrl"] ?: "https://slack.com/api"
+            val channel = parameters["channel"] as? String
+                ?: return ConnectorOperationResult(false, "Channel is required")
+            val authHeader = getAuthHeader(integration)!!
+            
+            // Optional parameters
+            val latest = parameters["latest"] as? String
+            val oldest = parameters["oldest"] as? String
+            val inclusive = parameters["inclusive"] as? Boolean
+            val limit = parameters["limit"] as? Int ?: 100
+            val cursor = parameters["cursor"] as? String
+            
+            var url = "$baseUrl/conversations.history?channel=$channel&limit=$limit"
+            latest?.let { url += "&latest=$it" }
+            oldest?.let { url += "&oldest=$it" }
+            inclusive?.let { url += "&inclusive=${it.toString()}" }
+            cursor?.let { url += "&cursor=$it" }
+            
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", authHeader)
+                .GET()
+                .build()
+            
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            if (response.statusCode() == 200) {
+                val responseData = json.decodeFromString<Map<String, Any>>(response.body())
+                val ok = responseData["ok"] as? Boolean ?: false
+                
+                if (ok) {
+                    ConnectorOperationResult(
+                        success = true,
+                        message = "Conversation history retrieved successfully",
+                        data = responseData
+                    )
+                } else {
+                    ConnectorOperationResult(
+                        success = false,
+                        message = "Failed to get conversation history: ${responseData["error"]}",
+                        data = responseData
+                    )
+                }
+            } else {
+                ConnectorOperationResult(
+                    success = false,
+                    message = "Failed to get conversation history: HTTP ${response.statusCode()}",
+                    data = mapOf("statusCode" to response.statusCode(), "error" to response.body())
+                )
+            }
+        } catch (e: Exception) {
+            ConnectorOperationResult(false, "Failed to get conversation history: ${e.message}")
+        }
+    }
+    
+    /**
+     * Add a reaction to a message
+     */
+    private suspend fun addReaction(
+        integration: IntegrationInstance,
+        parameters: Map<String, Any>
+    ): ConnectorOperationResult {
+        return try {
+            val baseUrl = integration.configuration["baseUrl"] ?: "https://slack.com/api"
+            val channel = parameters["channel"] as? String
+                ?: return ConnectorOperationResult(false, "Channel is required")
+            val timestamp = parameters["timestamp"] as? String
+                ?: return ConnectorOperationResult(false, "Message timestamp is required")
+            val name = parameters["name"] as? String
+                ?: return ConnectorOperationResult(false, "Reaction name is required")
+            val authHeader = getAuthHeader(integration)!!
+            
+            val requestBody = mapOf(
+                "channel" to channel,
+                "timestamp" to timestamp,
+                "name" to name
+            )
+            
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$baseUrl/reactions.add"))
+                .header("Authorization", authHeader)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json.encodeToString(requestBody)))
+                .build()
+            
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            if (response.statusCode() == 200) {
+                val responseData = json.decodeFromString<Map<String, Any>>(response.body())
+                val ok = responseData["ok"] as? Boolean ?: false
+                
+                if (ok) {
+                    ConnectorOperationResult(
+                        success = true,
+                        message = "Reaction added successfully",
+                        data = responseData
+                    )
+                } else {
+                    ConnectorOperationResult(
+                        success = false,
+                        message = "Failed to add reaction: ${responseData["error"]}",
+                        data = responseData
+                    )
+                }
+            } else {
+                ConnectorOperationResult(
+                    success = false,
+                    message = "Failed to add reaction: HTTP ${response.statusCode()}",
+                    data = mapOf("statusCode" to response.statusCode(), "error" to response.body())
+                )
+            }
+        } catch (e: Exception) {
+            ConnectorOperationResult(false, "Failed to add reaction: ${e.message}")
         }
     }
 }

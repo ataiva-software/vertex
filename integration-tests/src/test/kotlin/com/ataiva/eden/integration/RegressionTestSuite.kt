@@ -68,6 +68,8 @@ class RegressionTestSuite {
             testMonitorToHubNotifications()
             testCLIToAPIGatewayRouting()
             testEndToEndDevOpsPipeline()
+            testHubToInsightIntegration()
+            testErrorHandlingAndRecovery()
         }
         
         // Phase 3: Performance Validation
@@ -77,6 +79,8 @@ class RegressionTestSuite {
             testHubWebhookPerformance()
             testFlowExecutionPerformance()
             testInsightQueryPerformance()
+            testHubIntegrationPerformance()
+            testInsightAnalyticsPerformance()
             testDatabasePerformance()
             testMemoryStability()
         }
@@ -89,6 +93,8 @@ class RegressionTestSuite {
             testInputValidation()
             testDataEncryption()
             testWebhookSecurity()
+            testHubServiceSecurity()
+            testInsightServiceSecurity()
             testRateLimiting()
             testSecurityHeaders()
             testAuditLogging()
@@ -701,6 +707,228 @@ class RegressionTestSuite {
             // Audit logging verification would require access to logs
             // For now, we just ensure operations don't fail
             assertTrue(true, "Audit logging operations completed")
+        }
+    }
+    
+    private suspend fun testHubServiceSecurity() {
+        executeTest("Hub Service Security") {
+            // Test authentication requirements
+            val unauthenticatedResponse = makeRequest("GET", "$hubServiceUrl/api/v1/integrations")
+            assertTrue(unauthenticatedResponse.statusCode() in listOf(401, 403),
+                "Hub Service should require authentication")
+            
+            // Test authenticated access
+            val authenticatedResponse = makeAuthenticatedRequest("GET",
+                "$hubServiceUrl/api/v1/integrations?userId=regression-user")
+            assertEquals(200, authenticatedResponse.statusCode())
+            
+            // Test input validation
+            val invalidRequest = mapOf(
+                "name" to "'; DROP TABLE integrations; --",
+                "type" to "GITHUB",
+                "userId" to "regression-user"
+            )
+            
+            val validationResponse = makeAuthenticatedRequest("POST",
+                "$hubServiceUrl/api/v1/integrations", invalidRequest)
+            assertTrue(validationResponse.statusCode() in listOf(400, 422),
+                "Hub Service should validate input")
+        }
+    }
+    
+    private suspend fun testInsightServiceSecurity() {
+        executeTest("Insight Service Security") {
+            // Test authentication requirements
+            val unauthenticatedResponse = makeRequest("GET", "$insightServiceUrl/api/v1/analytics")
+            assertTrue(unauthenticatedResponse.statusCode() in listOf(401, 403),
+                "Insight Service should require authentication")
+            
+            // Test authenticated access
+            val authenticatedResponse = makeAuthenticatedRequest("GET",
+                "$insightServiceUrl/api/v1/analytics?userId=regression-user")
+            assertEquals(200, authenticatedResponse.statusCode())
+            
+            // Test SQL injection prevention
+            val injectionQuery = mapOf(
+                "name" to "Injection Test",
+                "queryText" to "'; DROP TABLE events; --",
+                "userId" to "regression-user"
+            )
+            
+            val injectionResponse = makeAuthenticatedRequest("POST",
+                "$insightServiceUrl/api/v1/queries", injectionQuery)
+            assertTrue(injectionResponse.statusCode() in listOf(400, 422),
+                "Insight Service should prevent SQL injection")
+        }
+    }
+    
+    private suspend fun testHubToInsightIntegration() {
+        executeTest("Hub → Insight Integration") {
+            // Create a webhook in Hub Service that sends to Insight Service
+            val webhookRequest = mapOf(
+                "name" to "Insight Analytics Webhook",
+                "url" to "$insightServiceUrl/api/v1/events/ingest",
+                "events" to listOf("code.commit", "deployment.complete"),
+                "secret" to "insight-webhook-secret",
+                "userId" to "regression-user"
+            )
+            
+            val webhookResponse = makeAuthenticatedRequest("POST", "$hubServiceUrl/api/v1/webhooks", webhookRequest)
+            assertEquals(201, webhookResponse.statusCode())
+            
+            val webhookResult = json.decodeFromString<Map<String, Any>>(webhookResponse.body())
+            val webhookId = (webhookResult["data"] as Map<String, Any>)["id"] as String
+            
+            // Deliver webhook events
+            val eventPayload = mapOf(
+                "event" to "code.commit",
+                "payload" to mapOf(
+                    "repository" to "test-repo",
+                    "branch" to "main",
+                    "author" to "test-user",
+                    "message" to "Test commit",
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
+            
+            val deliveryResponse = makeAuthenticatedRequest("POST",
+                "$hubServiceUrl/api/v1/webhooks/$webhookId/deliver", eventPayload)
+            assertEquals(202, deliveryResponse.statusCode())
+            
+            // Wait for events to be processed
+            Thread.sleep(3000)
+            
+            // Query Insight Service for the processed events
+            val eventsResponse = makeAuthenticatedRequest("GET",
+                "$insightServiceUrl/api/v1/events?userId=regression-user&limit=10")
+            assertEquals(200, eventsResponse.statusCode())
+            
+            val eventsResult = json.decodeFromString<Map<String, Any>>(eventsResponse.body())
+            val events = eventsResult["data"] as List<Map<String, Any>>
+            
+            // Verify events were processed
+            assertTrue(events.any { it["type"] == "code.commit" })
+            
+            // Cleanup
+            makeAuthenticatedRequest("DELETE", "$hubServiceUrl/api/v1/webhooks/$webhookId?userId=regression-user")
+        }
+    }
+    
+    private suspend fun testErrorHandlingAndRecovery() {
+        executeTest("Error Handling and Recovery") {
+            // Create a webhook with an invalid URL to test error handling
+            val invalidWebhookRequest = mapOf(
+                "name" to "Error Test Webhook",
+                "url" to "https://non-existent-service-12345.example.com/webhook",
+                "events" to listOf("test.event"),
+                "userId" to "regression-user"
+            )
+            
+            val webhookResponse = makeAuthenticatedRequest("POST", "$hubServiceUrl/api/v1/webhooks", invalidWebhookRequest)
+            assertEquals(201, webhookResponse.statusCode())
+            
+            val webhookResult = json.decodeFromString<Map<String, Any>>(webhookResponse.body())
+            val webhookId = (webhookResult["data"] as Map<String, Any>)["id"] as String
+            
+            // Deliver webhook to trigger error
+            val eventPayload = mapOf(
+                "event" to "test.event",
+                "payload" to mapOf("message" to "This should fail")
+            )
+            
+            val deliveryResponse = makeAuthenticatedRequest("POST",
+                "$hubServiceUrl/api/v1/webhooks/$webhookId/deliver", eventPayload)
+            assertEquals(202, deliveryResponse.statusCode()) // Accepted for processing
+            
+            // Wait for delivery attempt and retry
+            Thread.sleep(3000)
+            
+            // Check webhook delivery status - should show failed attempts
+            val deliveriesResponse = makeAuthenticatedRequest("GET",
+                "$hubServiceUrl/api/v1/webhooks/$webhookId/deliveries")
+            assertEquals(200, deliveriesResponse.statusCode())
+            
+            // Cleanup
+            makeAuthenticatedRequest("DELETE", "$hubServiceUrl/api/v1/webhooks/$webhookId?userId=regression-user")
+        }
+    }
+    
+    private suspend fun testHubIntegrationPerformance() {
+        executeTest("Hub Integration Performance") {
+            // Create test integration
+            val integrationRequest = mapOf(
+                "name" to "Performance Test Integration",
+                "type" to "GITHUB",
+                "description" to "Integration for performance testing",
+                "configuration" to mapOf("baseUrl" to "https://api.github.com"),
+                "userId" to "regression-user"
+            )
+            
+            val integrationResponse = makeAuthenticatedRequest("POST",
+                "$hubServiceUrl/api/v1/integrations", integrationRequest)
+            assertEquals(201, integrationResponse.statusCode())
+            
+            val integrationResult = json.decodeFromString<Map<String, Any>>(integrationResponse.body())
+            val integrationId = (integrationResult["data"] as Map<String, Any>)["id"] as String
+            
+            // Test integration operation performance
+            val startTime = System.currentTimeMillis()
+            
+            val operationResponse = makeAuthenticatedRequest("POST",
+                "$hubServiceUrl/api/v1/integrations/$integrationId/execute",
+                mapOf(
+                    "operation" to "listRepositories",
+                    "parameters" to mapOf("type" to "all")
+                )
+            )
+            
+            val operationTime = System.currentTimeMillis() - startTime
+            
+            assertEquals(200, operationResponse.statusCode())
+            
+            // Verify performance
+            assertTrue(operationTime <= 3000,
+                "Integration operation time should be <= 3000ms, got ${operationTime}ms")
+            
+            // Cleanup
+            makeAuthenticatedRequest("DELETE", "$hubServiceUrl/api/v1/integrations/$integrationId?userId=regression-user")
+        }
+    }
+    
+    private suspend fun testInsightAnalyticsPerformance() {
+        executeTest("Insight Analytics Performance") {
+            // Create test events
+            repeat(5) { i ->
+                val eventRequest = mapOf(
+                    "type" to "test.event",
+                    "source" to "performance-test",
+                    "data" to mapOf(
+                        "testId" to i,
+                        "timestamp" to System.currentTimeMillis(),
+                        "value" to (i * 10)
+                    ),
+                    "userId" to "regression-user"
+                )
+                
+                makeAuthenticatedRequest("POST", "$insightServiceUrl/api/v1/events", eventRequest)
+            }
+            
+            // Wait for events to be indexed
+            Thread.sleep(2000)
+            
+            // Test analytics query performance
+            val startTime = System.currentTimeMillis()
+            
+            val queryResponse = makeAuthenticatedRequest("GET",
+                "$insightServiceUrl/api/v1/analytics?type=summary&userId=regression-user")
+            
+            val queryTime = System.currentTimeMillis() - startTime
+            
+            assertEquals(200, queryResponse.statusCode())
+            
+            // Verify performance
+            assertTrue(queryTime <= 3000,
+                "Analytics query time should be <= 3000ms, got ${queryTime}ms")
         }
     }
     

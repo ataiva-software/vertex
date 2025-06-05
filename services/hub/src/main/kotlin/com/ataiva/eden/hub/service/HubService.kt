@@ -51,7 +51,7 @@ class HubService(
             // Publish integration created event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "integration.created",
                     source = "hub",
                     data = mapOf(
@@ -80,7 +80,7 @@ class HubService(
             // Publish integration updated event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "integration.updated",
                     source = "hub",
                     data = mapOf(
@@ -107,7 +107,7 @@ class HubService(
             
             // Publish integration tested event
             publishEvent(HubEvent(
-                id = secureRandom.nextUuid(),
+                id = SecureRandom.generateUuid(),
                 type = "integration.tested",
                 source = "hub",
                 data = mapOf(
@@ -138,7 +138,7 @@ class HubService(
             
             // Publish operation executed event
             publishEvent(HubEvent(
-                id = secureRandom.nextUuid(),
+                id = SecureRandom.generateUuid(),
                 type = "integration.operation.executed",
                 source = "hub",
                 data = mapOf(
@@ -180,7 +180,7 @@ class HubService(
             // Publish integration deleted event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "integration.deleted",
                     source = "hub",
                     data = mapOf(
@@ -211,7 +211,7 @@ class HubService(
             // Publish webhook created event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "webhook.created",
                     source = "hub",
                     data = mapOf(
@@ -241,7 +241,7 @@ class HubService(
             // Publish webhook updated event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "webhook.updated",
                     source = "hub",
                     data = mapOf(
@@ -282,7 +282,7 @@ class HubService(
             // Publish webhook deleted event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "webhook.deleted",
                     source = "hub",
                     data = mapOf(
@@ -315,7 +315,7 @@ class HubService(
             
             // Publish webhook tested event
             publishEvent(HubEvent(
-                id = secureRandom.nextUuid(),
+                id = SecureRandom.generateUuid(),
                 type = "webhook.tested",
                 source = "hub",
                 data = mapOf(
@@ -359,7 +359,7 @@ class HubService(
             // Publish template created event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "notification.template.created",
                     source = "hub",
                     data = mapOf(
@@ -389,7 +389,7 @@ class HubService(
             // Publish template updated event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "notification.template.updated",
                     source = "hub",
                     data = mapOf(
@@ -430,7 +430,7 @@ class HubService(
             // Publish template deleted event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "notification.template.deleted",
                     source = "hub",
                     data = mapOf(
@@ -457,7 +457,7 @@ class HubService(
             // Publish notification sent event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "notification.sent",
                     source = "hub",
                     data = mapOf(
@@ -501,7 +501,7 @@ class HubService(
             // Publish notification cancelled event
             if (result is HubResult.Success) {
                 publishEvent(HubEvent(
-                    id = secureRandom.nextUuid(),
+                    id = SecureRandom.generateUuid(),
                     type = "notification.cancelled",
                     source = "hub",
                     data = mapOf(
@@ -532,7 +532,7 @@ class HubService(
         userId: String
     ): HubResult<EventSubscription> {
         return try {
-            val subscriptionId = secureRandom.nextUuid()
+            val subscriptionId = SecureRandom.generateUuid()
             val subscription = EventSubscription(
                 id = subscriptionId,
                 eventTypes = eventTypes,
@@ -548,7 +548,7 @@ class HubService(
             
             // Publish subscription created event
             publishEvent(HubEvent(
-                id = secureRandom.nextUuid(),
+                id = SecureRandom.generateUuid(),
                 type = "event.subscription.created",
                 source = "hub",
                 data = mapOf(
@@ -582,7 +582,7 @@ class HubService(
             
             // Publish subscription deleted event
             publishEvent(HubEvent(
-                id = secureRandom.nextUuid(),
+                id = SecureRandom.generateUuid(),
                 type = "event.subscription.deleted",
                 source = "hub",
                 data = mapOf(

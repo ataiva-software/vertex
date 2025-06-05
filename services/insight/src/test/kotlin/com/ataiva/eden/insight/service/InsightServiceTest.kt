@@ -698,6 +698,149 @@ class InsightServiceTest {
             val successRate = performance["query_success_rate"] as Double
             assertTrue(successRate >= 0.0 && successRate <= 1.0)
         }
+        
+        @Test
+        @DisplayName("Should analyze performance trends successfully")
+        fun `should analyze performance trends successfully`() = runBlocking {
+            // When
+            val trends = insightService.analyzePerformanceTrends()
+            
+            // Then
+            assertNotNull(trends)
+            assertTrue(trends.containsKey("response_time_trend"))
+            assertTrue(trends.containsKey("error_rate_trend"))
+            assertTrue(trends.containsKey("throughput_trend"))
+            assertTrue(trends.containsKey("seasonality"))
+            assertTrue(trends.containsKey("correlations"))
+            assertTrue(trends.containsKey("summary"))
+            assertTrue(trends.containsKey("recommendations"))
+            
+            val responseTimeTrend = trends["response_time_trend"] as Map<*, *>
+            assertTrue(responseTimeTrend.containsKey("direction"))
+            assertTrue(responseTimeTrend.containsKey("slope"))
+            assertTrue(responseTimeTrend.containsKey("strength"))
+        }
+        
+        @Test
+        @DisplayName("Should detect anomalies successfully")
+        fun `should detect anomalies successfully`() = runBlocking {
+            // Given
+            val metric = insightService.createMetric(
+                name = "Test Metric",
+                description = "Test metric for anomaly detection",
+                category = "test",
+                unit = "count",
+                aggregationType = AggregationType.COUNT,
+                queryId = "test_query"
+            )
+            
+            // When
+            val anomalies = insightService.detectAnomalies(listOf(metric.id))
+            
+            // Then
+            assertNotNull(anomalies)
+            assertTrue(anomalies is List<*>)
+            
+            if (anomalies.isNotEmpty()) {
+                val anomaly = anomalies.first() as Map<*, *>
+                assertTrue(anomaly.containsKey("id"))
+                assertTrue(anomaly.containsKey("timestamp"))
+                assertTrue(anomaly.containsKey("type"))
+                assertTrue(anomaly.containsKey("severity"))
+                assertTrue(anomaly.containsKey("value"))
+                assertTrue(anomaly.containsKey("confidence"))
+            }
+        }
+        
+        @Test
+        @DisplayName("Should generate insights successfully")
+        fun `should generate insights successfully`() = runBlocking {
+            // When
+            val insights = insightService.generateInsights()
+            
+            // Then
+            assertNotNull(insights)
+            assertTrue(insights is List<*>)
+            
+            if (insights.isNotEmpty()) {
+                val insight = insights.first() as Map<*, *>
+                assertTrue(insight.containsKey("id"))
+                assertTrue(insight.containsKey("title"))
+                assertTrue(insight.containsKey("description"))
+                assertTrue(insight.containsKey("category"))
+                assertTrue(insight.containsKey("impact"))
+                assertTrue(insight.containsKey("confidence"))
+            }
+        }
+        
+        @Test
+        @DisplayName("Should predict resource usage successfully")
+        fun `should predict resource usage successfully`() = runBlocking {
+            // When
+            val prediction = insightService.predictResourceUsage(24)
+            
+            // Then
+            assertNotNull(prediction)
+            assertTrue(prediction.containsKey("horizon_hours"))
+            assertTrue(prediction.containsKey("cpu_prediction"))
+            assertTrue(prediction.containsKey("memory_prediction"))
+            assertTrue(prediction.containsKey("disk_prediction"))
+            assertTrue(prediction.containsKey("network_prediction"))
+            assertTrue(prediction.containsKey("overall_confidence"))
+            assertTrue(prediction.containsKey("recommendations"))
+            
+            assertEquals(24, prediction["horizon_hours"])
+            
+            val cpuPrediction = prediction["cpu_prediction"] as Map<*, *>
+            assertTrue(cpuPrediction.containsKey("predictions"))
+            assertTrue(cpuPrediction.containsKey("confidence"))
+        }
+        
+        @Test
+        @DisplayName("Should analyze metric trend successfully")
+        fun `should analyze metric trend successfully`() = runBlocking {
+            // Given
+            val metric = insightService.createMetric(
+                name = "CPU Usage",
+                description = "System CPU usage",
+                category = "system",
+                unit = "%",
+                aggregationType = AggregationType.AVG,
+                queryId = "cpu_query"
+            )
+            
+            // When
+            val trend = insightService.getMetricTrend(metric.id)
+            
+            // Then
+            assertNotNull(trend)
+            assertTrue(trend.containsKey("metric"))
+            assertTrue(trend.containsKey("trend"))
+            assertTrue(trend.containsKey("data"))
+            assertTrue(trend.containsKey("statistics"))
+            assertTrue(trend.containsKey("forecast"))
+            
+            val metricInfo = trend["metric"] as Map<*, *>
+            assertEquals(metric.id, metricInfo["id"])
+            assertEquals(metric.name, metricInfo["name"])
+            
+            val trendInfo = trend["trend"] as Map<*, *>
+            assertTrue(trendInfo.containsKey("direction"))
+            assertTrue(trendInfo.containsKey("slope"))
+            assertTrue(trendInfo.containsKey("correlation"))
+            
+            val data = trend["data"] as List<*>
+            assertTrue(data.isNotEmpty())
+            
+            val statistics = trend["statistics"] as Map<*, *>
+            assertTrue(statistics.containsKey("min"))
+            assertTrue(statistics.containsKey("max"))
+            assertTrue(statistics.containsKey("avg"))
+            
+            val forecast = trend["forecast"] as Map<*, *>
+            assertTrue(forecast.containsKey("next_24h"))
+            assertTrue(forecast.containsKey("next_7d"))
+        }
     }
     
     // ============================================================================

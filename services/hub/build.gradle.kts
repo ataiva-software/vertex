@@ -1,63 +1,41 @@
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.20"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    id("io.ktor.plugin")
     application
 }
 
-group = "com.ataiva.eden"
-version = "1.0.0"
-
-repositories {
-    mavenCentral()
+application {
+    mainClass.set("com.ataiva.eden.hub.ApplicationKt")
+    
+    val isDevelopment: Boolean = project.ext.has("development")
+    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
 dependencies {
-    // Ktor Server
-    implementation("io.ktor:ktor-server-core:2.3.6")
-    implementation("io.ktor:ktor-server-netty:2.3.6")
-    implementation("io.ktor:ktor-server-content-negotiation:2.3.6")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.6")
-    implementation("io.ktor:ktor-server-cors:2.3.6")
-    implementation("io.ktor:ktor-server-call-logging:2.3.6")
-    implementation("io.ktor:ktor-server-status-pages:2.3.6")
-    implementation("io.ktor:ktor-server-auth:2.3.6")
-    implementation("io.ktor:ktor-server-auth-jwt:2.3.6")
+    // Shared libraries
+    implementation(project(":shared:core"))
+    implementation(project(":shared:auth"))
+    implementation(project(":shared:crypto"))
+    implementation(project(":shared:database"))
+    implementation(project(":shared:events"))
+    implementation(project(":shared:config"))
     
-    // Ktor Client (for external API calls)
-    implementation("io.ktor:ktor-client-core:2.3.6")
-    implementation("io.ktor:ktor-client-cio:2.3.6")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.6")
-    implementation("io.ktor:ktor-client-logging:2.3.6")
-    implementation("io.ktor:ktor-client-auth:2.3.6")
-    
-    // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
+    // Ktor
+    implementation(libs.bundles.ktor.server)
+    implementation(libs.bundles.ktor.client)
     
     // Database
-    implementation("org.jetbrains.exposed:exposed-core:0.44.1")
-    implementation("org.jetbrains.exposed:exposed-dao:0.44.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.44.1")
-    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.44.1")
-    implementation("com.h2database:h2:2.2.224")
-    implementation("org.postgresql:postgresql:42.6.0")
+    implementation(libs.bundles.database)
+    
+    // Redis
+    implementation(libs.jedis)
     
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.4.11")
-    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation(libs.bundles.logging)
     
     // Configuration
-    implementation("com.typesafe:config:1.4.3")
-    
-    // DateTime
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
-    
-    // Encryption/Security
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-    implementation("com.auth0:java-jwt:4.4.0")
+    implementation(libs.typesafe.config)
     
     // HTTP Client for webhooks
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -72,12 +50,16 @@ dependencies {
     implementation("aws.sdk.kotlin:lambda:0.33.1-beta")
     
     // Testing
-    testImplementation("io.ktor:ktor-server-tests:2.3.6")
-    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.20")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testImplementation("com.h2database:h2:2.2.224")
+    testImplementation(project(":shared:testing"))
+    testImplementation(libs.ktor.server.tests)
+    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 application {

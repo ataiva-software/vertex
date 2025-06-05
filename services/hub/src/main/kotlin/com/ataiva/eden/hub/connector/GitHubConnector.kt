@@ -733,8 +733,12 @@ class GitHubConnector : IntegrationConnector {
             val repo = parameters["repo"] as? String
                 ?: return ConnectorOperationResult(false, "Repository name is required")
             val authHeader = getAuthHeader(integration)!!
-val request = HttpRequest.newBuilder()
-                .uri(URI.create("$baseUrl/repos/$owner/$repo/hooks"))
+            
+            val perPage = parameters["per_page"] as? Int ?: 30
+            val page = parameters["page"] as? Int ?: 1
+            
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$baseUrl/repos/$owner/$repo/hooks?per_page=$perPage&page=$page"))
                 .header("Authorization", authHeader)
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("User-Agent", "Eden-Hub/1.0")
@@ -745,10 +749,24 @@ val request = HttpRequest.newBuilder()
             
             if (response.statusCode() == 200) {
                 val webhooks = json.decodeFromString<List<Map<String, Any>>>(response.body())
+                
+                // Extract pagination information from headers
+                val linkHeader = response.headers().firstValue("Link").orElse("")
+                val hasNextPage = linkHeader.contains("rel=\"next\"")
+                val hasLastPage = linkHeader.contains("rel=\"last\"")
+                
                 ConnectorOperationResult(
                     success = true,
                     message = "Webhooks retrieved successfully",
-                    data = mapOf("webhooks" to webhooks)
+                    data = mapOf(
+                        "webhooks" to webhooks,
+                        "pagination" to mapOf(
+                            "page" to page,
+                            "per_page" to perPage,
+                            "has_next_page" to hasNextPage,
+                            "has_last_page" to hasLastPage
+                        )
+                    )
                 )
             } else {
                 ConnectorOperationResult(
@@ -761,7 +779,6 @@ val request = HttpRequest.newBuilder()
             ConnectorOperationResult(false, "Failed to list webhooks: ${e.message}")
         }
     }
-    
     private suspend fun deleteWebhook(
         integration: IntegrationInstance,
         parameters: Map<String, Any>

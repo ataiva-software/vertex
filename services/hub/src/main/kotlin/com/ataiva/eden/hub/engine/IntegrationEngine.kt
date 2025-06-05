@@ -3,6 +3,7 @@ package com.ataiva.eden.hub.engine
 import com.ataiva.eden.hub.model.*
 import com.ataiva.eden.crypto.Encryption
 import com.ataiva.eden.crypto.SecureRandom
+import com.ataiva.eden.hub.connector.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.*
@@ -10,6 +11,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.util.concurrent.ConcurrentHashMap
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.net.URI
+import java.time.Duration
 
 /**
  * Core integration engine that manages all external service integrations
@@ -21,12 +27,57 @@ class IntegrationEngine(
     private val connectors = ConcurrentHashMap<IntegrationType, IntegrationConnector>()
     private val activeIntegrations = ConcurrentHashMap<String, IntegrationInstance>()
     private val authenticationManager = AuthenticationManager(encryption, secureRandom)
+    private val eventSubscriptions = ConcurrentHashMap<String, EventSubscription>()
+    private val deliveryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     /**
      * Register a connector for a specific integration type
      */
     fun registerConnector(type: IntegrationType, connector: IntegrationConnector) {
         connectors[type] = connector
+    }
+    
+    /**
+     * Register all available connectors
+     */
+    fun registerConnectors(
+        githubConnector: GitHubConnector,
+        slackConnector: SlackConnector,
+        jiraConnector: JiraConnector,
+        awsConnector: AwsConnector
+    ) {
+        registerConnector(IntegrationType.GITHUB, githubConnector)
+        registerConnector(IntegrationType.SLACK, slackConnector)
+        registerConnector(IntegrationType.JIRA, jiraConnector)
+        registerConnector(IntegrationType.AWS, awsConnector)
+    }
+    
+    /**
+     * Subscribe to integration events
+     */
+    fun subscribeToEvents(subscription: EventSubscription): HubResult<EventSubscription> {
+        return try {
+            if (subscription.eventTypes.isEmpty()) {
+                return HubResult.Error("At least one event type must be specified")
+            }
+            
+            eventSubscriptions[subscription.id] = subscription
+            HubResult.Success(subscription)
+        } catch (e: Exception) {
+            HubResult.Error("Failed to subscribe to events: ${e.message}")
+        }
+    }
+    
+    /**
+     * Unsubscribe from integration events
+     */
+    fun unsubscribeFromEvents(subscriptionId: String): HubResult<Unit> {
+        return try {
+            eventSubscriptions.remove(subscriptionId)
+            HubResult.Success(Unit)
+        } catch (e: Exception) {
+            HubResult.Error("Failed to unsubscribe from events: ${e.message}")
+        }
     }
     
     /**
@@ -42,7 +93,7 @@ class IntegrationEngine(
             val encryptedCredentials = authenticationManager.encryptCredentials(request.credentials)
             
             // Create integration instance
-            val integrationId = secureRandom.nextUuid()
+            val integrationId = SecureRandom.generateUuid()
             val integration = IntegrationInstance(
                 id = integrationId,
                 name = request.name,
@@ -222,16 +273,100 @@ class IntegrationEngine(
      */
     fun getIntegrationsHealth(): IntegrationsHealth {
         val totalIntegrations = activeIntegrations.size
-        val activeIntegrations = activeIntegrations.values.count { it.status == IntegrationStatus.ACTIVE }
+        val activeIntegrationsCount = activeIntegrations.values.count { it.status == IntegrationStatus.ACTIVE }
         val errorIntegrations = activeIntegrations.values.count { it.status == IntegrationStatus.ERROR }
         val lastTestAt = activeIntegrations.values.mapNotNull { it.lastTestAt }.maxOrNull()
         
         return IntegrationsHealth(
             totalIntegrations = totalIntegrations,
-            activeIntegrations = activeIntegrations,
+            activeIntegrations = activeIntegrationsCount,
             errorIntegrations = errorIntegrations,
             lastTestAt = lastTestAt
         )
+    }
+    /**
+     * Process integration events
+     */
+    suspend fun processEvent(event: HubEvent): HubResult<Unit> {
+        return try {
+            // Find all subscriptions that match this event type
+            val matchingSubscriptions = eventSubscriptions.values
+                .filter { subscription ->
+                    subscription.isActive && (
+                        subscription.eventTypes.contains(event.type) ||
+                        subscription.eventTypes.contains("*")
+                    )
+                }
+            
+            // Deliver event to each subscriber
+            matchingSubscriptions.forEach { subscription ->
+                deliveryScope.launch {
+                    deliverEventToSubscriber(event, subscription)
+                }
+            }
+            
+            HubResult.Success(Unit)
+        } catch (e: Exception) {
+            HubResult.Error("Failed to process event: ${e.message}")
+        }
+    }
+    
+    /**
+     * Deliver event to a subscriber
+     */
+    private suspend fun deliverEventToSubscriber(event: HubEvent, subscription: EventSubscription) {
+        try {
+            val httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build()
+            
+            val payload = mapOf(
+                "id" to event.id,
+                "type" to event.type,
+                "source" to event.source,
+                "data" to event.data,
+                "timestamp" to event.timestamp.toString(),
+                "userId" to event.userId,
+                "organizationId" to event.organizationId
+            )
+            
+            val payloadJson = Json.encodeToString(payload)
+            
+            val requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(subscription.endpoint))
+                .header("Content-Type", "application/json")
+                .header("User-Agent", "Eden-Hub-Integration/1.0")
+                .POST(HttpRequest.BodyPublishers.ofString(payloadJson))
+            
+            // Add signature if secret is provided
+            subscription.secret?.let { secret ->
+                val signature = generateSignature(payloadJson, secret)
+                requestBuilder.header("X-Hub-Signature-256", "sha256=$signature")
+            }
+            
+            val request = requestBuilder.build()
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            // Log delivery result
+            if (response.statusCode() !in 200..299) {
+                // In production, implement proper logging and retry mechanism
+                println("Failed to deliver event ${event.id} to ${subscription.endpoint}: HTTP ${response.statusCode()}")
+            }
+        } catch (e: Exception) {
+            // In production, implement proper error handling and retry mechanism
+            println("Error delivering event ${event.id} to ${subscription.endpoint}: ${e.message}")
+        }
+    }
+    
+    /**
+     * Generate HMAC signature for webhook payload
+     */
+    private fun generateSignature(payload: String, secret: String): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        val secretKeySpec = javax.crypto.spec.SecretKeySpec(secret.toByteArray(), "HmacSHA256")
+        mac.init(secretKeySpec)
+        val signature = mac.doFinal(payload.toByteArray())
+        return signature.joinToString("") { "%02x".format(it) }
     }
 }
 
@@ -370,8 +505,8 @@ class AuthenticationManager(
             return credentials
         }
         
-        val encryptionKey = secureRandom.nextBytes(32)
-        val encryptionKeyId = secureRandom.nextUuid()
+        val encryptionKey = SecureRandom.generateBytes(32)
+        val encryptionKeyId = SecureRandom.generateUuid()
         
         val encryptionResult = encryption.encryptString(credentials.encryptedData, encryptionKey)
         
@@ -415,7 +550,7 @@ class AuthenticationManager(
         integrationId: String
     ): HubResult<String> {
         return try {
-            val state = secureRandom.nextString(32, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+            val state = SecureRandom.generateString(32, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
             val authUrl = buildOAuth2AuthUrl(config, state, integrationId)
             
             // Store state for validation (in production, use proper storage)

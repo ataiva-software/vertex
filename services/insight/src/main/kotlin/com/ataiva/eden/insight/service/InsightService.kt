@@ -520,11 +520,11 @@ class InsightService(
             "total_kpis" to kpis.size,
             "active_queries" to queries.values.count { it.isActive },
             "active_reports" to reports.values.count { it.isActive },
-            "query_executions_today" to executions.values.count { 
-                it.startTime > System.currentTimeMillis() - 86400000 
+            "query_executions_today" to executions.values.count {
+                it.startTime > System.currentTimeMillis() - 86400000
             },
-            "report_generations_today" to reportExecutions.values.count { 
-                it.startTime > System.currentTimeMillis() - 86400000 
+            "report_generations_today" to reportExecutions.values.count {
+                it.startTime > System.currentTimeMillis() - 86400000
             }
         )
     }
@@ -533,8 +533,8 @@ class InsightService(
      * Get performance analytics
      */
     fun getPerformanceAnalytics(): Map<String, Any> {
-        val recentExecutions = executions.values.filter { 
-            it.endTime != null && it.endTime!! > System.currentTimeMillis() - 3600000 
+        val recentExecutions = executions.values.filter {
+            it.endTime != null && it.endTime!! > System.currentTimeMillis() - 3600000
         }
         
         val avgExecutionTime = if (recentExecutions.isNotEmpty()) {
@@ -553,6 +553,161 @@ class InsightService(
             "cache_hit_rate" to 0.75, // From analytics engine
             "active_connections" to 12
         )
+    }
+    
+    /**
+     * Analyze performance trends over a specified time range
+     */
+    suspend fun analyzePerformanceTrends(
+        startTime: Long = System.currentTimeMillis() - 7 * 86400000, // Default: 7 days ago
+        endTime: Long = System.currentTimeMillis()
+    ): Map<String, Any> {
+        val timeRange = TimeRange(startTime, endTime)
+        return analyticsEngine.analyzePerformanceTrends(timeRange)
+    }
+    
+    /**
+     * Detect anomalies in metrics
+     */
+    suspend fun detectAnomalies(metricIds: List<String>): List<Map<String, Any>> {
+        val metricValues = metricIds.flatMap { metricId ->
+            metrics[metricId]?.let { metric ->
+                // In a real implementation, this would fetch actual metric values from a database
+                // For now, we'll generate some sample data
+                (0..10).map { i ->
+                    MetricValue(
+                        metricId = metric.id,
+                        value = 100.0 + (Math.random() * 50 - 25), // Base value with some variation
+                        timestamp = System.currentTimeMillis() - (i * 3600000), // Hourly data points
+                        dimensions = mapOf("service" to "api", "environment" to "production")
+                    )
+                }
+            } ?: emptyList()
+        }
+        
+        return analyticsEngine.detectAnomalies(metricValues)
+    }
+    
+    /**
+     * Generate insights based on system data
+     */
+    suspend fun generateInsights(
+        context: Map<String, Any> = mapOf(
+            "start_time" to (System.currentTimeMillis() - 7 * 86400000),
+            "end_time" to System.currentTimeMillis(),
+            "dimensions" to mapOf("service" to "all", "environment" to "production")
+        )
+    ): List<Map<String, Any>> {
+        return analyticsEngine.generateInsights(context)
+    }
+    
+    /**
+     * Predict resource usage for the specified horizon
+     */
+    suspend fun predictResourceUsage(horizonHours: Int = 24): Map<String, Any> {
+        return analyticsEngine.predictResourceUsage(horizonHours)
+    }
+    
+    /**
+     * Get trend analysis for a specific metric
+     */
+    suspend fun getMetricTrend(
+        metricId: String,
+        startTime: Long = System.currentTimeMillis() - 7 * 86400000,
+        endTime: Long = System.currentTimeMillis()
+    ): Map<String, Any> {
+        val metric = metrics[metricId] ?: throw IllegalArgumentException("Metric not found: $metricId")
+        
+        // In a real implementation, this would fetch actual metric values from a database
+        // For now, we'll generate some sample data
+        val metricValues = (0..24).map { i ->
+            MetricValue(
+                metricId = metric.id,
+                value = 100.0 + (i * 2) + (Math.random() * 20 - 10), // Increasing trend with noise
+                timestamp = startTime + ((endTime - startTime) / 24 * i),
+                dimensions = mapOf("service" to "api", "environment" to "production")
+            )
+        }
+        
+        // Calculate trend
+        val values = metricValues.map { it.value }
+        val timestamps = metricValues.map { it.timestamp }
+        
+        // Simple linear regression
+        val n = values.size
+        val sumX = timestamps.sum()
+        val sumY = values.sum()
+        val sumXY = timestamps.zip(values).sumOf { (x, y) -> x * y }
+        val sumXX = timestamps.sumOf { it * it }
+        
+        val slope = if (n * sumXX - sumX * sumX != 0.0) {
+            (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
+        } else 0.0
+        
+        val intercept = (sumY - slope * sumX) / n
+        
+        // Determine trend direction
+        val trendDirection = when {
+            slope > 0.001 -> "increasing"
+            slope < -0.001 -> "decreasing"
+            else -> "stable"
+        }
+        
+        // Calculate correlation coefficient
+        val meanX = timestamps.average()
+        val meanY = values.average()
+        val numerator = timestamps.zip(values).sumOf { (x, y) -> (x - meanX) * (y - meanY) }
+        val denominator = Math.sqrt(
+            timestamps.sumOf { (it - meanX) * (it - meanX) } *
+            values.sumOf { (it - meanY) * (it - meanY) }
+        )
+        
+        val correlation = if (denominator != 0.0) numerator / denominator else 0.0
+        
+        return mapOf(
+            "metric" to mapOf(
+                "id" to metric.id,
+                "name" to metric.name,
+                "category" to metric.category,
+                "unit" to (metric.unit ?: "")
+            ),
+            "trend" to mapOf(
+                "direction" to trendDirection,
+                "slope" to slope,
+                "intercept" to intercept,
+                "correlation" to correlation,
+                "strength" to when {
+                    Math.abs(correlation) > 0.8 -> "strong"
+                    Math.abs(correlation) > 0.5 -> "moderate"
+                    else -> "weak"
+                }
+            ),
+            "data" to metricValues.map {
+                mapOf(
+                    "timestamp" to it.timestamp,
+                    "value" to it.value
+                )
+            },
+            "statistics" to mapOf(
+                "min" to values.minOrNull(),
+                "max" to values.maxOrNull(),
+                "avg" to values.average(),
+                "stdDev" to calculateStandardDeviation(values)
+            ),
+            "forecast" to mapOf(
+                "next_24h" to (intercept + slope * (endTime + 24 * 3600000)),
+                "next_7d" to (intercept + slope * (endTime + 7 * 24 * 3600000))
+            )
+        )
+    }
+    
+    /**
+     * Calculate standard deviation
+     */
+    private fun calculateStandardDeviation(values: List<Double>): Double {
+        val mean = values.average()
+        val variance = values.sumOf { Math.pow(it - mean, 2.0) } / values.size
+        return Math.sqrt(variance)
     }
     
     // ============================================================================
@@ -798,8 +953,63 @@ class InsightService(
         
         // Update KPIs based on current metrics
         kpis.values.forEach { kpi ->
-            // Update KPI values based on real metrics
-            // This is a simplified example
+            try {
+                when (kpi.id) {
+                    "system_uptime" -> {
+                        val currentUptime = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("uptime_percentage") as? Double ?: 99.8
+                        updateKPI(kpi.id, currentUptime)
+                    }
+                    "api_response_time" -> {
+                        val responseTime = (systemMetrics["performance_stats"] as? Map<*, *>)?.get("avg_query_time") as? Number ?: 150
+                        updateKPI(kpi.id, responseTime.toDouble())
+                    }
+                    "error_rate" -> {
+                        val errorRate = (systemMetrics["usage_analytics"] as? Map<*, *>)?.get("error_rate") as? Double ?: 0.02
+                        updateKPI(kpi.id, errorRate * 100) // Convert to percentage
+                    }
+                    "cpu_usage" -> {
+                        val cpuUsage = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("cpu_usage") as? Number ?: 50
+                        updateKPI(kpi.id, cpuUsage.toDouble())
+                    }
+                    "memory_usage" -> {
+                        val memoryUsage = (systemMetrics["system_metrics"] as? Map<*, *>)?.get("memory_usage") as? Number ?: 65
+                        updateKPI(kpi.id, memoryUsage.toDouble())
+                    }
+                }
+            } catch (e: Exception) {
+                // Log error but continue processing other KPIs
+            }
+        }
+    }
+    
+    /**
+     * Update a KPI with a new value
+     */
+    private fun updateKPI(kpiId: String, newValue: Double) {
+        kpis[kpiId]?.let { kpi ->
+            // Calculate trend direction
+            val trend = when {
+                newValue > kpi.currentValue -> TrendDirection.UP
+                newValue < kpi.currentValue -> TrendDirection.DOWN
+                else -> TrendDirection.STABLE
+            }
+            
+            // Create historical data point
+            val dataPoint = KPIDataPoint(
+                timestamp = System.currentTimeMillis(),
+                value = newValue,
+                target = kpi.targetValue
+            )
+            
+            // Update KPI with new value and trend
+            val updatedKPI = kpi.copy(
+                currentValue = newValue,
+                trend = trend,
+                lastUpdated = System.currentTimeMillis(),
+                historicalData = (kpi.historicalData + dataPoint).takeLast(100) // Keep last 100 data points
+            )
+            
+            kpis[kpiId] = updatedKPI
         }
     }
 }
