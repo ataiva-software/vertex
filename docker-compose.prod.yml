@@ -1,0 +1,281 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-api-gateway
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api-gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - VAULT_SERVICE_URL=http://vault-service:8081
+      - FLOW_SERVICE_URL=http://flow-service:8082
+      - TASK_SERVICE_URL=http://task-service:8083
+      - HUB_SERVICE_URL=http://hub-service:8080
+      - SYNC_SERVICE_URL=http://sync-service:8084
+      - INSIGHT_SERVICE_URL=http://insight-service:8085
+    depends_on:
+      - vault-service
+      - flow-service
+      - task-service
+      - hub-service
+      - sync-service
+      - insight-service
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  vault-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-vault-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/vault/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_vault
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  flow-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-flow-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/flow/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_flow
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - VAULT_SERVICE_URL=http://vault-service:8081
+    depends_on:
+      - postgres
+      - redis
+      - vault-service
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  task-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-task-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/task/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_task
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  hub-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-hub-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/hub/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_hub
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  sync-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-sync-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/sync/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_sync
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  insight-service:
+    image: ataivadev/eden:${EDEN_VERSION:-latest}
+    container_name: eden-insight-service
+    build:
+      context: .
+      dockerfile: infrastructure/docker/insight/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_insight
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:14
+    container_name: eden-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_MULTIPLE_DATABASES=eden_vault,eden_flow,eden_task,eden_hub,eden_sync,eden_insight
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: eden-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: always
+    networks:
+      - eden-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    container_name: eden-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    restart: always
+    networks:
+      - eden-network
+
+  grafana:
+    image: grafana/grafana:9.4.7
+    container_name: eden-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./infrastructure/docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: always
+    networks:
+      - eden-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  eden-network:
+    driver: bridge
