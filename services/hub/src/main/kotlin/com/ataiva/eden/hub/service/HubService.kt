@@ -6,6 +6,7 @@ import com.ataiva.eden.hub.connector.*
 import com.ataiva.eden.crypto.Encryption
 import com.ataiva.eden.crypto.SecureRandom
 import com.ataiva.eden.database.EdenDatabaseService
+import com.ataiva.eden.hub.crypto.KeyManagementSystem
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.*
@@ -17,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap
 class HubService(
     private val databaseService: EdenDatabaseService,
     private val encryption: Encryption,
-    private val secureRandom: SecureRandom
+    private val secureRandom: SecureRandom,
+    private val keyManagementSystem: KeyManagementSystem
 ) {
     private val integrationEngine = IntegrationEngine(encryption, secureRandom)
     private val webhookService = WebhookService(secureRandom)
@@ -30,6 +32,11 @@ class HubService(
     init {
         // Register integration connectors
         registerConnectors()
+        
+        // Initialize key management system
+        serviceScope.launch {
+            keyManagementSystem.initialize()
+        }
         
         // Start background event processing
         serviceScope.launch {
@@ -725,12 +732,81 @@ class HubService(
                 )
             )
             
-            // TODO: Implement actual event delivery to subscriber endpoint
-            // For now, just log the event delivery
+            // Deliver the event to the subscriber endpoint
+            val result = webhookService.deliverWebhook(deliveryRequest)
             
+            when (result) {
+                is HubResult.Success -> {
+                    logger.info("Event ${event.id} of type ${event.type} delivered successfully to ${subscription.endpoint}")
+                }
+                is HubResult.Error -> {
+                    logger.error("Failed to deliver event ${event.id} to ${subscription.endpoint}: ${result.message}")
+                    
+                    // Record delivery failure
+                    val failureRecord = EventDeliveryFailure(
+                        id = SecureRandom.generateUuid(),
+                        eventId = event.id,
+                        subscriptionId = subscription.id,
+                        endpoint = subscription.endpoint,
+                        errorMessage = result.message,
+                        timestamp = Clock.System.now(),
+                        retryCount = 0,
+                        maxRetries = 3,
+                        nextRetryAt = Clock.System.now().plus(kotlinx.datetime.DateTimePeriod(seconds = 60))
+                    )
+                    
+                    // Queue for retry if appropriate
+                    if (failureRecord.retryCount < failureRecord.maxRetries) {
+                        queueEventForRetry(failureRecord)
+                    }
+                }
+            }
         } catch (e: Exception) {
-            // Log delivery failure
+            logger.error("Exception while delivering event ${event.id} to ${subscription.endpoint}: ${e.message}", e)
         }
+    }
+    
+    /**
+     * Queue a failed event delivery for retry
+     */
+    private fun queueEventForRetry(failure: EventDeliveryFailure) {
+        serviceScope.launch {
+            try {
+                // Exponential backoff for retries
+                val delaySeconds = (2.0.pow(failure.retryCount.toDouble()) * 30).toLong().coerceAtMost(3600)
+                delay(delaySeconds * 1000)
+                
+                // Retrieve the original event
+                val event = getEventById(failure.eventId)
+                if (event != null) {
+                    // Retrieve the subscription
+                    val subscription = eventSubscriptions[failure.subscriptionId]
+                    if (subscription != null) {
+                        logger.info("Retrying delivery of event ${failure.eventId} to ${failure.endpoint} (attempt ${failure.retryCount + 1})")
+                        
+                        // Create updated failure record with incremented retry count
+                        val updatedFailure = failure.copy(
+                            retryCount = failure.retryCount + 1,
+                            nextRetryAt = Clock.System.now().plus(kotlinx.datetime.DateTimePeriod(seconds = delaySeconds * 2))
+                        )
+                        
+                        // Attempt delivery again
+                        deliverEventToSubscriber(event, subscription)
+                    }
+                }
+            } catch (e: Exception) {
+                logger.error("Error during event delivery retry: ${e.message}", e)
+            }
+        }
+    }
+    
+    /**
+     * Get event by ID (placeholder - in a real implementation, events would be stored in a database)
+     */
+    private fun getEventById(eventId: String): HubEvent? {
+        // In a real implementation, this would retrieve the event from a database
+        // For now, we'll return null since we don't have event persistence
+        return null
     }
     
     companion object {

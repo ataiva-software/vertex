@@ -4,20 +4,23 @@ import com.ataiva.eden.hub.service.HubService
 import com.ataiva.eden.hub.controller.HubController
 import com.ataiva.eden.hub.model.*
 import com.ataiva.eden.database.EdenDatabaseService
-import com.ataiva.eden.database.PostgreSQLDatabaseService
+import com.ataiva.eden.database.PostgreSQLDatabaseServiceImpl
 import com.ataiva.eden.database.DatabaseConfig
 import com.ataiva.eden.crypto.*
+import com.ataiva.eden.hub.crypto.KeyManagementSystem
+import com.ataiva.eden.config.DatabaseConfigLoader
 
 fun main() {
     println("Starting Eden Hub Service...")
     
     // Initialize dependencies
     val databaseService = createDatabaseService()
-    val cryptoServices = createCryptoServices()
+    val cryptoServices = createCryptoServices(databaseService)
     val hubService = HubService(
         databaseService = databaseService,
         encryption = cryptoServices.encryption,
-        secureRandom = cryptoServices.secureRandom
+        secureRandom = cryptoServices.secureRandom,
+        keyManagementSystem = cryptoServices.keyManagementSystem
     )
     
     println("Eden Hub Service initialized successfully")
@@ -27,23 +30,27 @@ fun main() {
  * Create database service with proper configuration
  */
 private fun createDatabaseService(): EdenDatabaseService {
-    val config = DatabaseConfig(
-        url = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/eden_dev",
-        username = System.getenv("DATABASE_USERNAME") ?: "eden_user",
-        password = System.getenv("DATABASE_PASSWORD") ?: "eden_password",
-        driverClassName = "org.postgresql.Driver"
-    )
+    // Load database configuration from file or environment variables
+    val environment = System.getenv("EDEN_ENVIRONMENT") ?: "dev"
+    val configPath = System.getenv("EDEN_CONFIG_PATH") ?: "application.properties"
     
-    return PostgreSQLDatabaseService(config)
+    val config = DatabaseConfigLoader().loadFromFile(configPath, environment)
+    
+    return PostgreSQLDatabaseServiceImpl(config)
 }
 
 /**
  * Create crypto services with proper implementations
  */
-private fun createCryptoServices(): CryptoServices {
+private fun createCryptoServices(databaseService: EdenDatabaseService): CryptoServices {
+    val encryption = BouncyCastleEncryption()
+    val secureRandom = SecureRandom()
+    val keyManagementSystem = KeyManagementSystem(encryption, secureRandom, databaseService)
+    
     return CryptoServices(
-        encryption = MockEncryption(),
-        secureRandom = SecureRandom()
+        encryption = encryption,
+        secureRandom = secureRandom,
+        keyManagementSystem = keyManagementSystem
     )
 }
 
@@ -52,30 +59,11 @@ private fun createCryptoServices(): CryptoServices {
  */
 private data class CryptoServices(
     val encryption: Encryption,
-    val secureRandom: SecureRandom
+    val secureRandom: SecureRandom,
+    val keyManagementSystem: KeyManagementSystem
 )
 
-// Simplified mock implementations that match the interfaces
-private class MockEncryption : Encryption {
-    override suspend fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult {
-        return EncryptionResult(data, ByteArray(12), ByteArray(16))
-    }
-    
-    override suspend fun decrypt(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray?): DecryptionResult {
-        return DecryptionResult.Success(data)
-    }
-    
-    override suspend fun encryptString(text: String, key: ByteArray): EncryptionResult {
-        return encrypt(text.encodeToByteArray(), key)
-    }
-    
-    override suspend fun decryptString(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray?): String? {
-        return when (val result = decrypt(data, key, nonce, authTag)) {
-            is DecryptionResult.Success -> result.data.decodeToString()
-            is DecryptionResult.Failure -> null
-        }
-    }
-}
+// Removed MockEncryption implementation as we're now using BouncyCastleEncryption
 
 data class ServiceInfo(
     val name: String,

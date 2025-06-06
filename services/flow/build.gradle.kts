@@ -34,6 +34,14 @@ dependencies {
     // Workflow engine
     implementation("org.yaml:snakeyaml:2.2")
     
+    // Email
+    implementation("com.sun.mail:javax.mail:1.6.2")
+    implementation("javax.activation:activation:1.1.1")
+    
+    // Expression evaluation
+    implementation("org.graalvm.js:js:22.3.0")
+    implementation("org.graalvm.js:js-scriptengine:22.3.0")
+    
     // Logging
     implementation(libs.bundles.logging)
     

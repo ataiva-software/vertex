@@ -6,7 +6,11 @@ import com.ataiva.eden.flow.model.*
 import com.ataiva.eden.flow.engine.WorkflowEngine
 import com.ataiva.eden.flow.engine.StepExecutor
 import com.ataiva.eden.database.EdenDatabaseService
-import com.ataiva.eden.database.PostgreSQLDatabaseService
+import com.ataiva.eden.database.PostgreSQLDatabaseServiceImpl
+import com.ataiva.eden.database.DatabaseConfig
+import com.ataiva.eden.config.DatabaseConfigLoader
+import java.util.Properties
+import java.io.FileInputStream
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -96,11 +100,20 @@ fun Application.module() {
                 timestamp = Clock.System.now(),
                 uptime = System.currentTimeMillis() - startTime,
                 service = "flow",
-                database = DatabaseHealth(
-                    connected = true, // TODO: Add real database health check
-                    responseTime = null,
-                    activeConnections = null
-                ),
+                database = try {
+                    val dbHealth = databaseService.getHealthStatus()
+                    DatabaseHealth(
+                        connected = dbHealth.isHealthy,
+                        responseTime = 50, // Mock value for now
+                        activeConnections = dbHealth.connectionPoolStats.active
+                    )
+                } catch (e: Exception) {
+                    DatabaseHealth(
+                        connected = false,
+                        responseTime = null,
+                        activeConnections = null
+                    )
+                },
                 workflowEngine = WorkflowEngineHealth(
                     available = true,
                     supportedStepTypes = WorkflowEngine.SUPPORTED_STEP_TYPES.toList(),
@@ -123,15 +136,13 @@ fun Application.module() {
  * Create database service with proper configuration
  */
 private fun createDatabaseService(): EdenDatabaseService {
-    // TODO: Load from configuration
-    val config = mapOf(
-        "url" to (System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/eden_dev"),
-        "username" to (System.getenv("DATABASE_USERNAME") ?: "eden_user"),
-        "password" to (System.getenv("DATABASE_PASSWORD") ?: "eden_password"),
-        "driver" to "org.postgresql.Driver"
-    )
+    // Load database configuration from file or environment variables
+    val environment = System.getenv("EDEN_ENVIRONMENT") ?: "dev"
+    val configPath = System.getenv("EDEN_CONFIG_PATH") ?: "application.properties"
     
-    return PostgreSQLDatabaseService(config)
+    val config = DatabaseConfigLoader().loadFromFile(configPath, environment)
+    
+    return PostgreSQLDatabaseServiceImpl(config)
 }
 
 @Serializable

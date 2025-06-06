@@ -37,6 +37,13 @@ dependencies {
     // Configuration
     implementation(libs.typesafe.config)
     
+    // Cryptography
+    implementation(libs.bouncycastle)
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.76")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    
     // HTTP Client for webhooks
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     

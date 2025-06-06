@@ -35,6 +35,10 @@ dependencies {
     // Redis
     implementation(libs.jedis)
     
+    // Email
+    implementation("com.sun.mail:javax.mail:1.6.2")
+    implementation("javax.activation:activation:1.1.1")
+    
     // Logging
     implementation(libs.logback.classic)
     
