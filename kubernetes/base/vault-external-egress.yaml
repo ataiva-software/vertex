@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vault-external-egress-policy
+  namespace: eden
+spec:
+  podSelector:
+    matchLabels:
+      app: vault-service
+  policyTypes:
+  - Egress
+  egress:
+  # Allow egress to any destination for HashiCorp Vault and AWS Secrets Manager
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 8200
+    - protocol: TCP
+      port: 443

@@ -123,6 +123,17 @@ class InsightDatabaseConfig(
     }
     
     /**
+     * Get the data source for metrics collection
+     */
+    fun getDataSource(): HikariDataSource {
+        return if (dataSource is HikariDataSource) {
+            dataSource as HikariDataSource
+        } else {
+            throw IllegalStateException("DataSource is not a HikariDataSource")
+        }
+    }
+    
+    /**
      * Close database connections
      */
     fun close() {

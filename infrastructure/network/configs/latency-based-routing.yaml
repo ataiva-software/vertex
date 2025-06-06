@@ -1,0 +1,253 @@
+# Latency-Based Routing Configuration
+# This configuration defines the setup for latency-based routing using AWS Global Accelerator
+
+# Global settings
+global:
+  provider: aws-global-accelerator
+  name: eden-global-accelerator
+  enabled: true
+  ip_address_type: IPV4
+  flow_logs_enabled: true
+  flow_logs_s3_bucket: eden-flow-logs
+  flow_logs_s3_prefix: global-accelerator/
+  tags:
+    Environment: production
+    Service: eden
+    ManagedBy: terraform
+
+# Listener configurations
+listeners:
+  - name: http-https-listener
+    protocol: TCP
+    port_ranges:
+      - from_port: 80
+        to_port: 80
+      - from_port: 443
+        to_port: 443
+    client_affinity: SOURCE_IP
+    
+  - name: api-listener
+    protocol: TCP
+    port_ranges:
+      - from_port: 8080
+        to_port: 8080
+    client_affinity: SOURCE_IP
+
+# Endpoint group configurations
+endpoint_groups:
+  - name: us-east-1-endpoints
+    region: us-east-1
+    health_check_port: 443
+    health_check_protocol: HTTPS
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    threshold_count: 3
+    traffic_dial_percentage: 100
+    endpoints:
+      - name: api-gateway-us-east-1
+        endpoint_id: eden-api-alb-us-east-1
+        endpoint_type: ALB
+        weight: 100
+        preserve_client_ip: true
+        health_check_port: 443
+        health_check_path: /health
+      
+      - name: web-ui-us-east-1
+        endpoint_id: eden-web-alb-us-east-1
+        endpoint_type: ALB
+        weight: 100
+        preserve_client_ip: true
+        health_check_port: 443
+        health_check_path: /health
+  
+  - name: us-west-2-endpoints
+    region: us-west-2
+    health_check_port: 443
+    health_check_protocol: HTTPS
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    threshold_count: 3
+    traffic_dial_percentage: 100
+    endpoints:
+      - name: api-gateway-us-west-2
+        endpoint_id: eden-api-alb-us-west-2
+        endpoint_type: ALB
+        weight: 100
+        preserve_client_ip: true
+        health_check_port: 443
+        health_check_path: /health
+      
+      - name: web-ui-us-west-2
+        endpoint_id: eden-web-alb-us-west-2
+        endpoint_type: ALB
+        weight: 100
+        preserve_client_ip: true
+        health_check_port: 443
+        health_check_path: /health
+
+# Traffic management configurations
+traffic_management:
+  # Gradual traffic shifting
+  gradual_shift:
+    enabled: true
+    step_percentage: 10
+    interval_minutes: 15
+    metrics_threshold:
+      error_rate_percent: 5
+      latency_p95_ms: 500
+  
+  # Regional failover
+  regional_failover:
+    enabled: true
+    automatic: true
+    failover_conditions:
+      - condition: health_check_failure
+        threshold_percent: 50
+        duration_seconds: 60
+      
+      - condition: high_error_rate
+        threshold_percent: 10
+        duration_seconds: 120
+      
+      - condition: high_latency
+        threshold_ms: 1000
+        duration_seconds: 180
+    
+    failback:
+      automatic: true
+      delay_minutes: 15
+      gradual: true
+  
+  # Traffic dial control
+  traffic_dial:
+    min_percentage: 0
+    max_percentage: 100
+    default_percentage: 100
+
+# DNS configuration for Global Accelerator
+dns:
+  domain: eden.example.com
+  records:
+    - name: api-global.eden.example.com
+      type: A
+      alias: true
+      ttl: 60
+    
+    - name: web-global.eden.example.com
+      type: A
+      alias: true
+      ttl: 60
+
+# Monitoring and alerting
+monitoring:
+  metrics:
+    - name: processed_bytes
+      statistic: Sum
+      period_seconds: 60
+      evaluation_periods: 5
+      threshold_bytes: 1000000000
+      comparison_operator: GreaterThanThreshold
+      alarm: true
+    
+    - name: new_flows_count
+      statistic: Sum
+      period_seconds: 60
+      evaluation_periods: 5
+      threshold_count: 10000
+      comparison_operator: GreaterThanThreshold
+      alarm: true
+    
+    - name: health_check_status
+      statistic: Average
+      period_seconds: 60
+      evaluation_periods: 3
+      threshold: 1
+      comparison_operator: LessThanThreshold
+      alarm: true
+  
+  dashboards:
+    - name: global-accelerator-overview
+      description: "Overview of Global Accelerator performance"
+      refresh_interval_seconds: 60
+      widgets:
+        - title: "Processed Bytes"
+          type: line
+          width: 12
+          height: 6
+          metrics:
+            - name: processed_bytes
+              region: global
+              period_seconds: 60
+        
+        - title: "New Flow Count"
+          type: line
+          width: 12
+          height: 6
+          metrics:
+            - name: new_flows_count
+              region: global
+              period_seconds: 60
+        
+        - title: "Health Check Status"
+          type: line
+          width: 24
+          height: 6
+          metrics:
+            - name: health_check_status
+              region: us-east-1
+              period_seconds: 60
+            - name: health_check_status
+              region: us-west-2
+              period_seconds: 60
+    
+    - name: regional-comparison
+      description: "Comparison of performance between regions"
+      refresh_interval_seconds: 60
+      widgets:
+        - title: "Traffic Distribution"
+          type: pie
+          width: 12
+          height: 8
+          metrics:
+            - name: processed_bytes
+              region: us-east-1
+              period_seconds: 300
+            - name: processed_bytes
+              region: us-west-2
+              period_seconds: 300
+        
+        - title: "Regional Latency"
+          type: bar
+          width: 12
+          height: 8
+          metrics:
+            - name: latency_p50
+              region: us-east-1
+              period_seconds: 300
+            - name: latency_p50
+              region: us-west-2
+              period_seconds: 300
+            - name: latency_p90
+              region: us-east-1
+              period_seconds: 300
+            - name: latency_p90
+              region: us-west-2
+              period_seconds: 300
+
+# Client-side configurations
+client_side:
+  # Client-side routing optimizations
+  routing_optimizations:
+    enabled: true
+    cache_ttl_seconds: 300
+    failover_enabled: true
+    retry_attempts: 3
+    timeout_ms: 5000
+  
+  # SDK configurations
+  sdk_config:
+    connection_timeout_ms: 5000
+    socket_timeout_ms: 10000
+    max_retries: 3
+    retry_backoff_ms: 100
+    keep_alive_seconds: 60

@@ -1,0 +1,334 @@
+# Region-Aware Service Discovery Configuration
+# This configuration defines the setup for service discovery across multiple regions
+
+# Global settings
+global:
+  provider: kubernetes
+  service_mesh: istio
+  domain: eden.svc.cluster.local
+  cross_region_enabled: true
+  cross_region_protocol: https
+  cross_region_port: 443
+  tags:
+    Environment: production
+    Service: eden
+    ManagedBy: terraform
+
+# Region definitions
+regions:
+  - name: us-east-1
+    provider: aws
+    role: active
+    kubernetes_context: eks-us-east-1
+    service_mesh_enabled: true
+    service_mesh_gateway: istio-ingressgateway.istio-system.svc.cluster.local
+    dns_suffix: us-east-1.eden.svc.cluster.local
+    
+  - name: us-west-2
+    provider: aws
+    role: active
+    kubernetes_context: eks-us-west-2
+    service_mesh_enabled: true
+    service_mesh_gateway: istio-ingressgateway.istio-system.svc.cluster.local
+    dns_suffix: us-west-2.eden.svc.cluster.local
+
+# Service definitions
+services:
+  - name: api-gateway
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: vault-service
+    namespace: eden
+    port: 8200
+    protocol: https
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: hub-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: flow-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: task-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: monitor-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: sync-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    
+  - name: insight-service
+    namespace: eden
+    port: 8080
+    protocol: http
+    cross_region_discovery: true
+    health_check_path: /health
+    health_check_interval_seconds: 30
+    health_check_timeout_seconds: 5
+    health_check_failure_threshold: 3
+    regions:
+      - us-east-1
+      - us-west-2
+
+# Service mesh configuration
+service_mesh:
+  # Istio configuration
+  istio:
+    enabled: true
+    version: 1.16.0
+    mtls:
+      enabled: true
+      mode: STRICT
+    auto_inject: true
+    gateways:
+      - name: cross-region-gateway
+        namespace: istio-system
+        selector:
+          istio: ingressgateway
+        servers:
+          - port:
+              number: 443
+              name: https
+              protocol: HTTPS
+            hosts:
+              - "*.eden.svc.cluster.local"
+            tls:
+              mode: SIMPLE
+              credentialName: eden-cross-region-cert
+    
+    # Virtual services for cross-region communication
+    virtual_services:
+      - name: cross-region-services
+        namespace: eden
+        hosts:
+          - "*.eden.svc.cluster.local"
+        gateways:
+          - istio-system/cross-region-gateway
+        http:
+          - match:
+              - uri:
+                  prefix: /
+            route:
+              - destination:
+                  host: "{{service}}.eden.svc.cluster.local"
+                  port:
+                    number: "{{port}}"
+    
+    # Destination rules for traffic policies
+    destination_rules:
+      - name: cross-region-services
+        namespace: eden
+        host: "*.eden.svc.cluster.local"
+        traffic_policy:
+          load_balancer:
+            simple: ROUND_ROBIN
+          connection_pool:
+            http:
+              http1_max_pending_requests: 100
+              max_requests_per_connection: 10
+            tcp:
+              max_connections: 100
+          outlier_detection:
+            consecutive_5xx_errors: 5
+            interval: 30s
+            base_ejection_time: 30s
+            max_ejection_percent: 100
+
+# DNS configuration for service discovery
+dns:
+  # CoreDNS configuration for cross-region service discovery
+  coredns:
+    enabled: true
+    config: |
+      .:53 {
+          errors
+          health
+          kubernetes cluster.local in-addr.arpa ip6.arpa {
+              pods insecure
+              fallthrough in-addr.arpa ip6.arpa
+          }
+          forward . /etc/resolv.conf
+          cache 30
+          loop
+          reload
+          loadbalance
+      }
+      
+      eden.svc.cluster.local:53 {
+          errors
+          cache 30
+          forward . {{dns_server}}
+          reload
+      }
+      
+      us-east-1.eden.svc.cluster.local:53 {
+          errors
+          cache 30
+          forward . {{us_east_1_dns_server}}
+          reload
+      }
+      
+      us-west-2.eden.svc.cluster.local:53 {
+          errors
+          cache 30
+          forward . {{us_west_2_dns_server}}
+          reload
+      }
+
+# Client configuration
+client:
+  # Client-side service discovery configuration
+  discovery:
+    enabled: true
+    cache_ttl_seconds: 300
+    refresh_interval_seconds: 60
+    failover_enabled: true
+    retry_attempts: 3
+    timeout_ms: 5000
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      reset_timeout_ms: 30000
+  
+  # SDK configurations
+  sdk_config:
+    connection_timeout_ms: 5000
+    socket_timeout_ms: 10000
+    max_retries: 3
+    retry_backoff_ms: 100
+    keep_alive_seconds: 60
+    region_aware: true
+    prefer_local_region: true
+
+# Monitoring and alerting
+monitoring:
+  metrics:
+    - name: service_discovery_requests
+      description: "Number of service discovery requests"
+      statistic: Sum
+      period_seconds: 60
+      evaluation_periods: 5
+      threshold_count: 1000
+      comparison_operator: GreaterThanThreshold
+      alarm: false
+    
+    - name: service_discovery_errors
+      description: "Number of service discovery errors"
+      statistic: Sum
+      period_seconds: 60
+      evaluation_periods: 5
+      threshold_count: 10
+      comparison_operator: GreaterThanThreshold
+      alarm: true
+    
+    - name: cross_region_latency
+      description: "Latency of cross-region requests"
+      statistic: Average
+      period_seconds: 60
+      evaluation_periods: 5
+      threshold_ms: 500
+      comparison_operator: GreaterThanThreshold
+      alarm: true
+  
+  dashboards:
+    - name: service-discovery-overview
+      description: "Overview of service discovery performance"
+      refresh_interval_seconds: 60
+      widgets:
+        - title: "Service Discovery Requests"
+          type: line
+          width: 12
+          height: 6
+          metrics:
+            - name: service_discovery_requests
+              region: global
+              period_seconds: 60
+        
+        - title: "Service Discovery Errors"
+          type: line
+          width: 12
+          height: 6
+          metrics:
+            - name: service_discovery_errors
+              region: global
+              period_seconds: 60
+        
+        - title: "Cross-Region Latency"
+          type: line
+          width: 24
+          height: 6
+          metrics:
+            - name: cross_region_latency
+              region: us-east-1
+              period_seconds: 60
+            - name: cross_region_latency
+              region: us-west-2
+              period_seconds: 60

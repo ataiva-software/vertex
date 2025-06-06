@@ -1,0 +1,264 @@
+# Global values shared across all services
+global:
+  environment: production
+  image:
+    repository: ataivadev/eden
+    tag: latest
+    pullPolicy: Always
+  
+  # Common resource settings
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  
+  # Common database settings
+  database:
+    host: postgresql
+    port: 5432
+    user: postgres
+    password: postgres
+    sslMode: disable
+  
+  # Common Redis settings
+  redis:
+    host: redis
+    port: 6379
+  
+  # Common security settings
+  security:
+    jwtSecret: change-me-in-production
+    encryptionKey: change-me-in-production
+  
+  # Network policies
+  networkPolicy:
+    enabled: true
+  
+  # Pod Disruption Budget
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# External dependencies
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: eden_dev
+  primary:
+    persistence:
+      size: 10Gi
+  initdbScripts:
+    init-multiple-dbs.sh: |
+      #!/bin/bash
+      set -e
+      set -u
+      
+      function create_database() {
+        local database=$1
+        echo "Creating database '$database'"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+          CREATE DATABASE $database;
+          GRANT ALL PRIVILEGES ON DATABASE $database TO $POSTGRES_USER;
+      EOSQL
+      }
+      
+      for db in eden_vault eden_flow eden_task eden_hub eden_sync eden_insight eden_monitor; do
+        create_database $db
+      done
+      echo "Multiple databases created"
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 5Gi
+
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      size: 10Gi
+
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 5Gi
+  adminPassword: admin
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server
+        access: proxy
+        isDefault: true
+
+# API Gateway configuration
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Vault Service configuration
+vaultService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Hub Service configuration
+hubService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Flow Service configuration
+flowService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Task Service configuration
+taskService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Monitor Service configuration
+monitorService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Sync Service configuration
+syncService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Insight Service configuration
+insightService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Web UI configuration
+webUi:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ataivadev/eden-web
+    tag: latest
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: eden.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web-ui
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: api-gateway
+          port: 8080
+  tls:
+    - secretName: eden-tls
+      hosts:
+        - eden.example.com

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eden-config
+  namespace: eden
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "info"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  API_GATEWAY_URL: "http://api-gateway:8080"
+  VAULT_SERVICE_URL: "http://vault-service:8080"
+  FLOW_SERVICE_URL: "http://flow-service:8080"
+  TASK_SERVICE_URL: "http://task-service:8080"
+  HUB_SERVICE_URL: "http://hub-service:8080"
+  SYNC_SERVICE_URL: "http://sync-service:8080"
+  INSIGHT_SERVICE_URL: "http://insight-service:8080"
+  MONITOR_SERVICE_URL: "http://monitor-service:8080"
+  CORS_ORIGINS: "https://eden.example.com"

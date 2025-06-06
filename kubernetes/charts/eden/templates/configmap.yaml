@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eden-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  APP_ENV: {{ .Values.global.environment | quote }}
+  LOG_LEVEL: "info"
+  REDIS_HOST: {{ .Values.global.redis.host | quote }}
+  REDIS_PORT: {{ .Values.global.redis.port | quote }}
+  API_GATEWAY_URL: "http://api-gateway:{{ .Values.apiGateway.service.port }}"
+  VAULT_SERVICE_URL: "http://vault-service:{{ .Values.vaultService.service.port }}"
+  FLOW_SERVICE_URL: "http://flow-service:{{ .Values.flowService.service.port }}"
+  TASK_SERVICE_URL: "http://task-service:{{ .Values.taskService.service.port }}"
+  HUB_SERVICE_URL: "http://hub-service:{{ .Values.hubService.service.port }}"
+  SYNC_SERVICE_URL: "http://sync-service:{{ .Values.syncService.service.port }}"
+  INSIGHT_SERVICE_URL: "http://insight-service:{{ .Values.insightService.service.port }}"
+  MONITOR_SERVICE_URL: "http://monitor-service:{{ .Values.monitorService.service.port }}"
+  CORS_ORIGINS: {{ .Values.ingress.enabled | ternary (printf "https://%s" (index .Values.ingress.hosts 0).host) "http://localhost:3000" | quote }}

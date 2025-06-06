@@ -24,6 +24,9 @@ val logbackVersion = "1.4.7"
 val junitVersion = "5.9.3"
 val h2Version = "2.1.214"
 val mockkVersion = "1.13.5"
+val lettuceVersion = "6.2.3.RELEASE"
+val caffeineVersion = "3.1.5"
+val prometheusVersion = "0.16.0"
 
 dependencies {
     // Kotlin
@@ -66,6 +69,16 @@ dependencies {
     implementation("org.jfree:jfreechart:1.5.4")
     implementation("com.cronutils:cron-utils:9.2.0")
     implementation("com.sun.mail:javax.mail:1.6.2")
+    
+    // Caching
+    implementation("io.lettuce:lettuce-core:$lettuceVersion")
+    implementation("com.github.ben-manes.caffeine:caffeine:$caffeineVersion")
+    
+    // Metrics and monitoring
+    implementation("io.prometheus:simpleclient:$prometheusVersion")
+    implementation("io.prometheus:simpleclient_hotspot:$prometheusVersion")
+    implementation("io.prometheus:simpleclient_httpserver:$prometheusVersion")
+    implementation("io.prometheus:simpleclient_pushgateway:$prometheusVersion")
     
     // Testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")

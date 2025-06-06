@@ -1,0 +1,23 @@
+{{- if .Values.taskService.enabled }}
+# Service
+{{- $serviceContext := dict "root" . "serviceName" "task-service" "serviceConfig" .Values.taskService }}
+{{- include "eden.service" $serviceContext }}
+---
+# Deployment
+{{- $extraEnv := list (dict "name" "HUB_SERVICE_URL" "key" "HUB_SERVICE_URL") }}
+{{- $deploymentContext := dict "root" . "serviceName" "task-service" "serviceConfig" .Values.taskService "dbName" "eden_task" "extraEnv" $extraEnv }}
+{{- include "eden.deployment" $deploymentContext }}
+---
+# HorizontalPodAutoscaler
+{{- $hpaContext := dict "root" . "serviceName" "task-service" "serviceConfig" .Values.taskService }}
+{{- include "eden.hpa" $hpaContext }}
+---
+# NetworkPolicy
+{{- $extraEgress := list (dict "app" "hub-service" "port" 8080) }}
+{{- $networkContext := dict "root" . "serviceName" "task-service" "extraEgress" $extraEgress }}
+{{- include "eden.networkpolicy" $networkContext }}
+---
+# PodDisruptionBudget
+{{- $pdbContext := dict "root" . "serviceName" "task-service" }}
+{{- include "eden.pdb" $pdbContext }}
+{{- end }}

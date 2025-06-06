@@ -1,0 +1,245 @@
+# Multi-Region Replication Configuration for Eden DevOps Suite
+# This configuration defines the setup for multi-region replication
+# to ensure high availability and disaster recovery capabilities
+
+# Primary region configuration
+primary_region:
+  name: us-east-1
+  provider: aws
+  vpc_id: vpc-primary
+  subnets:
+    - subnet-primary-1a
+    - subnet-primary-1b
+    - subnet-primary-1c
+  availability_zones:
+    - us-east-1a
+    - us-east-1b
+    - us-east-1c
+
+# Secondary region configuration
+secondary_region:
+  name: us-west-2
+  provider: aws
+  vpc_id: vpc-secondary
+  subnets:
+    - subnet-secondary-2a
+    - subnet-secondary-2b
+    - subnet-secondary-2c
+  availability_zones:
+    - us-west-2a
+    - us-west-2b
+    - us-west-2c
+
+# Database replication configuration
+database_replication:
+  # PostgreSQL replication
+  postgres:
+    replication_type: logical  # Options: logical, physical
+    replication_slots:
+      - name: eden_vault_slot
+        database: eden_vault
+        plugin: pglogical
+      - name: eden_flow_slot
+        database: eden_flow
+        plugin: pglogical
+      - name: eden_task_slot
+        database: eden_task
+        plugin: pglogical
+      - name: eden_hub_slot
+        database: eden_hub
+        plugin: pglogical
+      - name: eden_sync_slot
+        database: eden_sync
+        plugin: pglogical
+      - name: eden_insight_slot
+        database: eden_insight
+        plugin: pglogical
+    primary:
+      host: postgres.primary.eden.internal
+      port: 5432
+      user: replication_user
+      password_secret: /eden/secrets/postgres/replication_password
+    secondary:
+      host: postgres.secondary.eden.internal
+      port: 5432
+      user: replication_user
+      password_secret: /eden/secrets/postgres/replication_password
+    monitoring:
+      lag_threshold_seconds: 300
+      alert_channels:
+        - email
+        - slack
+    failover:
+      automatic: true
+      max_lag_seconds: 600
+      promote_command: "/usr/local/bin/promote_postgres_replica.sh"
+
+  # Redis replication
+  redis:
+    replication_type: redis-sentinel
+    primary:
+      host: redis.primary.eden.internal
+      port: 6379
+      password_secret: /eden/secrets/redis/replication_password
+    secondary:
+      host: redis.secondary.eden.internal
+      port: 6379
+      password_secret: /eden/secrets/redis/replication_password
+    sentinel:
+      quorum: 2
+      instances:
+        - host: sentinel-1.eden.internal
+          port: 26379
+        - host: sentinel-2.eden.internal
+          port: 26379
+        - host: sentinel-3.eden.internal
+          port: 26379
+    monitoring:
+      lag_threshold_seconds: 60
+      alert_channels:
+        - email
+        - slack
+    failover:
+      automatic: true
+      timeout_ms: 30000
+
+# Data synchronization configuration
+data_sync:
+  # S3 bucket replication for backups
+  s3_replication:
+    enabled: true
+    source_bucket: eden-backups-primary
+    destination_bucket: eden-backups-secondary
+    replication_role: arn:aws:iam::123456789012:role/eden-s3-replication-role
+    kms_key_id: arn:aws:kms:us-west-2:123456789012:key/eden-backup-key
+    rules:
+      - prefix: postgres/
+        status: Enabled
+      - prefix: redis/
+        status: Enabled
+      - prefix: configs/
+        status: Enabled
+
+  # Configuration synchronization
+  config_sync:
+    enabled: true
+    method: git
+    repository: git@github.com:ataivadev/eden-configs.git
+    branch: main
+    sync_interval_minutes: 15
+    directories:
+      - /etc/eden/configs
+      - /opt/eden/config
+
+# Network configuration
+network:
+  vpn:
+    enabled: true
+    type: ipsec
+    primary_endpoint: vpn.primary.eden.internal
+    secondary_endpoint: vpn.secondary.eden.internal
+    shared_secret_secret: /eden/secrets/network/vpn_shared_secret
+    
+  dns:
+    primary_zone: primary.eden.internal
+    secondary_zone: secondary.eden.internal
+    failover_policy: automatic
+    ttl_seconds: 60
+
+# Load balancing configuration
+load_balancing:
+  global:
+    provider: route53
+    health_check:
+      protocol: https
+      port: 443
+      path: /health
+      interval_seconds: 30
+      failure_threshold: 3
+    policy: latency
+    failover:
+      primary_region: us-east-1
+      secondary_region: us-west-2
+  
+  regional:
+    provider: aws-alb
+    primary:
+      name: eden-alb-primary
+      subnets:
+        - subnet-primary-1a
+        - subnet-primary-1b
+        - subnet-primary-1c
+      security_groups:
+        - sg-primary-alb
+    secondary:
+      name: eden-alb-secondary
+      subnets:
+        - subnet-secondary-2a
+        - subnet-secondary-2b
+        - subnet-secondary-2c
+      security_groups:
+        - sg-secondary-alb
+
+# Monitoring and alerting configuration
+monitoring:
+  replication_lag:
+    postgres:
+      check_interval_seconds: 60
+      warning_threshold_seconds: 300
+      critical_threshold_seconds: 600
+    redis:
+      check_interval_seconds: 30
+      warning_threshold_seconds: 60
+      critical_threshold_seconds: 120
+  
+  alerts:
+    channels:
+      email:
+        recipients:
+          - devops@example.com
+          - oncall@example.com
+      slack:
+        webhook_url_secret: /eden/secrets/alerts/slack_webhook_url
+        channel: "#eden-alerts"
+      pagerduty:
+        integration_key_secret: /eden/secrets/alerts/pagerduty_key
+        service_id: PXXXXX
+
+# Failover configuration
+failover:
+  automatic:
+    enabled: true
+    conditions:
+      - type: region_down
+        detection_time_seconds: 300
+      - type: database_lag
+        threshold_seconds: 600
+      - type: service_health
+        unhealthy_percentage: 75
+        detection_time_seconds: 180
+  
+  manual:
+    authorized_roles:
+      - DevOpsAdmin
+      - EmergencyResponder
+    procedure_document: "https://wiki.example.com/eden/disaster-recovery/failover-procedure"
+    checklist:
+      - verify_replication_status
+      - notify_stakeholders
+      - execute_failover
+      - verify_services
+      - update_dns
+      - notify_completion
+
+# Recovery configuration
+recovery:
+  rto_minutes: 15  # Recovery Time Objective
+  rpo_minutes: 5   # Recovery Point Objective
+  priority_services:
+    - api-gateway
+    - vault-service
+    - hub-service
+  procedures:
+    region_failure: "https://wiki.example.com/eden/disaster-recovery/region-failure"
+    database_corruption: "https://wiki.example.com/eden/disaster-recovery/database-corruption"
+    service_failure: "https://wiki.example.com/eden/disaster-recovery/service-failure"

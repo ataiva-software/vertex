@@ -1,0 +1,262 @@
+# Redis Multi-Region Configuration
+# This configuration defines the setup for active-active Redis replication between regions
+
+# Global settings
+global:
+  replication_type: active-active
+  technology: redis-enterprise
+  crdt_enabled: true
+  sync_interval_ms: 100
+  max_replication_lag_ms: 500
+  monitoring_interval_seconds: 30
+  conflict_resolution: last_write_wins
+
+# Region definitions
+regions:
+  - name: us-east-1
+    role: active
+    provider: aws
+    instance:
+      host: redis.us-east-1.eden.internal
+      port: 6379
+      password_secret: /eden/secrets/redis/redis_password
+      version: "6.2"
+      parameters:
+        maxmemory: 8gb
+        maxmemory-policy: volatile-lru
+        timeout: 0
+        tcp-keepalive: 300
+        databases: 16
+        appendonly: yes
+        appendfsync: everysec
+        no-appendfsync-on-rewrite: no
+        auto-aof-rewrite-percentage: 100
+        auto-aof-rewrite-min-size: 64mb
+        aof-load-truncated: yes
+        aof-use-rdb-preamble: yes
+        lua-time-limit: 5000
+        slowlog-log-slower-than: 10000
+        slowlog-max-len: 128
+        latency-monitor-threshold: 100
+        notify-keyspace-events: ""
+        hash-max-ziplist-entries: 512
+        hash-max-ziplist-value: 64
+        list-max-ziplist-size: -2
+        list-compress-depth: 0
+        set-max-intset-entries: 512
+        zset-max-ziplist-entries: 128
+        zset-max-ziplist-value: 64
+        hll-sparse-max-bytes: 3000
+        stream-node-max-bytes: 4096
+        stream-node-max-entries: 100
+        activerehashing: yes
+        client-output-buffer-limit: "normal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60"
+        hz: 10
+        dynamic-hz: yes
+        aof-rewrite-incremental-fsync: yes
+        rdb-save-incremental-fsync: yes
+        jemalloc-bg-thread: yes
+    
+    # Redis Enterprise specific configuration
+    enterprise:
+      cluster_name: eden-us-east-1
+      license_file_secret: /eden/secrets/redis/license_file
+      admin_user: admin
+      admin_password_secret: /eden/secrets/redis/admin_password
+      nodes:
+        - host: redis-node-1.us-east-1.eden.internal
+          port: 8443
+        - host: redis-node-2.us-east-1.eden.internal
+          port: 8443
+        - host: redis-node-3.us-east-1.eden.internal
+          port: 8443
+      shards: 3
+      replicas_per_shard: 1
+      memory_size_gb: 10
+      rack_aware: true
+      proxy_policy: all-nodes
+      sharding_policy: standard
+
+  - name: us-west-2
+    role: active
+    provider: aws
+    instance:
+      host: redis.us-west-2.eden.internal
+      port: 6379
+      password_secret: /eden/secrets/redis/redis_password
+      version: "6.2"
+      parameters:
+        maxmemory: 8gb
+        maxmemory-policy: volatile-lru
+        timeout: 0
+        tcp-keepalive: 300
+        databases: 16
+        appendonly: yes
+        appendfsync: everysec
+        no-appendfsync-on-rewrite: no
+        auto-aof-rewrite-percentage: 100
+        auto-aof-rewrite-min-size: 64mb
+        aof-load-truncated: yes
+        aof-use-rdb-preamble: yes
+        lua-time-limit: 5000
+        slowlog-log-slower-than: 10000
+        slowlog-max-len: 128
+        latency-monitor-threshold: 100
+        notify-keyspace-events: ""
+        hash-max-ziplist-entries: 512
+        hash-max-ziplist-value: 64
+        list-max-ziplist-size: -2
+        list-compress-depth: 0
+        set-max-intset-entries: 512
+        zset-max-ziplist-entries: 128
+        zset-max-ziplist-value: 64
+        hll-sparse-max-bytes: 3000
+        stream-node-max-bytes: 4096
+        stream-node-max-entries: 100
+        activerehashing: yes
+        client-output-buffer-limit: "normal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60"
+        hz: 10
+        dynamic-hz: yes
+        aof-rewrite-incremental-fsync: yes
+        rdb-save-incremental-fsync: yes
+        jemalloc-bg-thread: yes
+    
+    # Redis Enterprise specific configuration
+    enterprise:
+      cluster_name: eden-us-west-2
+      license_file_secret: /eden/secrets/redis/license_file
+      admin_user: admin
+      admin_password_secret: /eden/secrets/redis/admin_password
+      nodes:
+        - host: redis-node-1.us-west-2.eden.internal
+          port: 8443
+        - host: redis-node-2.us-west-2.eden.internal
+          port: 8443
+        - host: redis-node-3.us-west-2.eden.internal
+          port: 8443
+      shards: 3
+      replicas_per_shard: 1
+      memory_size_gb: 10
+      rack_aware: true
+      proxy_policy: all-nodes
+      sharding_policy: standard
+
+# Active-Active databases configuration
+databases:
+  - name: eden_cache
+    memory_size_gb: 4
+    replication_enabled: true
+    shards: 3
+    regions:
+      - us-east-1
+      - us-west-2
+    crdt_options:
+      causal_consistency: true
+      oss_cluster_api_compatible: true
+      source_ttl: true
+    data_persistence: aof
+    data_eviction: volatile-lru
+    backup:
+      interval_hours: 24
+      retention_days: 7
+    
+  - name: eden_session
+    memory_size_gb: 2
+    replication_enabled: true
+    shards: 2
+    regions:
+      - us-east-1
+      - us-west-2
+    crdt_options:
+      causal_consistency: true
+      oss_cluster_api_compatible: true
+      source_ttl: true
+    data_persistence: aof
+    data_eviction: volatile-lru
+    backup:
+      interval_hours: 24
+      retention_days: 7
+    
+  - name: eden_rate_limit
+    memory_size_gb: 1
+    replication_enabled: true
+    shards: 1
+    regions:
+      - us-east-1
+      - us-west-2
+    crdt_options:
+      causal_consistency: true
+      oss_cluster_api_compatible: true
+      source_ttl: true
+    data_persistence: aof
+    data_eviction: volatile-lru
+    backup:
+      interval_hours: 24
+      retention_days: 7
+
+# Monitoring and alerting
+monitoring:
+  lag_thresholds:
+    warning_ms: 500
+    critical_ms: 2000
+  sync_failure_thresholds:
+    warning_count: 5
+    critical_count: 20
+  alerts:
+    channels:
+      - email:
+          recipients:
+            - devops@example.com
+            - cache@example.com
+      - slack:
+          channel: "#eden-cache-alerts"
+          webhook_secret: /eden/secrets/alerts/slack_webhook
+      - pagerduty:
+          service_key_secret: /eden/secrets/alerts/pagerduty_key
+  dashboards:
+    grafana:
+      folder: "Redis Multi-Region"
+      dashboards:
+        - name: "Replication Status"
+          description: "Redis replication status across regions"
+        - name: "CRDT Conflicts"
+          description: "CRDT conflict monitoring and resolution"
+        - name: "Cache Performance"
+          description: "Redis performance metrics across regions"
+
+# Client configuration
+client:
+  connection_pool:
+    max_total: 128
+    max_idle: 32
+    min_idle: 8
+    test_on_borrow: true
+    test_on_return: false
+    test_while_idle: true
+    time_between_eviction_runs_ms: 30000
+  read_from: nearest
+  write_to: all
+  timeout_ms: 2000
+  retry:
+    max_attempts: 3
+    backoff_ms: 100
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    reset_timeout_ms: 30000
+
+# Failover configuration
+failover:
+  automatic: true
+  detection:
+    ping_interval_ms: 1000
+    failure_threshold: 3
+    timeout_ms: 2000
+  client_reconfiguration:
+    method: dns
+    ttl_seconds: 60
+  alerts:
+    channels:
+      - email
+      - slack
+      - pagerduty

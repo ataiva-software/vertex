@@ -1,0 +1,201 @@
+# Values for AWS EKS environment
+
+global:
+  environment: production
+  image:
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eden
+    tag: latest
+    pullPolicy: Always
+  
+  # Production resources
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  
+  # Database settings for AWS RDS
+  database:
+    host: eden-postgres.${AWS_RDS_ENDPOINT}
+    port: 5432
+    user: postgres
+    # Password should be provided via external secrets or parameter store
+    password: ${DB_PASSWORD}
+    sslMode: require
+  
+  # Enable network policies for production
+  networkPolicy:
+    enabled: true
+  
+  # Enable PDB for production
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  # Security settings
+  security:
+    jwtSecret: ${JWT_SECRET}
+    encryptionKey: ${ENCRYPTION_KEY}
+
+# Use external AWS RDS PostgreSQL
+postgresql:
+  enabled: false
+
+# Use AWS ElastiCache Redis
+redis:
+  enabled: false
+  # External Redis configuration
+  external:
+    host: eden-redis.${AWS_ELASTICACHE_ENDPOINT}
+    port: 6379
+
+# Use AWS Managed Prometheus
+prometheus:
+  enabled: false
+
+# Use AWS Managed Grafana
+grafana:
+  enabled: false
+
+# Service configurations
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+vaultService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+hubService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+flowService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+taskService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+monitorService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+syncService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+insightService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+webUi:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eden-web
+    tag: latest
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Enable ingress with AWS ALB
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
+    external-dns.alpha.kubernetes.io/hostname: eden.example.com
+  hosts:
+    - host: eden.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web-ui
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: api-gateway
+          port: 8080
+  tls:
+    - secretName: eden-tls
+      hosts:
+        - eden.example.com

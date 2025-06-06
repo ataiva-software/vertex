@@ -1,4 +1,5 @@
 plugins {
+    id("org.owasp.dependencycheck") version "8.2.1" apply false
     kotlin("plugin.serialization") version "1.9.20" apply false
     kotlin("jvm") version "1.9.20" apply false
     id("org.jetbrains.compose") version "1.5.11" apply false
@@ -18,6 +19,23 @@ allprojects {
             content {
                 includeGroup("org.jetbrains.kotlin-wrappers")
             }
+        }
+    }
+    
+    // Apply OWASP dependency check to all projects
+    apply(plugin = "org.owasp.dependencycheck")
+}
+
+// Configure OWASP dependency check
+dependencyCheck {
+    failBuildOnCVSS = 7.0f // Fail on high and critical vulnerabilities
+    formats = listOf("HTML", "JSON", "XML")
+    suppressionFile = "${project.rootDir}/security/dependency-check-suppressions.xml"
+    analyzers {
+        assemblyEnabled = false
+        nodeEnabled = true
+        nodeAudit {
+            enabled = true
         }
     }
 }

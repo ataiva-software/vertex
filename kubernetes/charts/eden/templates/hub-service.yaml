@@ -1,0 +1,21 @@
+{{- if .Values.hubService.enabled }}
+# Service
+{{- $serviceContext := dict "root" . "serviceName" "hub-service" "serviceConfig" .Values.hubService }}
+{{- include "eden.service" $serviceContext }}
+---
+# Deployment
+{{- $deploymentContext := dict "root" . "serviceName" "hub-service" "serviceConfig" .Values.hubService "dbName" "eden_hub" "extraEnv" nil }}
+{{- include "eden.deployment" $deploymentContext }}
+---
+# HorizontalPodAutoscaler
+{{- $hpaContext := dict "root" . "serviceName" "hub-service" "serviceConfig" .Values.hubService }}
+{{- include "eden.hpa" $hpaContext }}
+---
+# NetworkPolicy
+{{- $networkContext := dict "root" . "serviceName" "hub-service" "extraEgress" nil }}
+{{- include "eden.networkpolicy" $networkContext }}
+---
+# PodDisruptionBudget
+{{- $pdbContext := dict "root" . "serviceName" "hub-service" }}
+{{- include "eden.pdb" $pdbContext }}
+{{- end }}

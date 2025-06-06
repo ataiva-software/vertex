@@ -1,0 +1,23 @@
+{{- if .Values.flowService.enabled }}
+# Service
+{{- $serviceContext := dict "root" . "serviceName" "flow-service" "serviceConfig" .Values.flowService }}
+{{- include "eden.service" $serviceContext }}
+---
+# Deployment
+{{- $extraEnv := list (dict "name" "VAULT_SERVICE_URL" "key" "VAULT_SERVICE_URL") }}
+{{- $deploymentContext := dict "root" . "serviceName" "flow-service" "serviceConfig" .Values.flowService "dbName" "eden_flow" "extraEnv" $extraEnv }}
+{{- include "eden.deployment" $deploymentContext }}
+---
+# HorizontalPodAutoscaler
+{{- $hpaContext := dict "root" . "serviceName" "flow-service" "serviceConfig" .Values.flowService }}
+{{- include "eden.hpa" $hpaContext }}
+---
+# NetworkPolicy
+{{- $extraEgress := list (dict "app" "vault-service" "port" 8080) }}
+{{- $networkContext := dict "root" . "serviceName" "flow-service" "extraEgress" $extraEgress }}
+{{- include "eden.networkpolicy" $networkContext }}
+---
+# PodDisruptionBudget
+{{- $pdbContext := dict "root" . "serviceName" "flow-service" }}
+{{- include "eden.pdb" $pdbContext }}
+{{- end }}

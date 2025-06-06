@@ -18,7 +18,8 @@ class VaultService(
     private val encryption: Encryption,
     private val zeroKnowledgeEncryption: ZeroKnowledgeEncryption,
     private val secureRandom: SecureRandom,
-    private val keyDerivation: KeyDerivation
+    private val keyDerivation: KeyDerivation,
+    private val externalSecretsManager: ExternalSecretsManager? = null
 ) {
     
     /**
@@ -307,6 +308,201 @@ class VaultService(
         } catch (e: Exception) {
             // Log access failure but don't fail the main operation
             println("Failed to log secret access: ${e.message}")
+        }
+    }
+    
+    /**
+     * Store a secret in the external secrets manager
+     */
+    suspend fun storeExternalSecret(request: StoreExternalSecretRequest): VaultResult<ExternalSecretResponse> {
+        return try {
+            val manager = externalSecretsManager ?: return VaultResult.Error("External secrets manager not configured")
+            
+            // Store the secret in the external secrets manager
+            val writeResult = manager.writeSecret(request.path, request.value)
+            if (writeResult is ExternalSecretsResult.Error) {
+                return VaultResult.Error("Failed to store secret in external secrets manager: ${writeResult.message}")
+            }
+            
+            // Create a reference in the local database
+            val secret = Secret(
+                id = secureRandom.nextUuid(),
+                name = request.name,
+                encryptedValue = "external:${request.path}",
+                encryptionKeyId = "external",
+                secretType = "external",
+                description = request.description,
+                userId = request.userId,
+                organizationId = request.organizationId,
+                version = 1,
+                isActive = true,
+                createdAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            )
+            
+            val savedSecret = databaseService.secretRepository.create(secret)
+            
+            // Log access
+            logSecretAccess(savedSecret.id, request.userId, "CREATE_EXTERNAL", request.ipAddress, request.userAgent)
+            
+            VaultResult.Success(
+                ExternalSecretResponse(
+                    id = savedSecret.id,
+                    name = savedSecret.name,
+                    path = request.path,
+                    type = savedSecret.secretType,
+                    description = savedSecret.description,
+                    provider = manager.getType().name,
+                    createdAt = savedSecret.createdAt,
+                    updatedAt = savedSecret.updatedAt
+                )
+            )
+        } catch (e: Exception) {
+            VaultResult.Error("Failed to store external secret: ${e.message}")
+        }
+    }
+    
+    /**
+     * Get a secret from the external secrets manager
+     */
+    suspend fun getExternalSecret(request: GetExternalSecretRequest): VaultResult<ExternalSecretValueResponse> {
+        return try {
+            val manager = externalSecretsManager ?: return VaultResult.Error("External secrets manager not configured")
+            
+            // Find the secret reference in the local database
+            val secret = databaseService.secretRepository.findByNameAndUser(request.name, request.userId)
+                ?: return VaultResult.Error("Secret '${request.name}' not found")
+            
+            if (!secret.isActive) {
+                return VaultResult.Error("Secret '${request.name}' is inactive")
+            }
+            
+            if (!secret.encryptedValue.startsWith("external:")) {
+                return VaultResult.Error("Secret '${request.name}' is not an external secret")
+            }
+            
+            // Extract the path from the encrypted value
+            val path = secret.encryptedValue.removePrefix("external:")
+            
+            // Get the secret from the external secrets manager
+            val readResult = manager.readSecret(path, request.key)
+            if (readResult is ExternalSecretsResult.Error) {
+                return VaultResult.Error("Failed to get secret from external secrets manager: ${readResult.message}")
+            }
+            
+            val value = (readResult as ExternalSecretsResult.Success).data
+            
+            // Log access
+            logSecretAccess(secret.id, request.userId, "READ_EXTERNAL", request.ipAddress, request.userAgent)
+            
+            VaultResult.Success(
+                ExternalSecretValueResponse(
+                    id = secret.id,
+                    name = secret.name,
+                    path = path,
+                    value = value,
+                    type = secret.secretType,
+                    description = secret.description,
+                    provider = manager.getType().name,
+                    createdAt = secret.createdAt,
+                    updatedAt = secret.updatedAt
+                )
+            )
+        } catch (e: Exception) {
+            VaultResult.Error("Failed to get external secret: ${e.message}")
+        }
+    }
+    
+    /**
+     * Delete a secret from the external secrets manager
+     */
+    suspend fun deleteExternalSecret(request: DeleteExternalSecretRequest): VaultResult<Unit> {
+        return try {
+            val manager = externalSecretsManager ?: return VaultResult.Error("External secrets manager not configured")
+            
+            // Find the secret reference in the local database
+            val secret = databaseService.secretRepository.findByNameAndUser(request.name, request.userId)
+                ?: return VaultResult.Error("Secret '${request.name}' not found")
+            
+            if (!secret.encryptedValue.startsWith("external:")) {
+                return VaultResult.Error("Secret '${request.name}' is not an external secret")
+            }
+            
+            // Extract the path from the encrypted value
+            val path = secret.encryptedValue.removePrefix("external:")
+            
+            // Delete the secret from the external secrets manager
+            if (request.deleteFromProvider) {
+                val deleteResult = manager.deleteSecret(path)
+                if (deleteResult is ExternalSecretsResult.Error) {
+                    return VaultResult.Error("Failed to delete secret from external secrets manager: ${deleteResult.message}")
+                }
+            }
+            
+            // Deactivate the secret in the local database
+            val success = databaseService.secretRepository.updateStatus(secret.id, false)
+            if (!success) {
+                return VaultResult.Error("Failed to deactivate secret reference")
+            }
+            
+            // Log access
+            logSecretAccess(secret.id, request.userId, "DELETE_EXTERNAL", request.ipAddress, request.userAgent)
+            
+            VaultResult.Success(Unit)
+        } catch (e: Exception) {
+            VaultResult.Error("Failed to delete external secret: ${e.message}")
+        }
+    }
+    
+    /**
+     * List secrets in the external secrets manager
+     */
+    suspend fun listExternalSecrets(request: ListExternalSecretsRequest): VaultResult<List<ExternalSecretResponse>> {
+        return try {
+            val manager = externalSecretsManager ?: return VaultResult.Error("External secrets manager not configured")
+            
+            // List secrets in the external secrets manager
+            val listResult = manager.listSecrets(request.path)
+            if (listResult is ExternalSecretsResult.Error) {
+                return VaultResult.Error("Failed to list secrets in external secrets manager: ${listResult.message}")
+            }
+            
+            val paths = (listResult as ExternalSecretsResult.Success).data
+            
+            // Get the secret references from the local database
+            val secrets = databaseService.secretRepository.findByUserIdAndType(request.userId, "external")
+            
+            // Map the secrets to responses
+            val responses = secrets.map { secret ->
+                ExternalSecretResponse(
+                    id = secret.id,
+                    name = secret.name,
+                    path = secret.encryptedValue.removePrefix("external:"),
+                    type = secret.secretType,
+                    description = secret.description,
+                    provider = manager.getType().name,
+                    createdAt = secret.createdAt,
+                    updatedAt = secret.updatedAt
+                )
+            }
+            
+            VaultResult.Success(responses)
+        } catch (e: Exception) {
+            VaultResult.Error("Failed to list external secrets: ${e.message}")
+        }
+    }
+    
+    /**
+     * Get the health status of the external secrets manager
+     */
+    suspend fun getExternalSecretsManagerHealth(): VaultResult<ExternalSecretsManagerHealth> {
+        return try {
+            val manager = externalSecretsManager ?: return VaultResult.Error("External secrets manager not configured")
+            
+            val health = manager.getHealthStatus()
+            VaultResult.Success(health)
+        } catch (e: Exception) {
+            VaultResult.Error("Failed to get external secrets manager health: ${e.message}")
         }
     }
 }

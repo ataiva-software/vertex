@@ -1,0 +1,153 @@
+{{- if .Values.webUi.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: web-ui
+    tier: frontend
+    {{- include "eden.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.webUi.service.type }}
+  ports:
+  - port: {{ .Values.webUi.service.port }}
+    targetPort: {{ .Values.webUi.service.targetPort }}
+    name: http
+  selector:
+    app: web-ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: web-ui
+    {{- include "eden.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.webUi.replicaCount }}
+  selector:
+    matchLabels:
+      app: web-ui
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: web-ui
+        tier: frontend
+        {{- include "eden.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: web-ui
+        image: "{{ .Values.webUi.image.repository }}:{{ .Values.webUi.image.tag }}"
+        imagePullPolicy: {{ .Values.webUi.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.webUi.service.targetPort }}
+          name: http
+        env:
+        - name: API_BASE_URL
+          value: "http://api-gateway:{{ .Values.apiGateway.service.port }}"
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        resources:
+          {{- toYaml .Values.webUi.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.webUi.service.targetPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.webUi.service.targetPort }}
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+{{- if .Values.webUi.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-ui-hpa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eden.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-ui
+  minReplicas: {{ .Values.webUi.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.webUi.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.webUi.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.webUi.autoscaling.targetMemoryUtilizationPercentage }}
+{{- end }}
+{{- if .Values.global.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-ui-network-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eden.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: web-ui
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Release.Namespace }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.webUi.service.targetPort }}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: {{ .Values.apiGateway.service.port }}
+{{- end }}
+{{- if .Values.global.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-ui-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eden.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.global.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: web-ui
+{{- end }}
+{{- end }}

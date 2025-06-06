@@ -18,6 +18,7 @@ class VaultController(private val vaultService: VaultService) {
     fun Route.vaultRoutes() {
         route("/api/v1") {
             secretsRoutes()
+            externalSecretsRoutes()
             policiesRoutes()
             authRoutes()
             bulkRoutes()
@@ -309,6 +310,138 @@ class VaultController(private val vaultService: VaultService) {
         }
     }
     
+    private fun Route.externalSecretsRoutes() {
+        route("/external-secrets") {
+            // Store external secret
+            post {
+                try {
+                    val request = call.receive<StoreExternalSecretRequest>()
+                    val enrichedRequest = request.copy(
+                        ipAddress = call.request.origin.remoteHost,
+                        userAgent = call.request.headers["User-Agent"]
+                    )
+                    
+                    when (val result = vaultService.storeExternalSecret(enrichedRequest)) {
+                        is VaultResult.Success -> {
+                            call.respond(HttpStatusCode.Created, ApiResponse.success(result.data))
+                        }
+                        is VaultResult.Error -> {
+                            call.respond(HttpStatusCode.BadRequest, ApiResponse.error<ExternalSecretResponse>(result.message))
+                        }
+                    }
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<ExternalSecretResponse>("Internal server error"))
+                }
+            }
+            
+            // List external secrets
+            get {
+                try {
+                    val userId = call.request.queryParameters["userId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.error<List<ExternalSecretResponse>>("userId is required"))
+                    
+                    val path = call.request.queryParameters["path"] ?: ""
+                    
+                    val request = ListExternalSecretsRequest(
+                        userId = userId,
+                        path = path
+                    )
+                    
+                    when (val result = vaultService.listExternalSecrets(request)) {
+                        is VaultResult.Success -> {
+                            call.respond(HttpStatusCode.OK, ApiResponse.success(result.data))
+                        }
+                        is VaultResult.Error -> {
+                            call.respond(HttpStatusCode.BadRequest, ApiResponse.error<List<ExternalSecretResponse>>(result.message))
+                        }
+                    }
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<List<ExternalSecretResponse>>("Internal server error"))
+                }
+            }
+            
+            // Get specific external secret
+            get("/{name}") {
+                try {
+                    val name = call.parameters["name"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.error<ExternalSecretValueResponse>("Secret name is required"))
+                    
+                    val userId = call.request.queryParameters["userId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.error<ExternalSecretValueResponse>("userId is required"))
+                    
+                    val key = call.request.queryParameters["key"]
+                    
+                    val request = GetExternalSecretRequest(
+                        name = name,
+                        userId = userId,
+                        key = key,
+                        ipAddress = call.request.origin.remoteHost,
+                        userAgent = call.request.headers["User-Agent"]
+                    )
+                    
+                    when (val result = vaultService.getExternalSecret(request)) {
+                        is VaultResult.Success -> {
+                            call.respond(HttpStatusCode.OK, ApiResponse.success(result.data))
+                        }
+                        is VaultResult.Error -> {
+                            call.respond(HttpStatusCode.NotFound, ApiResponse.error<ExternalSecretValueResponse>(result.message))
+                        }
+                    }
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<ExternalSecretValueResponse>("Internal server error"))
+                }
+            }
+            
+            // Delete external secret
+            delete("/{name}") {
+                try {
+                    val name = call.parameters["name"]
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.error<Unit>("Secret name is required"))
+                    
+                    val userId = call.request.queryParameters["userId"]
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.error<Unit>("userId is required"))
+                    
+                    val deleteFromProvider = call.request.queryParameters["deleteFromProvider"]?.toBoolean() ?: false
+                    
+                    val request = DeleteExternalSecretRequest(
+                        name = name,
+                        userId = userId,
+                        deleteFromProvider = deleteFromProvider,
+                        ipAddress = call.request.origin.remoteHost,
+                        userAgent = call.request.headers["User-Agent"]
+                    )
+                    
+                    when (val result = vaultService.deleteExternalSecret(request)) {
+                        is VaultResult.Success -> {
+                            call.respond(HttpStatusCode.OK, ApiResponse.success(Unit))
+                        }
+                        is VaultResult.Error -> {
+                            call.respond(HttpStatusCode.BadRequest, ApiResponse.error<Unit>(result.message))
+                        }
+                    }
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<Unit>("Internal server error"))
+                }
+            }
+            
+            // Get external secrets manager health
+            get("/health") {
+                try {
+                    when (val result = vaultService.getExternalSecretsManagerHealth()) {
+                        is VaultResult.Success -> {
+                            call.respond(HttpStatusCode.OK, ApiResponse.success(result.data))
+                        }
+                        is VaultResult.Error -> {
+                            call.respond(HttpStatusCode.BadRequest, ApiResponse.error<ExternalSecretsManagerHealth>(result.message))
+                        }
+                    }
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ApiResponse.error<ExternalSecretsManagerHealth>("Internal server error"))
+                }
+            }
+        }
+    }
+
     // Statistics and monitoring endpoints
     fun Route.statsRoutes() {
         route("/stats") {

@@ -1,0 +1,652 @@
+# Cross-Region Monitoring and Alerting Configuration
+# This configuration defines the setup for monitoring and alerting across multiple regions
+
+# Global settings
+global:
+  provider: prometheus-grafana
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    monitor: eden-production
+  retention_days: 15
+  tags:
+    Environment: production
+    Service: eden
+    ManagedBy: terraform
+
+# Region definitions
+regions:
+  - name: us-east-1
+    provider: aws
+    role: active
+    kubernetes_context: eks-us-east-1
+    prometheus_url: http://prometheus.monitoring.svc.cluster.local:9090
+    alertmanager_url: http://alertmanager.monitoring.svc.cluster.local:9093
+    grafana_url: http://grafana.monitoring.svc.cluster.local:3000
+    
+  - name: us-west-2
+    provider: aws
+    role: active
+    kubernetes_context: eks-us-west-2
+    prometheus_url: http://prometheus.monitoring.svc.cluster.local:9090
+    alertmanager_url: http://alertmanager.monitoring.svc.cluster.local:9093
+    grafana_url: http://grafana.monitoring.svc.cluster.local:3000
+
+# Prometheus configuration
+prometheus:
+  # Global Prometheus configuration
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+    scrape_timeout: 10s
+    external_labels:
+      monitor: eden-production
+  
+  # Remote write configuration for cross-region data aggregation
+  remote_write:
+    - url: https://prometheus-central.eden.example.com/api/v1/write
+      name: central-prometheus
+      remote_timeout: 30s
+      write_relabel_configs:
+        - source_labels: [__name__]
+          regex: up|node_.*|kube_.*|container_.*|istio_.*|eden_.*
+          action: keep
+  
+  # Remote read configuration for cross-region data querying
+  remote_read:
+    - url: https://prometheus-central.eden.example.com/api/v1/read
+      name: central-prometheus
+      read_recent: true
+      required_matchers:
+        monitor: eden-production
+  
+  # Scrape configurations
+  scrape_configs:
+    # Kubernetes API server
+    - job_name: kubernetes-apiservers
+      kubernetes_sd_configs:
+        - role: endpoints
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: default;kubernetes;https
+        - target_label: region
+          replacement: ${REGION}
+    
+    # Kubernetes nodes
+    - job_name: kubernetes-nodes
+      kubernetes_sd_configs:
+        - role: node
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        - target_label: __address__
+          replacement: kubernetes.default.svc:443
+        - source_labels: [__meta_kubernetes_node_name]
+          regex: (.+)
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics
+        - target_label: region
+          replacement: ${REGION}
+    
+    # Kubernetes pods
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: kubernetes_pod_name
+        - target_label: region
+          replacement: ${REGION}
+    
+    # Istio metrics
+    - job_name: istio-mesh
+      kubernetes_sd_configs:
+        - role: endpoints
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name]
+          action: keep
+          regex: istio-system;istio-telemetry
+        - source_labels: [__meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: prometheus
+        - target_label: region
+          replacement: ${REGION}
+    
+    # Eden services
+    - job_name: eden-services
+      kubernetes_sd_configs:
+        - role: endpoints
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace]
+          action: keep
+          regex: eden
+        - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - action: labelmap
+          regex: __meta_kubernetes_service_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_service_name]
+          action: replace
+          target_label: kubernetes_service_name
+        - target_label: region
+          replacement: ${REGION}
+    
+    # Federation scrape config for cross-region metrics
+    - job_name: federate-regions
+      honor_labels: true
+      metrics_path: /federate
+      params:
+        match[]:
+          - '{job=~".+"}'
+      static_configs:
+        - targets:
+          - prometheus.us-east-1.eden.example.com:9090
+          - prometheus.us-west-2.eden.example.com:9090
+          labels:
+            monitor: federated
+
+# Alertmanager configuration
+alertmanager:
+  # Global Alertmanager configuration
+  global:
+    resolve_timeout: 5m
+    smtp_smarthost: smtp.eden.example.com:587
+    smtp_from: alertmanager@eden.example.com
+    smtp_auth_username: alertmanager
+    smtp_auth_password: ${SMTP_PASSWORD}
+    smtp_require_tls: true
+    slack_api_url: ${SLACK_API_URL}
+    pagerduty_url: https://events.pagerduty.com/v2/enqueue
+  
+  # Templates for alert notifications
+  templates:
+    - /etc/alertmanager/template/*.tmpl
+  
+  # Route configuration
+  route:
+    group_by: ['alertname', 'cluster', 'service', 'region']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    receiver: 'team-eden'
+    routes:
+      - match:
+          severity: critical
+        receiver: 'team-eden-pagerduty'
+        continue: true
+      - match:
+          severity: warning
+        receiver: 'team-eden-slack'
+        continue: true
+      - match_re:
+          service: ^(api-gateway|vault-service)$
+        receiver: 'team-eden-security'
+      - match_re:
+          service: ^(hub-service|flow-service|task-service)$
+        receiver: 'team-eden-core'
+      - match_re:
+          service: ^(monitor-service|sync-service|insight-service)$
+        receiver: 'team-eden-data'
+  
+  # Inhibition rules
+  inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'cluster', 'service']
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'info'
+      equal: ['alertname', 'cluster', 'service']
+  
+  # Receivers for alert notifications
+  receivers:
+    - name: 'team-eden'
+      email_configs:
+        - to: 'team@eden.example.com'
+          send_resolved: true
+      slack_configs:
+        - channel: '#eden-alerts'
+          send_resolved: true
+          title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Region:* {{ .Labels.region }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service }}
+            {{ end }}
+    
+    - name: 'team-eden-pagerduty'
+      pagerduty_configs:
+        - service_key: ${PAGERDUTY_SERVICE_KEY}
+          send_resolved: true
+          description: '{{ .CommonLabels.alertname }}'
+          client: 'alertmanager'
+          client_url: '{{ template "pagerduty.default.clientURL" . }}'
+          details:
+            firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+            resolved: '{{ template "pagerduty.default.instances" .Alerts.Resolved }}'
+            num_firing: '{{ .Alerts.Firing | len }}'
+            num_resolved: '{{ .Alerts.Resolved | len }}'
+    
+    - name: 'team-eden-slack'
+      slack_configs:
+        - channel: '#eden-alerts'
+          send_resolved: true
+          title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Region:* {{ .Labels.region }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service }}
+            {{ end }}
+    
+    - name: 'team-eden-security'
+      slack_configs:
+        - channel: '#eden-security'
+          send_resolved: true
+          title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Region:* {{ .Labels.region }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service }}
+            {{ end }}
+      email_configs:
+        - to: 'security@eden.example.com'
+          send_resolved: true
+    
+    - name: 'team-eden-core'
+      slack_configs:
+        - channel: '#eden-core'
+          send_resolved: true
+          title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Region:* {{ .Labels.region }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service }}
+            {{ end }}
+      email_configs:
+        - to: 'core@eden.example.com'
+          send_resolved: true
+    
+    - name: 'team-eden-data'
+      slack_configs:
+        - channel: '#eden-data'
+          send_resolved: true
+          title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Region:* {{ .Labels.region }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service }}
+            {{ end }}
+      email_configs:
+        - to: 'data@eden.example.com'
+          send_resolved: true
+
+# Alert rules
+alert_rules:
+  # Cross-region alert rules
+  cross_region:
+    - name: CrossRegionAvailability
+      rules:
+        - alert: CrossRegionServiceDown
+          expr: sum by(service) (up{job="eden-services"}) < 2
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Cross-region service down"
+            description: "Service {{ $labels.service }} is down in at least one region"
+        
+        - alert: AllRegionsServiceDown
+          expr: sum by(service) (up{job="eden-services"}) == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service down in all regions"
+            description: "Service {{ $labels.service }} is down in all regions"
+        
+        - alert: RegionDown
+          expr: sum by(region) (up{job="kubernetes-apiservers"}) == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Region down"
+            description: "Region {{ $labels.region }} appears to be down"
+    
+    - name: CrossRegionLatency
+      rules:
+        - alert: CrossRegionHighLatency
+          expr: histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m]))) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High cross-region latency"
+            description: "Service {{ $labels.service }} in region {{ $labels.region }} has high latency (95th percentile > 1s)"
+        
+        - alert: CrossRegionLatencyImbalance
+          expr: |
+            max by(service) (
+              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m])))
+            ) 
+            / 
+            min by(service) (
+              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m])))
+            ) > 3
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cross-region latency imbalance"
+            description: "Service {{ $labels.service }} has significant latency imbalance between regions (ratio > 3x)"
+    
+    - name: CrossRegionErrors
+      rules:
+        - alert: CrossRegionHighErrorRate
+          expr: sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) / sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate"
+            description: "Service {{ $labels.service }} in region {{ $labels.region }} has high error rate (>5%)"
+        
+        - alert: CrossRegionErrorRateImbalance
+          expr: |
+            max by(service) (
+              sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) 
+              / 
+              sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m]))
+            ) 
+            / 
+            min by(service) (
+              sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) 
+              / 
+              sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m]))
+            ) > 3
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cross-region error rate imbalance"
+            description: "Service {{ $labels.service }} has significant error rate imbalance between regions (ratio > 3x)"
+  
+  # Database replication alert rules
+  database_replication:
+    - name: PostgreSQLReplication
+      rules:
+        - alert: PostgreSQLReplicationLag
+          expr: pg_replication_lag_seconds > 300
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PostgreSQL replication lag"
+            description: "PostgreSQL replication lag is {{ $value }} seconds in region {{ $labels.region }}"
+        
+        - alert: PostgreSQLReplicationStopped
+          expr: pg_replication_is_replica == 0 and pg_replication_is_primary == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL replication stopped"
+            description: "PostgreSQL replication has stopped in region {{ $labels.region }}"
+        
+        - alert: PostgreSQLReplicationConflicts
+          expr: rate(pg_replication_conflicts_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PostgreSQL replication conflicts"
+            description: "PostgreSQL replication conflicts detected in region {{ $labels.region }}"
+    
+    - name: RedisReplication
+      rules:
+        - alert: RedisReplicationLag
+          expr: redis_replication_lag_seconds > 60
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis replication lag"
+            description: "Redis replication lag is {{ $value }} seconds in region {{ $labels.region }}"
+        
+        - alert: RedisReplicationBroken
+          expr: redis_replication_status == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Redis replication broken"
+            description: "Redis replication is broken in region {{ $labels.region }}"
+        
+        - alert: RedisCRDTConflicts
+          expr: rate(redis_crdt_conflicts_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis CRDT conflicts"
+            description: "Redis CRDT conflicts detected in region {{ $labels.region }}"
+
+# Grafana configuration
+grafana:
+  # Global Grafana configuration
+  global:
+    admin_user: admin
+    admin_password: ${GRAFANA_ADMIN_PASSWORD}
+    secret_key: ${GRAFANA_SECRET_KEY}
+    
+  # Datasources configuration
+  datasources:
+    - name: prometheus-us-east-1
+      type: prometheus
+      url: http://prometheus.us-east-1.eden.example.com:9090
+      access: proxy
+      is_default: true
+      editable: false
+    
+    - name: prometheus-us-west-2
+      type: prometheus
+      url: http://prometheus.us-west-2.eden.example.com:9090
+      access: proxy
+      is_default: false
+      editable: false
+    
+    - name: prometheus-central
+      type: prometheus
+      url: https://prometheus-central.eden.example.com
+      access: proxy
+      is_default: false
+      editable: false
+  
+  # Dashboards configuration
+  dashboards:
+    - name: cross-region-overview
+      title: "Cross-Region Overview"
+      description: "Overview of services across all regions"
+      tags: ["cross-region", "overview"]
+      variables:
+        - name: region
+          type: custom
+          options: ["us-east-1", "us-west-2", "all"]
+          default: "all"
+        - name: service
+          type: query
+          query: "label_values(up{job=\"eden-services\"}, service)"
+          default: "all"
+      panels:
+        - title: "Service Availability"
+          type: heatmap
+          datasource: prometheus-central
+          targets:
+            - expr: "up{job=\"eden-services\"}"
+              legend: "{{service}} - {{region}}"
+        
+        - title: "Request Rate by Region"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\"}[5m]))"
+              legend: "{{region}}"
+        
+        - title: "Error Rate by Region"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"eden-services\"}[5m]))"
+              legend: "{{region}}"
+        
+        - title: "Latency by Region (95th Percentile)"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"eden-services\"}[5m])))"
+              legend: "{{region}}"
+    
+    - name: database-replication
+      title: "Database Replication"
+      description: "Database replication status across regions"
+      tags: ["database", "replication"]
+      variables:
+        - name: region
+          type: custom
+          options: ["us-east-1", "us-west-2", "all"]
+          default: "all"
+      panels:
+        - title: "PostgreSQL Replication Lag"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "pg_replication_lag_seconds"
+              legend: "{{region}}"
+        
+        - title: "Redis Replication Lag"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "redis_replication_lag_seconds"
+              legend: "{{region}}"
+        
+        - title: "PostgreSQL Replication Conflicts"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "rate(pg_replication_conflicts_total[5m])"
+              legend: "{{region}}"
+        
+        - title: "Redis CRDT Conflicts"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "rate(redis_crdt_conflicts_total[5m])"
+              legend: "{{region}}"
+    
+    - name: service-health
+      title: "Service Health"
+      description: "Health metrics for all services across regions"
+      tags: ["service", "health"]
+      variables:
+        - name: region
+          type: custom
+          options: ["us-east-1", "us-west-2", "all"]
+          default: "all"
+        - name: service
+          type: query
+          query: "label_values(up{job=\"eden-services\"}, service)"
+          default: "api-gateway"
+      panels:
+        - title: "Request Rate"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\"}[5m]))"
+              legend: "{{region}}"
+        
+        - title: "Error Rate"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\"}[5m]))"
+              legend: "{{region}}"
+        
+        - title: "Latency (95th Percentile)"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"eden-services\",service=\"$service\"}[5m])))"
+              legend: "{{region}}"
+        
+        - title: "CPU Usage"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (rate(container_cpu_usage_seconds_total{namespace=\"eden\",container=\"$service\"}[5m]))"
+              legend: "{{region}}"
+        
+        - title: "Memory Usage"
+          type: graph
+          datasource: prometheus-central
+          targets:
+            - expr: "sum by(region) (container_memory_usage_bytes{namespace=\"eden\",container=\"$service\"})"
+              legend: "{{region}}"

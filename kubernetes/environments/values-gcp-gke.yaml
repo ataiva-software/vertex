@@ -1,0 +1,198 @@
+# Values for Google Cloud GKE environment
+
+global:
+  environment: production
+  image:
+    repository: gcr.io/${GCP_PROJECT_ID}/eden
+    tag: latest
+    pullPolicy: Always
+  
+  # Production resources
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  
+  # Database settings for Cloud SQL
+  database:
+    host: /cloudsql/${GCP_PROJECT_ID}:${GCP_REGION}:eden-postgres
+    port: 5432
+    user: postgres
+    # Password should be provided via Secret Manager
+    password: ${DB_PASSWORD}
+    sslMode: require
+  
+  # Enable network policies for production
+  networkPolicy:
+    enabled: true
+  
+  # Enable PDB for production
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  # Security settings
+  security:
+    jwtSecret: ${JWT_SECRET}
+    encryptionKey: ${ENCRYPTION_KEY}
+
+# Use external Cloud SQL PostgreSQL
+postgresql:
+  enabled: false
+
+# Use Memorystore Redis
+redis:
+  enabled: false
+  # External Redis configuration
+  external:
+    host: ${REDIS_HOST}
+    port: 6379
+
+# Use Cloud Monitoring (Prometheus)
+prometheus:
+  enabled: false
+
+# Use Cloud Monitoring (Grafana)
+grafana:
+  enabled: false
+
+# Service configurations
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+vaultService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+hubService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+flowService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+taskService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+monitorService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+syncService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+insightService:
+  enabled: true
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+webUi:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: gcr.io/${GCP_PROJECT_ID}/eden-web
+    tag: latest
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Enable ingress with GCP Ingress
+ingress:
+  enabled: true
+  className: gce
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: eden-ip
+    networking.gke.io/managed-certificates: eden-cert
+    networking.gke.io/v1beta1.FrontendConfig: eden-frontend-config
+  hosts:
+    - host: eden.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web-ui
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: api-gateway
+          port: 8080
+  tls:
+    - secretName: eden-tls
+      hosts:
+        - eden.example.com

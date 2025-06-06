@@ -1,0 +1,276 @@
+# PostgreSQL Multi-Region Configuration
+# This configuration defines the setup for bi-directional replication between regions
+
+# Global settings
+global:
+  replication_user: replication_user
+  replication_password_secret: /eden/secrets/postgres/replication_password
+  max_replication_lag_seconds: 300
+  monitoring_interval_seconds: 60
+  conflict_resolution: last_write_wins
+
+# Region definitions
+regions:
+  - name: us-east-1
+    role: active
+    provider: aws
+    instance:
+      host: postgres.us-east-1.eden.internal
+      port: 5432
+      admin_user: postgres
+      admin_password_secret: /eden/secrets/postgres/admin_password
+      version: "14.5"
+      parameters:
+        max_connections: 500
+        shared_buffers: 4GB
+        effective_cache_size: 12GB
+        maintenance_work_mem: 1GB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 10485kB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        max_parallel_maintenance_workers: 4
+        wal_level: logical
+        max_replication_slots: 20
+        max_wal_senders: 20
+        track_commit_timestamp: on
+    databases:
+      - name: eden_vault
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_flow
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_task
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_hub
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_sync
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_insight
+        extensions:
+          - pglogical
+          - pg_stat_statements
+
+  - name: us-west-2
+    role: active
+    provider: aws
+    instance:
+      host: postgres.us-west-2.eden.internal
+      port: 5432
+      admin_user: postgres
+      admin_password_secret: /eden/secrets/postgres/admin_password
+      version: "14.5"
+      parameters:
+        max_connections: 500
+        shared_buffers: 4GB
+        effective_cache_size: 12GB
+        maintenance_work_mem: 1GB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 10485kB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        max_parallel_maintenance_workers: 4
+        wal_level: logical
+        max_replication_slots: 20
+        max_wal_senders: 20
+        track_commit_timestamp: on
+    databases:
+      - name: eden_vault
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_flow
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_task
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_hub
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_sync
+        extensions:
+          - pglogical
+          - pg_stat_statements
+      - name: eden_insight
+        extensions:
+          - pglogical
+          - pg_stat_statements
+
+# Bi-directional replication configuration
+replication:
+  provider: pglogical
+  node_groups:
+    - name: eden_vault_group
+      database: eden_vault
+      tables:
+        - vault_secrets
+        - vault_keys
+        - vault_policies
+        - vault_audit_logs
+      exclude_tables:
+        - vault_temp_tokens
+      conflict_resolution_tables:
+        - table: vault_secrets
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+    
+    - name: eden_flow_group
+      database: eden_flow
+      tables:
+        - flow_definitions
+        - flow_instances
+        - flow_steps
+        - flow_variables
+      exclude_tables:
+        - flow_temp_data
+      conflict_resolution_tables:
+        - table: flow_instances
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+    
+    - name: eden_task_group
+      database: eden_task
+      tables:
+        - tasks
+        - task_executions
+        - task_dependencies
+        - task_schedules
+      exclude_tables:
+        - task_logs
+      conflict_resolution_tables:
+        - table: tasks
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+    
+    - name: eden_hub_group
+      database: eden_hub
+      tables:
+        - hub_connections
+        - hub_events
+        - hub_notifications
+        - hub_integrations
+      exclude_tables:
+        - hub_temp_data
+      conflict_resolution_tables:
+        - table: hub_connections
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+    
+    - name: eden_sync_group
+      database: eden_sync
+      tables:
+        - sync_jobs
+        - sync_sources
+        - sync_targets
+        - sync_mappings
+      exclude_tables:
+        - sync_temp_data
+      conflict_resolution_tables:
+        - table: sync_jobs
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+    
+    - name: eden_insight_group
+      database: eden_insight
+      tables:
+        - analytics_queries
+        - query_executions
+        - reports
+        - report_templates
+        - report_executions
+        - dashboards
+        - metrics
+        - metric_values
+        - kpis
+      exclude_tables:
+        - temp_analytics_data
+      conflict_resolution_tables:
+        - table: reports
+          resolution: last_write_wins
+          tracking_column: last_updated_at
+
+# Replication topology
+topology:
+  - source_region: us-east-1
+    target_region: us-west-2
+    node_groups:
+      - eden_vault_group
+      - eden_flow_group
+      - eden_task_group
+      - eden_hub_group
+      - eden_sync_group
+      - eden_insight_group
+  
+  - source_region: us-west-2
+    target_region: us-east-1
+    node_groups:
+      - eden_vault_group
+      - eden_flow_group
+      - eden_task_group
+      - eden_hub_group
+      - eden_sync_group
+      - eden_insight_group
+
+# Monitoring and alerting
+monitoring:
+  lag_thresholds:
+    warning_seconds: 300
+    critical_seconds: 600
+  conflict_thresholds:
+    warning_count: 10
+    critical_count: 50
+  alerts:
+    channels:
+      - email:
+          recipients:
+            - devops@example.com
+            - dba@example.com
+      - slack:
+          channel: "#eden-db-alerts"
+          webhook_secret: /eden/secrets/alerts/slack_webhook
+      - pagerduty:
+          service_key_secret: /eden/secrets/alerts/pagerduty_key
+  dashboards:
+    grafana:
+      folder: "PostgreSQL Multi-Region"
+      dashboards:
+        - name: "Replication Status"
+          description: "PostgreSQL replication status across regions"
+        - name: "Conflict Resolution"
+          description: "Replication conflict monitoring and resolution"
+
+# Maintenance procedures
+maintenance:
+  vacuum_schedule: "0 2 * * *"  # Daily at 2 AM
+  analyze_schedule: "0 3 * * *"  # Daily at 3 AM
+  reindex_schedule: "0 4 * * 0"  # Weekly on Sunday at 4 AM
+  maintenance_window:
+    us-east-1: "Sun 02:00-06:00 EST"
+    us-west-2: "Sun 02:00-06:00 PST"

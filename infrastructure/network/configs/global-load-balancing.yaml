@@ -1,0 +1,347 @@
+# Global Load Balancing Configuration
+# This configuration defines the setup for global load balancing across regions
+
+# Global settings
+global:
+  provider: aws-route53
+  domain: eden.example.com
+  ttl_seconds: 60
+  health_check:
+    protocol: https
+    port: 443
+    path: /health
+    interval_seconds: 30
+    failure_threshold: 3
+    request_interval: 10
+    measure_latency: true
+  failover:
+    automatic: true
+    threshold_percent: 50
+    cooldown_seconds: 60
+
+# Region definitions
+regions:
+  - name: us-east-1
+    provider: aws
+    role: active
+    weight: 100
+    endpoints:
+      api:
+        hostname: api.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-api-alb-us-east-1
+        alb_dns_name: eden-api-alb-us-east-1.elb.us-east-1.amazonaws.com
+      web:
+        hostname: web.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-web-alb-us-east-1
+        alb_dns_name: eden-web-alb-us-east-1.elb.us-east-1.amazonaws.com
+      vault:
+        hostname: vault.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-vault-alb-us-east-1
+        alb_dns_name: eden-vault-alb-us-east-1.elb.us-east-1.amazonaws.com
+      hub:
+        hostname: hub.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-hub-alb-us-east-1
+        alb_dns_name: eden-hub-alb-us-east-1.elb.us-east-1.amazonaws.com
+      flow:
+        hostname: flow.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-flow-alb-us-east-1
+        alb_dns_name: eden-flow-alb-us-east-1.elb.us-east-1.amazonaws.com
+      task:
+        hostname: task.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-task-alb-us-east-1
+        alb_dns_name: eden-task-alb-us-east-1.elb.us-east-1.amazonaws.com
+      monitor:
+        hostname: monitor.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-monitor-alb-us-east-1
+        alb_dns_name: eden-monitor-alb-us-east-1.elb.us-east-1.amazonaws.com
+      sync:
+        hostname: sync.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-sync-alb-us-east-1
+        alb_dns_name: eden-sync-alb-us-east-1.elb.us-east-1.amazonaws.com
+      insight:
+        hostname: insight.us-east-1.eden.example.com
+        health_check_path: /health
+        alb_name: eden-insight-alb-us-east-1
+        alb_dns_name: eden-insight-alb-us-east-1.elb.us-east-1.amazonaws.com
+
+  - name: us-west-2
+    provider: aws
+    role: active
+    weight: 100
+    endpoints:
+      api:
+        hostname: api.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-api-alb-us-west-2
+        alb_dns_name: eden-api-alb-us-west-2.elb.us-west-2.amazonaws.com
+      web:
+        hostname: web.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-web-alb-us-west-2
+        alb_dns_name: eden-web-alb-us-west-2.elb.us-west-2.amazonaws.com
+      vault:
+        hostname: vault.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-vault-alb-us-west-2
+        alb_dns_name: eden-vault-alb-us-west-2.elb.us-west-2.amazonaws.com
+      hub:
+        hostname: hub.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-hub-alb-us-west-2
+        alb_dns_name: eden-hub-alb-us-west-2.elb.us-west-2.amazonaws.com
+      flow:
+        hostname: flow.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-flow-alb-us-west-2
+        alb_dns_name: eden-flow-alb-us-west-2.elb.us-west-2.amazonaws.com
+      task:
+        hostname: task.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-task-alb-us-west-2
+        alb_dns_name: eden-task-alb-us-west-2.elb.us-west-2.amazonaws.com
+      monitor:
+        hostname: monitor.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-monitor-alb-us-west-2
+        alb_dns_name: eden-monitor-alb-us-west-2.elb.us-west-2.amazonaws.com
+      sync:
+        hostname: sync.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-sync-alb-us-west-2
+        alb_dns_name: eden-sync-alb-us-west-2.elb.us-west-2.amazonaws.com
+      insight:
+        hostname: insight.us-west-2.eden.example.com
+        health_check_path: /health
+        alb_name: eden-insight-alb-us-west-2
+        alb_dns_name: eden-insight-alb-us-west-2.elb.us-west-2.amazonaws.com
+
+# DNS record definitions
+dns_records:
+  - name: api.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: api
+      - region: us-west-2
+        target: api
+    health_checks: true
+    failover: true
+  
+  - name: web.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: web
+      - region: us-west-2
+        target: web
+    health_checks: true
+    failover: true
+  
+  - name: vault.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: vault
+      - region: us-west-2
+        target: vault
+    health_checks: true
+    failover: true
+  
+  - name: hub.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: hub
+      - region: us-west-2
+        target: hub
+    health_checks: true
+    failover: true
+  
+  - name: flow.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: flow
+      - region: us-west-2
+        target: flow
+    health_checks: true
+    failover: true
+  
+  - name: task.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: task
+      - region: us-west-2
+        target: task
+    health_checks: true
+    failover: true
+  
+  - name: monitor.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: monitor
+      - region: us-west-2
+        target: monitor
+    health_checks: true
+    failover: true
+  
+  - name: sync.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: sync
+      - region: us-west-2
+        target: sync
+    health_checks: true
+    failover: true
+  
+  - name: insight.eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: insight
+      - region: us-west-2
+        target: insight
+    health_checks: true
+    failover: true
+  
+  # Main domain record
+  - name: eden.example.com
+    type: global
+    routing_policy: latency
+    endpoints:
+      - region: us-east-1
+        target: web
+      - region: us-west-2
+        target: web
+    health_checks: true
+    failover: true
+
+# Health check definitions
+health_checks:
+  - name: api-us-east-1
+    target:
+      region: us-east-1
+      endpoint: api
+    protocol: https
+    port: 443
+    path: /health
+    interval_seconds: 30
+    failure_threshold: 3
+  
+  - name: api-us-west-2
+    target:
+      region: us-west-2
+      endpoint: api
+    protocol: https
+    port: 443
+    path: /health
+    interval_seconds: 30
+    failure_threshold: 3
+  
+  - name: web-us-east-1
+    target:
+      region: us-east-1
+      endpoint: web
+    protocol: https
+    port: 443
+    path: /health
+    interval_seconds: 30
+    failure_threshold: 3
+  
+  - name: web-us-west-2
+    target:
+      region: us-west-2
+      endpoint: web
+    protocol: https
+    port: 443
+    path: /health
+    interval_seconds: 30
+    failure_threshold: 3
+  
+  # Additional health checks for other services follow the same pattern
+
+# Traffic management policies
+traffic_management:
+  gradual_rollout:
+    enabled: true
+    increment_percent: 10
+    interval_minutes: 15
+    rollback_threshold_error_rate: 0.05
+  
+  canary_deployments:
+    enabled: true
+    initial_percent: 5
+    increment_percent: 10
+    interval_minutes: 15
+    metrics:
+      - error_rate
+      - latency_p95
+      - cpu_utilization
+  
+  circuit_breaking:
+    enabled: true
+    error_threshold_percent: 50
+    min_request_threshold: 20
+    break_duration_seconds: 30
+    half_open_requests: 5
+
+# Monitoring and alerting
+monitoring:
+  metrics:
+    - name: regional_traffic_distribution
+      description: "Distribution of traffic between regions"
+      threshold_percent: 70
+      alert: true
+    
+    - name: regional_error_rate
+      description: "Error rate per region"
+      threshold_percent: 5
+      alert: true
+    
+    - name: regional_latency
+      description: "Latency per region"
+      threshold_ms: 500
+      alert: true
+  
+  alerts:
+    channels:
+      - email:
+          recipients:
+            - devops@example.com
+            - network@example.com
+      - slack:
+          channel: "#eden-network-alerts"
+          webhook_secret: /eden/secrets/alerts/slack_webhook
+      - pagerduty:
+          service_key_secret: /eden/secrets/alerts/pagerduty_key
+  
+  dashboards:
+    grafana:
+      folder: "Global Load Balancing"
+      dashboards:
+        - name: "Traffic Distribution"
+          description: "Global traffic distribution across regions"
+        - name: "Regional Health"
+          description: "Health status of each region"
+        - name: "Latency Metrics"
+          description: "Latency metrics across regions"

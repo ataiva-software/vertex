@@ -1,6 +1,7 @@
 package com.ataiva.eden.monitor
 
 import com.ataiva.eden.monitor.controller.configureMonitorRouting
+import com.ataiva.eden.monitoring.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -11,8 +12,19 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.request.*
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.util.concurrent.TimeUnit
+
+// OpenTelemetry configuration
+private lateinit var openTelemetryConfig: OpenTelemetryConfig
+private lateinit var metricsRegistry: MetricsRegistry
+private lateinit var performanceMonitor: PerformanceMonitor
+private lateinit var auditLogger: AuditLogger
+private lateinit var healthCheckRegistry: HealthCheckRegistry
+private lateinit var serviceDependencyMapper: ServiceDependencyMapper
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
@@ -20,6 +32,40 @@ fun main() {
 }
 
 fun Application.module() {
+    // Initialize OpenTelemetry
+    openTelemetryConfig = OpenTelemetryConfig(
+        serviceName = "eden-monitor",
+        serviceVersion = "1.0.0",
+        environment = System.getenv("ENVIRONMENT") ?: "development",
+        otlpEndpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT") ?: "http://otel-collector:4317",
+        prometheusPort = System.getenv("PROMETHEUS_PORT")?.toIntOrNull() ?: 9464
+    )
+    
+    val openTelemetry = openTelemetryConfig.initialize()
+    
+    // Initialize monitoring utilities
+    metricsRegistry = MetricsRegistry(openTelemetry, "eden-monitor")
+    performanceMonitor = PerformanceMonitor(openTelemetry, "eden-monitor")
+    auditLogger = AuditLogger(openTelemetry, "eden-monitor")
+    serviceDependencyMapper = ServiceDependencyMapper(openTelemetry, "eden-monitor")
+    
+    // Initialize health checks
+    healthCheckRegistry = HealthCheckRegistry()
+    
+    // Add health checks
+    healthCheckRegistry.register(MemoryHealthCheck())
+    healthCheckRegistry.register(DiskSpaceHealthCheck("/"))
+    
+    // Install OpenTelemetry Ktor plugin
+    KtorOpenTelemetry(openTelemetry).install(this)
+    
+    // Register shutdown hook
+    environment.monitor.subscribe(ApplicationStopping) {
+        log.info("Shutting down OpenTelemetry...")
+        launch {
+            openTelemetryConfig.shutdown()
+        }
+    }
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
@@ -70,14 +116,26 @@ fun Application.module() {
         }
         
         get("/health") {
-            call.respond(HttpStatusCode.OK, HealthCheck(
-                status = "healthy",
-                timestamp = System.currentTimeMillis(),
-                uptime = System.currentTimeMillis() - startTime,
-                service = "monitor",
-                version = "1.0.0",
-                features_enabled = true
-            ))
+            val healthResult = performanceMonitor.trackSuspendOperation("health_check") {
+                healthCheckRegistry.runHealthChecks()
+            }
+            
+            val statusCode = when (healthResult.status) {
+                HealthStatus.UP -> HttpStatusCode.OK
+                HealthStatus.DEGRADED -> HttpStatusCode.OK
+                HealthStatus.DOWN -> HttpStatusCode.ServiceUnavailable
+                HealthStatus.UNKNOWN -> HttpStatusCode.InternalServerError
+            }
+            
+            call.respond(statusCode, healthResult)
+        }
+        
+        get("/metrics") {
+            call.respond(HttpStatusCode.OK, performanceMonitor.getSystemPerformanceData())
+        }
+        
+        get("/dependencies") {
+            call.respond(HttpStatusCode.OK, serviceDependencyMapper.generateDependencyGraph())
         }
     }
     

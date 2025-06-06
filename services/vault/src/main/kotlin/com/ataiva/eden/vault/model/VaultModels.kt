@@ -305,7 +305,8 @@ data class VaultHealthResponse(
     val uptime: Long,
     val service: String,
     val database: DatabaseHealth,
-    val encryption: EncryptionHealth
+    val encryption: EncryptionHealth,
+    val externalSecretsManager: ExternalSecretsManagerConfigResponse? = null
 )
 
 /**

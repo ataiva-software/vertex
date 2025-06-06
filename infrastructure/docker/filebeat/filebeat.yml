@@ -1,0 +1,59 @@
+filebeat.config:
+  modules:
+    path: ${path.config}/modules.d/*.yml
+    reload.enabled: false
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition:
+            contains:
+              docker.container.image: eden
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              exclude_lines: ["^\\s+[\\-`('.|_]"]
+              processors:
+                - add_docker_metadata: ~
+                - add_fields:
+                    target: ''
+                    fields:
+                      service: '${data.container.labels.com.docker.compose.service}'
+
+processors:
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_host_metadata: ~
+  - add_kubernetes_metadata:
+      host: ${NODE_NAME}
+      default_indexers.enabled: false
+      default_matchers.enabled: false
+      indexers:
+        - container: ~
+      matchers:
+        - fields:
+            lookup_fields: ["container.id"]
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      process_array: false
+      max_depth: 5
+      overwrite_keys: true
+      add_error_key: true
+  - drop_fields:
+      fields: ["agent", "ecs", "input", "log", "stream"]
+      ignore_missing: true
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644

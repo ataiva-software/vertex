@@ -1,0 +1,21 @@
+{{- if .Values.insightService.enabled }}
+# Service
+{{- $serviceContext := dict "root" . "serviceName" "insight-service" "serviceConfig" .Values.insightService }}
+{{- include "eden.service" $serviceContext }}
+---
+# Deployment
+{{- $deploymentContext := dict "root" . "serviceName" "insight-service" "serviceConfig" .Values.insightService "dbName" "eden_insight" "extraEnv" nil }}
+{{- include "eden.deployment" $deploymentContext }}
+---
+# HorizontalPodAutoscaler
+{{- $hpaContext := dict "root" . "serviceName" "insight-service" "serviceConfig" .Values.insightService }}
+{{- include "eden.hpa" $hpaContext }}
+---
+# NetworkPolicy
+{{- $networkContext := dict "root" . "serviceName" "insight-service" "extraEgress" nil }}
+{{- include "eden.networkpolicy" $networkContext }}
+---
+# PodDisruptionBudget
+{{- $pdbContext := dict "root" . "serviceName" "insight-service" }}
+{{- include "eden.pdb" $pdbContext }}
+{{- end }}

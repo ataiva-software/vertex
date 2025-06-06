@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":shared:database"))
     implementation(project(":shared:events"))
     implementation(project(":shared:config"))
+    implementation(project(":shared:monitoring"))
     
     // Ktor
     implementation(libs.ktor.server.core)

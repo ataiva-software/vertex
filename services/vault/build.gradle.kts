@@ -47,6 +47,15 @@ dependencies {
     implementation(libs.bouncycastle)
     implementation("org.bouncycastle:bcpkix-jdk18on:1.76")
     
+    // External Secrets Management
+    // HashiCorp Vault
+    implementation("com.bettercloud:vault-java-driver:5.1.0")
+    
+    // AWS SDK for Secrets Manager
+    implementation(platform("software.amazon.awssdk:bom:2.20.56"))
+    implementation("software.amazon.awssdk:secretsmanager")
+    implementation("software.amazon.awssdk:sts")
+    
     // Logging
     implementation(libs.bundles.logging)
     

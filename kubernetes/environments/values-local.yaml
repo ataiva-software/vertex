@@ -1,0 +1,144 @@
+# Values for local Kubernetes development environment (e.g., minikube, kind)
+
+global:
+  environment: development
+  image:
+    repository: ataivadev/eden
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  # Use less resources for local development
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  
+  # Database settings for local development
+  database:
+    host: postgresql
+    port: 5432
+    user: postgres
+    password: postgres
+    sslMode: disable
+  
+  # Network policies can be disabled for local development
+  networkPolicy:
+    enabled: false
+  
+  # PDB can be disabled for local development
+  pdb:
+    enabled: false
+
+# Use built-in PostgreSQL for local development
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: eden_dev
+  primary:
+    persistence:
+      size: 1Gi
+
+# Use built-in Redis for local development
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 1Gi
+
+# Disable Prometheus and Grafana for local development
+prometheus:
+  enabled: false
+
+grafana:
+  enabled: false
+
+# Service configurations
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+vaultService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+hubService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+flowService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+taskService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+monitorService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+syncService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+insightService:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+
+webUi:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Enable ingress for local development with port forwarding
+ingress:
+  enabled: false

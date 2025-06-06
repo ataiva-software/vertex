@@ -1,6 +1,6 @@
 package com.ataiva.eden.vault
 
-import com.ataiva.eden.vault.service.VaultService
+import com.ataiva.eden.vault.service.*
 import com.ataiva.eden.vault.controller.VaultController
 import com.ataiva.eden.vault.model.*
 import com.ataiva.eden.database.EdenDatabaseService
@@ -19,6 +19,7 @@ import io.ktor.server.plugins.cors.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.datetime.Clock
+import kotlinx.coroutines.runBlocking
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
@@ -70,12 +71,14 @@ fun Application.module() {
     // Initialize dependencies
     val databaseService = createDatabaseService()
     val cryptoServices = createCryptoServices()
+    val externalSecretsManager = createExternalSecretsManager()
     val vaultService = VaultService(
         databaseService = databaseService,
         encryption = cryptoServices.encryption,
         zeroKnowledgeEncryption = cryptoServices.zeroKnowledgeEncryption,
         secureRandom = cryptoServices.secureRandom,
-        keyDerivation = cryptoServices.keyDerivation
+        keyDerivation = cryptoServices.keyDerivation,
+        externalSecretsManager = externalSecretsManager
     )
     val vaultController = VaultController(vaultService)
     
@@ -92,6 +95,14 @@ fun Application.module() {
         
         // Enhanced health check
         get("/health") {
+            val externalSecretsHealth = runBlocking {
+                externalSecretsManager?.getHealthStatus() ?: ExternalSecretsManagerHealth(
+                    type = "NONE",
+                    available = false,
+                    lastChecked = Clock.System.now()
+                )
+            }
+            
             val healthResponse = VaultHealthResponse(
                 status = "healthy",
                 timestamp = Clock.System.now(),
@@ -106,6 +117,12 @@ fun Application.module() {
                     available = true,
                     algorithm = "AES-256-GCM",
                     keyDerivation = "PBKDF2"
+                ),
+                externalSecretsManager = ExternalSecretsManagerConfigResponse(
+                    type = externalSecretsHealth.type,
+                    isConfigured = externalSecretsHealth.available,
+                    provider = if (externalSecretsHealth.available) externalSecretsHealth.type else null,
+                    lastChecked = externalSecretsHealth.lastChecked
                 )
             )
             call.respond(HttpStatusCode.OK, ApiResponse.success(healthResponse))
@@ -145,6 +162,47 @@ private fun createCryptoServices(): CryptoServices {
         secureRandom = MockSecureRandom(),
         keyDerivation = MockKeyDerivation()
     )
+}
+
+/**
+ * Create external secrets manager based on environment configuration
+ */
+private fun createExternalSecretsManager(): ExternalSecretsManager? {
+    val secretsManagerType = System.getenv("SECRETS_MANAGER_TYPE") ?: return null
+    
+    return when (secretsManagerType.uppercase()) {
+        "HASHICORP_VAULT" -> {
+            val vaultUrl = System.getenv("VAULT_URL") ?: return null
+            val vaultToken = System.getenv("VAULT_TOKEN") ?: return null
+            val vaultNamespace = System.getenv("VAULT_NAMESPACE") ?: "eden"
+            
+            val config = ExternalSecretsManagerConfig(
+                type = SecretsManagerType.HASHICORP_VAULT,
+                vaultUrl = vaultUrl,
+                vaultToken = vaultToken,
+                vaultNamespace = vaultNamespace
+            )
+            
+            ExternalSecretsManager(config)
+        }
+        "AWS_SECRETS_MANAGER" -> {
+            val awsRegion = System.getenv("AWS_REGION") ?: return null
+            val awsAccessKey = System.getenv("AWS_ACCESS_KEY") ?: return null
+            val awsSecretKey = System.getenv("AWS_SECRET_KEY") ?: return null
+            val awsPrefix = System.getenv("AWS_SECRETS_PREFIX") ?: "eden/"
+            
+            val config = ExternalSecretsManagerConfig(
+                type = SecretsManagerType.AWS_SECRETS_MANAGER,
+                awsRegion = awsRegion,
+                awsAccessKey = awsAccessKey,
+                awsSecretKey = awsSecretKey,
+                awsPrefix = awsPrefix
+            )
+            
+            ExternalSecretsManager(config)
+        }
+        else -> null
+    }
 }
 
 /**

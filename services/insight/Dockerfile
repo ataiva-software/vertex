@@ -1,30 +1,42 @@
-# Multi-stage build for the Insight Service
+# Multi-stage build for the Insight Service - Optimized for performance
 
-# Stage 1: Build the application
-FROM gradle:7.6.1-jdk11 AS build
+# Stage 1: Build cache dependencies
+FROM gradle:7.6.1-jdk11 AS deps
 
 WORKDIR /app
 
-# Copy build configuration files
+# Copy only the files needed for dependency resolution
 COPY build.gradle.kts settings.gradle.kts ./
+
+# Download dependencies to cache them
+RUN gradle dependencies --no-daemon
+
+# Stage 2: Build the application
+FROM deps AS build
 
 # Copy source code
 COPY src ./src
 
-# Build the application
-RUN gradle build --no-daemon -x test
+# Build the application with optimizations
+RUN gradle build --no-daemon -x test \
+    -Dorg.gradle.caching=true \
+    -Dorg.gradle.parallel=true \
+    -Dkotlin.compiler.execution.strategy=in-process
 
-# Stage 2: Create the runtime image
-FROM openjdk:11-jre-slim
+# Stage 3: Create a minimal runtime image
+FROM eclipse-temurin:11-jre-alpine AS runtime
 
 WORKDIR /app
 
-# Set environment variables
-ENV JAVA_OPTS="-Xms256m -Xmx512m"
+# Set environment variables for performance
+ENV JAVA_OPTS="-Xms512m -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+UseStringDeduplication -XX:+OptimizeStringConcat -XX:+UseCompressedOops -XX:+AlwaysPreTouch"
 ENV APP_ENV="prod"
 
-# Create directory for logs
-RUN mkdir -p /app/logs
+# Create necessary directories
+RUN mkdir -p /app/logs /app/config /app/reports
+
+# Install required packages
+RUN apk --no-cache add curl tzdata
 
 # Copy the built JAR file from the build stage
 COPY --from=build /app/build/libs/*.jar /app/insight-service.jar
@@ -36,5 +48,9 @@ COPY --from=build /app/src/main/resources/logback.xml /app/config/logback.xml
 # Expose the application port
 EXPOSE 8080
 
-# Set the entry point
-ENTRYPOINT ["java", "-jar", "/app/insight-service.jar"]
+# Add health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Set the entry point with optimized JVM flags
+ENTRYPOINT ["java", "-server", "-jar", "/app/insight-service.jar"]
