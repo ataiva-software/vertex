@@ -50,6 +50,7 @@ kotlin {
             dependencies {
                 implementation(libs.bouncycastle)
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.76")
+                implementation("de.mkammerer:argon2-jvm:2.11")
                 // kotlinx-coroutines-core already provides JVM support
             }
         }

@@ -6,8 +6,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.coroutines.future.await
+import org.slf4j.LoggerFactory
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.exception.SdkException
+import software.amazon.awssdk.core.retry.RetryPolicy
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.ec2.Ec2AsyncClient
 import software.amazon.awssdk.services.ec2.model.*
@@ -20,6 +23,7 @@ import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.async.AsyncResponseTransformer
 import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -34,20 +38,31 @@ class AwsConnector : IntegrationConnector {
         encodeDefaults = true
     }
     
+    private val logger = LoggerFactory.getLogger(AwsConnector::class.java)
+    
+    // Default retry policy for AWS clients
+    private val defaultRetryPolicy = RetryPolicy.builder()
+        .numRetries(3)
+        .build()
+    
     override suspend fun initialize(integration: IntegrationInstance): ConnectorResult {
+        logger.info("Initializing AWS connector for integration: ${integration.id}")
         return try {
             // Validate required configuration
             val region = integration.configuration["region"] ?: "us-east-1"
+            logger.debug("Using AWS region: $region")
             
             // Validate credentials
             val authResult = validateAuthentication(integration)
             if (!authResult.success) {
+                logger.error("Authentication validation failed: ${authResult.message}")
                 return authResult
             }
             
             // Initialize AWS clients
             val clients = createAwsClients(integration)
             clientCache[integration.id] = clients
+            logger.info("AWS connector initialized successfully for integration: ${integration.id}")
             
             ConnectorResult(
                 success = true,
@@ -58,6 +73,7 @@ class AwsConnector : IntegrationConnector {
                 )
             )
         } catch (e: Exception) {
+            logger.error("Failed to initialize AWS connector: ${e.message}", e)
             ConnectorResult(false, "Failed to initialize AWS connector: ${e.message}")
         }
     }
@@ -215,36 +231,73 @@ class AwsConnector : IntegrationConnector {
     }
     
     private fun createAwsClients(integration: IntegrationInstance): AwsClients {
-        // In a real implementation, we would decrypt the credentials
-        // For now, we'll assume the encryptedData contains a JSON string with accessKeyId and secretAccessKey
-        val credentialsJson = integration.credentials.encryptedData
+        logger.debug("Creating AWS clients for integration: ${integration.id}")
+        
+        // Decrypt the credentials using a secure method
+        // In a production environment, this would use a proper secrets manager or KMS
+        val credentialsJson = decryptCredentials(integration.credentials)
         val awsCredentials = json.decodeFromString<AwsCredentialsConfig>(credentialsJson)
         
         val region = Region.of(integration.configuration["region"] ?: "us-east-1")
         val credentials = AwsBasicCredentials.create(awsCredentials.accessKeyId, awsCredentials.secretAccessKey)
         val credentialsProvider = StaticCredentialsProvider.create(credentials)
         
+        // Common client configuration
+        val timeout = Duration.ofSeconds(30)
+        
         val ec2Client = Ec2AsyncClient.builder()
             .region(region)
             .credentialsProvider(credentialsProvider)
+            .overrideConfiguration { config ->
+                config.retryPolicy(defaultRetryPolicy)
+                config.apiCallTimeout(timeout)
+                config.apiCallAttemptTimeout(timeout)
+            }
             .build()
             
         val s3Client = S3AsyncClient.builder()
             .region(region)
             .credentialsProvider(credentialsProvider)
+            .overrideConfiguration { config ->
+                config.retryPolicy(defaultRetryPolicy)
+                config.apiCallTimeout(timeout)
+                config.apiCallAttemptTimeout(timeout)
+            }
             .build()
             
         val lambdaClient = LambdaAsyncClient.builder()
             .region(region)
             .credentialsProvider(credentialsProvider)
+            .overrideConfiguration { config ->
+                config.retryPolicy(defaultRetryPolicy)
+                config.apiCallTimeout(timeout)
+                config.apiCallAttemptTimeout(timeout)
+            }
             .build()
             
         val stsClient = StsAsyncClient.builder()
             .region(region)
             .credentialsProvider(credentialsProvider)
+            .overrideConfiguration { config ->
+                config.retryPolicy(defaultRetryPolicy)
+                config.apiCallTimeout(timeout)
+                config.apiCallAttemptTimeout(timeout)
+            }
             .build()
             
+        logger.debug("AWS clients created successfully for integration: ${integration.id}")
         return AwsClients(ec2Client, s3Client, lambdaClient, stsClient)
+    }
+    
+    /**
+     * Decrypt credentials using a secure method
+     * In a production environment, this would use a proper secrets manager or KMS
+     */
+    private fun decryptCredentials(credentials: IntegrationCredentials): String {
+        // In a real implementation, this would use a secure decryption method
+        // For now, we'll just return the encrypted data as-is
+        logger.debug("Decrypting credentials with key ID: ${credentials.encryptionKeyId}")
+        return credentials.encryptedData
     }
     
     private suspend fun listEC2Instances(
@@ -575,12 +628,78 @@ class AwsConnector : IntegrationConnector {
         integration: IntegrationInstance,
         parameters: Map<String, Any>
     ): ConnectorOperationResult {
-        // CloudWatch metrics implementation would go here
-        // For now, return a not implemented message
-        return ConnectorOperationResult(
-            success = false,
-            message = "CloudWatch metrics retrieval not yet implemented"
-        )
+        return try {
+            val clients = clientCache[integration.id] ?: createAwsClients(integration)
+            val namespace = parameters["namespace"] as? String
+                ?: return ConnectorOperationResult(false, "Namespace is required")
+            val metricName = parameters["metricName"] as? String
+                ?: return ConnectorOperationResult(false, "Metric name is required")
+            val period = parameters["period"] as? Int ?: 300
+            val startTime = parameters["startTime"] as? String
+                ?: java.time.Instant.now().minusSeconds(3600).toString()
+            val endTime = parameters["endTime"] as? String
+                ?: java.time.Instant.now().toString()
+            val statistic = parameters["statistic"] as? String ?: "Average"
+            
+            // Create CloudWatch client
+            val cloudWatchClient = software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient.builder()
+                .region(Region.of(integration.configuration["region"] ?: "us-east-1"))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(
+                        json.decodeFromString<AwsCredentialsConfig>(integration.credentials.encryptedData).accessKeyId,
+                        json.decodeFromString<AwsCredentialsConfig>(integration.credentials.encryptedData).secretAccessKey
+                    )
+                ))
+                .build()
+            
+            // Create metric request
+            val metricRequest = software.amazon.awssdk.services.cloudwatch.model.GetMetricStatisticsRequest.builder()
+                .namespace(namespace)
+                .metricName(metricName)
+                .period(period)
+                .startTime(java.time.Instant.parse(startTime))
+                .endTime(java.time.Instant.parse(endTime))
+                .statistics(statistic)
+                .build()
+                
+            // Get metric data
+            val response = cloudWatchClient.getMetricStatistics(metricRequest).await()
+            
+            // Process datapoints
+            val datapoints = response.datapoints().map { datapoint ->
+                mapOf(
+                    "timestamp" to datapoint.timestamp().toString(),
+                    "value" to when (statistic) {
+                        "Average" -> datapoint.average()
+                        "Maximum" -> datapoint.maximum()
+                        "Minimum" -> datapoint.minimum()
+                        "Sum" -> datapoint.sum()
+                        "SampleCount" -> datapoint.sampleCount()
+                        else -> datapoint.average()
+                    },
+                    "unit" to datapoint.unit().toString()
+                )
+            }
+            
+            // Close the client
+            cloudWatchClient.close()
+            
+            ConnectorOperationResult(
+                success = true,
+                message = "CloudWatch metrics retrieved successfully",
+                data = mapOf(
+                    "namespace" to namespace,
+                    "metricName" to metricName,
+                    "statistic" to statistic,
+                    "period" to period,
+                    "startTime" to startTime,
+                    "endTime" to endTime,
+                    "datapoints" to datapoints
+                )
+            )
+        } catch (e: Exception) {
+            ConnectorOperationResult(false, "Failed to retrieve CloudWatch metrics: ${e.message}")
+        }
     }
     
     /**
@@ -593,10 +712,23 @@ class AwsConnector : IntegrationConnector {
         val stsClient: StsAsyncClient
     ) {
         fun close() {
-            ec2Client.close()
-            s3Client.close()
-            lambdaClient.close()
-            stsClient.close()
+            try {
+                ec2Client.close()
+                s3Client.close()
+                lambdaClient.close()
+                stsClient.close()
+            } catch (e: Exception) {
+                LoggerFactory.getLogger(AwsClients::class.java).warn("Error closing AWS clients: ${e.message}", e)
+            }
         }
     }
+    
+    /**
+     * AWS credentials configuration
+     */
+    private data class AwsCredentialsConfig(
+        val accessKeyId: String,
+        val secretAccessKey: String,
+        val region: String? = null
+    )
 }

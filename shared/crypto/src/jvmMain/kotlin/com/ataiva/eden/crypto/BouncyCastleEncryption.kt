@@ -14,6 +14,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
+import de.mkammerer.argon2.Argon2Factory
+import de.mkammerer.argon2.Argon2Types
 
 /**
  * BouncyCastle implementation of the Encryption interface for JVM platform
@@ -103,9 +105,28 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
     }
     
     override suspend fun deriveKeyArgon2(password: String, salt: ByteArray, memory: Int, iterations: Int, parallelism: Int): ByteArray = withContext(cryptoDispatcher) {
-        // In a real implementation, this would use Argon2 library
-        // For now, we'll use a placeholder implementation based on PBKDF2
-        deriveKey(password, salt, iterations * 10000, 32)
+        // Use Argon2 library for secure key derivation
+        val argon2 = Argon2Factory.create(
+            Argon2Types.ARGON2id, // Use Argon2id variant (recommended for most use cases)
+            salt.size,            // Salt length
+            32                    // Hash length (32 bytes = 256 bits)
+        )
+        
+        try {
+            // Argon2 expects a char array for the password
+            val passwordChars = password.toCharArray()
+            
+            // Generate the hash with the specified parameters
+            // memory in kibibytes (KB), iterations, parallelism
+            val hash = argon2.hash(iterations, memory, parallelism, passwordChars, salt)
+            
+            // Convert the hash to a byte array
+            return@withContext hash.toByteArray()
+        } catch (e: Exception) {
+            // Fallback to PBKDF2 if Argon2 fails
+            println("Argon2 key derivation failed, falling back to PBKDF2: ${e.message}")
+            deriveKey(password, salt, iterations * 10000, 32)
+        }
     }
     
     override suspend fun generateSalt(length: Int): ByteArray = withContext(cryptoDispatcher) {

@@ -6,6 +6,7 @@ import com.ataiva.eden.vault.model.*
 import com.ataiva.eden.database.EdenDatabaseService
 import com.ataiva.eden.database.PostgreSQLDatabaseService
 import com.ataiva.eden.crypto.*
+import com.ataiva.eden.crypto.BouncyCastleEncryption
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -155,12 +156,14 @@ private fun createDatabaseService(): EdenDatabaseService {
  * Create crypto services with proper implementations
  */
 private fun createCryptoServices(): CryptoServices {
-    // TODO: Load actual implementations from shared/crypto module
+    // Use BouncyCastleEncryption which implements all required interfaces
+    val bouncyCastleEncryption = BouncyCastleEncryption()
+    
     return CryptoServices(
-        encryption = MockEncryption(),
-        zeroKnowledgeEncryption = MockZeroKnowledgeEncryption(),
-        secureRandom = MockSecureRandom(),
-        keyDerivation = MockKeyDerivation()
+        encryption = bouncyCastleEncryption,
+        zeroKnowledgeEncryption = bouncyCastleEncryption,
+        secureRandom = SecureRandomAdapter(), // Use our adapter for SecureRandom
+        keyDerivation = bouncyCastleEncryption
     )
 }
 
@@ -215,76 +218,29 @@ private data class CryptoServices(
     val keyDerivation: KeyDerivation
 )
 
-// TODO: Replace with actual implementations from shared/crypto
-private class MockEncryption : Encryption {
-    override fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult {
-        // Mock implementation - replace with BouncyCastleEncryption
-        return EncryptionResult(data, ByteArray(12), ByteArray(16))
-    }
-    
-    override fun decrypt(encryptedData: ByteArray, key: ByteArray, nonce: ByteArray): DecryptionResult {
-        return DecryptionResult.Success(encryptedData)
-    }
-    
-    override fun encryptString(data: String, key: ByteArray): EncryptionResult {
-        return encrypt(data.toByteArray(), key)
-    }
-    
-    override fun decryptString(encryptedData: ByteArray, key: ByteArray, nonce: ByteArray): String? {
-        return String(encryptedData)
-    }
-}
+// Production-ready crypto implementations are now used from shared/crypto module
+// The mock implementations have been removed and replaced with BouncyCastleEncryption
 
-private class MockZeroKnowledgeEncryption : ZeroKnowledgeEncryption {
-    override fun encryptZeroKnowledge(data: String, userPassword: String, salt: ByteArray?): ZeroKnowledgeResult {
-        val actualSalt = salt ?: ByteArray(32) { it.toByte() }
-        return ZeroKnowledgeResult(
-            encryptedData = data.toByteArray(),
-            salt = actualSalt,
-            nonce = ByteArray(12),
-            authTag = ByteArray(16),
-            keyDerivationParams = KeyDerivationParams()
-        )
-    }
+/**
+ * Adapter class to bridge the Java SecureRandom with our SecureRandom interface
+ */
+private class SecureRandomAdapter : com.ataiva.eden.crypto.SecureRandom {
+    private val secureRandom = java.security.SecureRandom()
     
-    override fun decryptZeroKnowledge(encryptedData: ZeroKnowledgeResult, userPassword: String): String? {
-        return String(encryptedData.encryptedData)
-    }
-    
-    override fun verifyIntegrity(encryptedData: ZeroKnowledgeResult): Boolean {
-        return true
-    }
-}
-
-private class MockSecureRandom : SecureRandom {
     override fun nextBytes(size: Int): ByteArray {
-        return ByteArray(size) { (Math.random() * 256).toInt().toByte() }
+        val bytes = ByteArray(size)
+        secureRandom.nextBytes(bytes)
+        return bytes
     }
     
     override fun nextString(length: Int, charset: String): String {
-        return (1..length).map { charset.random() }.joinToString("")
+        return (1..length)
+            .map { charset[secureRandom.nextInt(charset.length)] }
+            .joinToString("")
     }
     
     override fun nextUuid(): String {
         return java.util.UUID.randomUUID().toString()
-    }
-}
-
-private class MockKeyDerivation : KeyDerivation {
-    override fun deriveKey(password: String, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
-        return ByteArray(keyLength) { (password.hashCode() + salt.contentHashCode()).toByte() }
-    }
-    
-    override fun deriveKeyArgon2(password: String, salt: ByteArray, memory: Int, iterations: Int, parallelism: Int): ByteArray {
-        return deriveKey(password, salt, iterations, 32)
-    }
-    
-    override fun generateSalt(length: Int): ByteArray {
-        return ByteArray(length) { (Math.random() * 256).toInt().toByte() }
-    }
-    
-    override fun deriveKeys(masterKey: ByteArray, info: String, keyCount: Int, keyLength: Int): List<ByteArray> {
-        return (1..keyCount).map { ByteArray(keyLength) { (masterKey.contentHashCode() + it).toByte() } }
     }
 }
 
