@@ -1,3 +1,24 @@
+/**
+ * Eden Vault Service - Cryptographic Implementation
+ *
+ * This file contains the production-ready cryptographic implementations for the Eden Vault service.
+ * It uses the BouncyCastle library for most cryptographic operations and Argon2 for key derivation.
+ *
+ * Security Considerations:
+ * - AES-GCM is used for authenticated encryption with a 128-bit authentication tag
+ * - Argon2id is used for password hashing (memory-hard and resistant to side-channel attacks)
+ * - Secure random number generation is used for all cryptographic operations
+ * - Zero-knowledge encryption ensures data can only be decrypted with the correct password
+ *
+ * Usage Guidelines:
+ * - Always use fresh nonces for each encryption operation
+ * - Store salt, nonce, and auth tag alongside encrypted data
+ * - Use appropriate key derivation parameters based on the security requirements
+ * - Consider memory usage when setting Argon2 parameters
+ *
+ * @author Eden Security Team
+ * @version 2.0.0
+ */
 package com.ataiva.eden.crypto
 
 import org.bouncycastle.crypto.engines.AESEngine
@@ -19,6 +40,18 @@ import de.mkammerer.argon2.Argon2Types
 
 /**
  * BouncyCastle implementation of the Encryption interface for JVM platform
+ *
+ * This class provides a comprehensive implementation of cryptographic operations
+ * using the BouncyCastle library. It implements multiple interfaces:
+ * - Encryption: For symmetric encryption/decryption
+ * - KeyDerivation: For password-based key derivation
+ * - ZeroKnowledgeEncryption: For zero-knowledge encryption schemes
+ *
+ * The implementation uses:
+ * - AES-GCM for authenticated encryption
+ * - Argon2id for password hashing (with PBKDF2 fallback)
+ * - HKDF for key derivation
+ * - Secure random number generation
  */
 class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryption {
     
@@ -104,6 +137,22 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
         }
     }
     
+    /**
+     * Derives a cryptographic key using Argon2id, which is a memory-hard function
+     * designed to be resistant to GPU cracking attacks and side-channel attacks.
+     *
+     * @param password The password to derive the key from
+     * @param salt A unique salt value (should be at least 16 bytes)
+     * @param memory Memory usage in kibibytes (KB) - higher values increase security but require more resources
+     * @param iterations Number of iterations - higher values increase security but take longer
+     * @param parallelism Degree of parallelism - should match the number of available cores
+     * @return A 32-byte (256-bit) derived key
+     *
+     * Recommended parameters:
+     * - memory: 65536 (64 MB) for server environments, 32768 (32 MB) for resource-constrained environments
+     * - iterations: 3-4 for most use cases
+     * - parallelism: Number of available CPU cores (typically 4-8)
+     */
     override suspend fun deriveKeyArgon2(password: String, salt: ByteArray, memory: Int, iterations: Int, parallelism: Int): ByteArray = withContext(cryptoDispatcher) {
         // Use Argon2 library for secure key derivation
         val argon2 = Argon2Factory.create(

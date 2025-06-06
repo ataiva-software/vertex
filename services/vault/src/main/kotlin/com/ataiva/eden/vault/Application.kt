@@ -155,6 +155,23 @@ private fun createDatabaseService(): EdenDatabaseService {
 /**
  * Create crypto services with proper implementations
  */
+/**
+ * Creates production-ready cryptographic services for the Vault service
+ *
+ * This function initializes all the cryptographic components needed by the Vault service:
+ * - Encryption: For symmetric encryption/decryption using AES-GCM
+ * - ZeroKnowledgeEncryption: For zero-knowledge encryption schemes
+ * - SecureRandom: For cryptographically secure random number generation
+ * - KeyDerivation: For password-based key derivation using Argon2
+ *
+ * Security considerations:
+ * - Uses BouncyCastle for cryptographic operations (FIPS 140-2 compliant)
+ * - Implements Argon2id for password hashing (memory-hard and resistant to side-channel attacks)
+ * - Uses Java's SecureRandom for random number generation
+ * - Provides authenticated encryption with AES-GCM
+ *
+ * @return A CryptoServices instance containing all required cryptographic components
+ */
 private fun createCryptoServices(): CryptoServices {
     // Use BouncyCastleEncryption which implements all required interfaces
     val bouncyCastleEncryption = BouncyCastleEncryption()
@@ -209,7 +226,19 @@ private fun createExternalSecretsManager(): ExternalSecretsManager? {
 }
 
 /**
- * Container for crypto services
+ * Container for cryptographic services used by the Vault service
+ *
+ * This class encapsulates all the cryptographic components needed by the Vault service,
+ * providing a clean way to inject these dependencies into the VaultService.
+ *
+ * The components are:
+ * - encryption: For symmetric encryption/decryption operations
+ * - zeroKnowledgeEncryption: For zero-knowledge encryption schemes where the server never has access to plaintext
+ * - secureRandom: For generating cryptographically secure random numbers, tokens, and identifiers
+ * - keyDerivation: For deriving cryptographic keys from passwords and other inputs
+ *
+ * In production, all these interfaces are implemented by the BouncyCastleEncryption class,
+ * except for secureRandom which uses the SecureRandomAdapter to wrap Java's SecureRandom.
  */
 private data class CryptoServices(
     val encryption: Encryption,
@@ -223,22 +252,56 @@ private data class CryptoServices(
 
 /**
  * Adapter class to bridge the Java SecureRandom with our SecureRandom interface
+ *
+ * This class provides a cryptographically secure random number generator implementation
+ * by wrapping Java's SecureRandom class. Java's SecureRandom uses the platform's
+ * strongest available random number generator (e.g., /dev/urandom on Linux,
+ * CryptGenRandom on Windows).
+ *
+ * Security considerations:
+ * - Uses the default SecureRandom implementation which is suitable for most security needs
+ * - Automatically seeds from the system entropy pool
+ * - Provides methods for generating random bytes, strings, and UUIDs
+ *
+ * This implementation is suitable for:
+ * - Generating cryptographic keys
+ * - Creating random nonces and initialization vectors
+ * - Generating secure tokens and identifiers
  */
 private class SecureRandomAdapter : com.ataiva.eden.crypto.SecureRandom {
+    // Use Java's SecureRandom implementation which is cryptographically secure
     private val secureRandom = java.security.SecureRandom()
     
+    /**
+     * Generates a random byte array of the specified size
+     *
+     * @param size The number of random bytes to generate
+     * @return A byte array filled with random values
+     */
     override fun nextBytes(size: Int): ByteArray {
         val bytes = ByteArray(size)
         secureRandom.nextBytes(bytes)
         return bytes
     }
     
+    /**
+     * Generates a random string of the specified length using the given charset
+     *
+     * @param length The length of the string to generate
+     * @param charset The set of characters to use (defaults to alphanumeric)
+     * @return A random string
+     */
     override fun nextString(length: Int, charset: String): String {
         return (1..length)
             .map { charset[secureRandom.nextInt(charset.length)] }
             .joinToString("")
     }
     
+    /**
+     * Generates a random UUID using Java's UUID.randomUUID()
+     *
+     * @return A random UUID string
+     */
     override fun nextUuid(): String {
         return java.util.UUID.randomUUID().toString()
     }

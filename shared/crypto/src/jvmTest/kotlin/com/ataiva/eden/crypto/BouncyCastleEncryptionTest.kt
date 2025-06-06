@@ -231,6 +231,51 @@ class BouncyCastleEncryptionTest {
     }
     
     @Test
+    fun `argon2 key derivation should work correctly`() = runTest {
+        val password = "test-password"
+        val salt = encryption.generateSalt(16)
+        
+        // Test with different memory settings
+        val key1 = encryption.deriveKeyArgon2(password, salt, 65536, 3, 4)
+        val key2 = encryption.deriveKeyArgon2(password, salt, 65536, 3, 4)
+        
+        assertEquals(32, key1.size)
+        assertEquals(32, key2.size)
+        assertContentEquals(key1, key2) // Same parameters should produce same key
+        
+        // Test with different iterations
+        val key3 = encryption.deriveKeyArgon2(password, salt, 65536, 5, 4)
+        
+        assertEquals(32, key3.size)
+        assertFalse(key1.contentEquals(key3)) // Different iterations should produce different key
+        
+        // Test with different parallelism
+        val key4 = encryption.deriveKeyArgon2(password, salt, 65536, 3, 8)
+        
+        assertEquals(32, key4.size)
+        assertFalse(key1.contentEquals(key4)) // Different parallelism should produce different key
+        
+        // Test with different memory
+        val key5 = encryption.deriveKeyArgon2(password, salt, 32768, 3, 4)
+        
+        assertEquals(32, key5.size)
+        assertFalse(key1.contentEquals(key5)) // Different memory should produce different key
+        
+        // Test with different password
+        val key6 = encryption.deriveKeyArgon2("different-password", salt, 65536, 3, 4)
+        
+        assertEquals(32, key6.size)
+        assertFalse(key1.contentEquals(key6)) // Different password should produce different key
+        
+        // Test with different salt
+        val differentSalt = encryption.generateSalt(16)
+        val key7 = encryption.deriveKeyArgon2(password, differentSalt, 65536, 3, 4)
+        
+        assertEquals(32, key7.size)
+        assertFalse(key1.contentEquals(key7)) // Different salt should produce different key
+    }
+    
+    @Test
     fun `crypto factory should create instances correctly`() {
         val encryptionInstance = CryptoFactory.createEncryption()
         assertNotNull(encryptionInstance)
