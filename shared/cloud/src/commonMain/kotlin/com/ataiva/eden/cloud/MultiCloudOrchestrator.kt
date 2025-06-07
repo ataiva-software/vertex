@@ -400,10 +400,27 @@ class DefaultMultiCloudOrchestrator(
         )
     }
     
-    // Utility methods with placeholder implementations
-    private fun generateDeploymentId(): String = "deploy-${System.currentTimeMillis()}"
-    private fun generateMigrationId(): String = "migrate-${System.currentTimeMillis()}"
-    private fun generateSyncId(): String = "sync-${System.currentTimeMillis()}"
+    // Utility methods for generating secure, unique IDs with proper prefixes
+    private fun generateDeploymentId(): String {
+        val uuid = java.util.UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
+        val randomComponent = (1000..9999).random()
+        return "deploy-$timestamp-$randomComponent-${uuid.substring(0, 8)}"
+    }
+    
+    private fun generateMigrationId(): String {
+        val uuid = java.util.UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
+        val randomComponent = (1000..9999).random()
+        return "migrate-$timestamp-$randomComponent-${uuid.substring(0, 8)}"
+    }
+    
+    private fun generateSyncId(): String {
+        val uuid = java.util.UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
+        val randomComponent = (1000..9999).random()
+        return "sync-$timestamp-$randomComponent-${uuid.substring(0, 8)}"
+    }
     
     private suspend fun validateDeploymentRequest(request: CloudDeploymentRequest): ValidationResult = 
         ValidationResult(true, emptyList())

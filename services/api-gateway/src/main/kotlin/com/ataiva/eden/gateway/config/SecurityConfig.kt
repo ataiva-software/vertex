@@ -11,6 +11,12 @@ import io.ktor.server.plugins.defaultheaders.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.request.*
 import org.slf4j.event.Level
+import org.slf4j.LoggerFactory
+import com.ataiva.eden.gateway.security.RateLimitingPlugin
+import com.ataiva.eden.gateway.security.TokenBucketRateLimiter
+import kotlin.time.Duration.Companion.seconds
+
+private val log = LoggerFactory.getLogger("com.ataiva.eden.gateway.config.SecurityConfig")
 
 /**
  * Security configuration for the API Gateway
@@ -181,6 +187,54 @@ private fun buildPermissionsPolicy(): String {
  * Configure rate limiting for the API Gateway
  */
 fun Application.configureRateLimiting() {
-    // Rate limiting will be implemented using a custom plugin
-    // This is a placeholder for future implementation
+    // Install the rate limiting plugin with configurable settings
+    install(RateLimitingPlugin) {
+        // Configure the rate limiter with settings from application configuration
+        rateLimiter = TokenBucketRateLimiter(
+            // Default limit: 60 requests per minute
+            defaultLimit = environment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60,
+            defaultWindow = environment.config.propertyOrNull("security.ratelimit.default-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds,
+            
+            // Path-specific limits
+            pathLimits = mapOf(
+                // Authentication endpoints: 20 requests per minute
+                "/api/v1/auth" to TokenBucketRateLimiter.PathLimit(
+                    environment.config.propertyOrNull("security.ratelimit.auth-limit")?.getString()?.toInt() ?: 20,
+                    environment.config.propertyOrNull("security.ratelimit.auth-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                ),
+                
+                // User management endpoints: 30 requests per minute
+                "/api/v1/users" to TokenBucketRateLimiter.PathLimit(
+                    environment.config.propertyOrNull("security.ratelimit.users-limit")?.getString()?.toInt() ?: 30,
+                    environment.config.propertyOrNull("security.ratelimit.users-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                ),
+                
+                // Vault endpoints: 50 requests per minute
+                "/api/v1/vault" to TokenBucketRateLimiter.PathLimit(
+                    environment.config.propertyOrNull("security.ratelimit.vault-limit")?.getString()?.toInt() ?: 50,
+                    environment.config.propertyOrNull("security.ratelimit.vault-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                ),
+                
+                // Workflow endpoints: 40 requests per minute
+                "/api/v1/workflows" to TokenBucketRateLimiter.PathLimit(
+                    environment.config.propertyOrNull("security.ratelimit.workflows-limit")?.getString()?.toInt() ?: 40,
+                    environment.config.propertyOrNull("security.ratelimit.workflows-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                )
+            ),
+            
+            // IP blacklist and whitelist from configuration
+            ipBlacklist = environment.config.propertyOrNull("security.ratelimit.ip-blacklist")?.getList()?.toSet() ?: emptySet(),
+            ipWhitelist = environment.config.propertyOrNull("security.ratelimit.ip-whitelist")?.getList()?.toSet() ?: emptySet()
+        )
+        
+        // Paths to exclude from rate limiting
+        excludedPaths = environment.config.propertyOrNull("security.ratelimit.excluded-paths")?.getList()
+            ?: listOf("/health", "/metrics", "/favicon.ico")
+        
+        // Header to use for client IP identification (for proxied requests)
+        ipHeaderName = environment.config.propertyOrNull("security.ratelimit.ip-header")?.getString() ?: "X-Forwarded-For"
+    }
+    
+    // Log that rate limiting has been configured
+    log.info("Rate limiting configured with default limit of ${environment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60} requests per minute")
 }

@@ -247,19 +247,131 @@ class StepExecutor {
     }
     
     /**
-     * Execute SQL query step (placeholder implementation)
+     * Execute SQL query step with secure database connection
      */
     private suspend fun executeSqlQuery(
         step: WorkflowStep,
         inputData: Map<String, Any>?,
         startTime: Instant
     ): StepResult {
-        // TODO: Implement actual SQL execution with database connection
-        return StepResult.Success(
-            mapOf("message" to "SQL query executed (placeholder)"),
-            startTime,
-            Clock.System.now()
-        )
+        return withContext(Dispatchers.IO) {
+            try {
+                val config = step.inputData ?: emptyMap()
+                val query = config["query"] as? String ?: return@withContext StepResult.Error(
+                    "SQL query step missing 'query' parameter",
+                    startTime,
+                    Clock.System.now()
+                )
+                
+                val parameters = config["parameters"] as? Map<String, Any> ?: emptyMap()
+                val connectionName = config["connection"] as? String ?: "default"
+                val timeoutSeconds = config["timeout_seconds"] as? Int ?: 30
+                
+                // Load database configuration
+                val environment = config["environment"] as? String ?: "dev"
+                val dbConfig = com.ataiva.eden.config.DatabaseConfigLoader.load(environment)
+                
+                logger.info("Executing SQL query on connection '$connectionName' in environment '$environment'")
+                
+                // Create database connection
+                val connection = java.sql.DriverManager.getConnection(
+                    dbConfig.url,
+                    dbConfig.username,
+                    dbConfig.password
+                )
+                
+                try {
+                    // Set query timeout
+                    connection.use { conn ->
+                        // Prepare statement with parameters
+                        val statement = conn.prepareStatement(query)
+                        statement.queryTimeout = timeoutSeconds
+                        
+                        // Bind parameters safely
+                        parameters.forEach { (key, value) ->
+                            when (value) {
+                                is Int -> statement.setInt(key.toIntOrNull() ?: 1, value)
+                                is Long -> statement.setLong(key.toIntOrNull() ?: 1, value)
+                                is Double -> statement.setDouble(key.toIntOrNull() ?: 1, value)
+                                is Boolean -> statement.setBoolean(key.toIntOrNull() ?: 1, value)
+                                is String -> statement.setString(key.toIntOrNull() ?: 1, value)
+                                null -> statement.setNull(key.toIntOrNull() ?: 1, java.sql.Types.NULL)
+                                else -> statement.setString(key.toIntOrNull() ?: 1, value.toString())
+                            }
+                        }
+                        
+                        // Execute query and process results
+                        val isQuery = query.trim().lowercase().startsWith("select")
+                        val startExecTime = System.currentTimeMillis()
+                        
+                        if (isQuery) {
+                            // Handle SELECT query
+                            val resultSet = statement.executeQuery()
+                            val results = mutableListOf<Map<String, Any?>>()
+                            val metadata = resultSet.metaData
+                            val columnCount = metadata.columnCount
+                            
+                            // Convert ResultSet to List of Maps
+                            while (resultSet.next()) {
+                                val row = mutableMapOf<String, Any?>()
+                                for (i in 1..columnCount) {
+                                    val columnName = metadata.getColumnName(i)
+                                    val value = resultSet.getObject(i)
+                                    row[columnName] = value
+                                }
+                                results.add(row)
+                            }
+                            
+                            val executionTime = System.currentTimeMillis() - startExecTime
+                            logger.info("SQL query executed successfully in ${executionTime}ms, returned ${results.size} rows")
+                            
+                            StepResult.Success(
+                                mapOf(
+                                    "results" to results,
+                                    "rowCount" to results.size,
+                                    "columnNames" to (1..columnCount).map { metadata.getColumnName(it) },
+                                    "executionTime" to executionTime
+                                ),
+                                startTime,
+                                Clock.System.now()
+                            )
+                        } else {
+                            // Handle UPDATE, INSERT, DELETE, etc.
+                            val updateCount = statement.executeUpdate()
+                            val executionTime = System.currentTimeMillis() - startExecTime
+                            logger.info("SQL update executed successfully in ${executionTime}ms, affected $updateCount rows")
+                            
+                            StepResult.Success(
+                                mapOf(
+                                    "affectedRows" to updateCount,
+                                    "executionTime" to executionTime
+                                ),
+                                startTime,
+                                Clock.System.now()
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ensure connection is closed in case of error
+                    try {
+                        if (!connection.isClosed) {
+                            connection.close()
+                        }
+                    } catch (closeEx: Exception) {
+                        logger.error("Error closing database connection: ${closeEx.message}")
+                    }
+                    
+                    throw e
+                }
+            } catch (e: Exception) {
+                logger.error("SQL execution failed: ${e.message}", e)
+                StepResult.Error(
+                    "SQL execution failed: ${e.message}",
+                    startTime,
+                    Clock.System.now()
+                )
+            }
+        }
     }
     
     /**

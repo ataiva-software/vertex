@@ -439,86 +439,432 @@ class PostgreSQLDatabaseService(
     }
     
     override suspend fun getDashboardStats(userId: String): DashboardStats {
-        // In a real implementation, this would return actual dashboard stats
-        return DashboardStats(
-            userStats = UserStats(
-                totalUsers = 100,
-                activeUsers = 50,
-                newUsersLast30Days = 10,
-                usersByRole = mapOf("admin" to 5L, "user" to 95L)
-            ),
-            secretStats = SecretStats(
-                totalSecrets = 200,
-                secretsByType = mapOf("api_key" to 100L, "password" to 100L),
-                secretsAccessedLast24Hours = 50,
-                secretsCreatedLast30Days = 20
-            ),
-            workflowStats = WorkflowStats(
-                totalWorkflows = 50,
-                activeWorkflows = 10,
-                completedWorkflowsLast30Days = 100,
-                failedWorkflowsLast30Days = 5,
-                averageExecutionTime = 5000
-            ),
-            taskStats = TaskStats(
-                totalTasks = 1000,
-                pendingTasks = 100,
-                completedTasksLast30Days = 500,
-                failedTasksLast30Days = 50,
-                averageExecutionTime = 1000
-            ),
-            recentActivity = emptyList(),
-            systemHealth = SystemHealthSummary(
-                overallStatus = "healthy",
-                activeServices = 10,
-                totalServices = 10,
-                criticalIssues = 0,
-                lastUpdated = "2025-06-04T12:00:00Z"
+        // Implement dashboard stats functionality with real database queries
+        // Query user statistics
+        val userStats = transaction(this) { service ->
+            val totalUsers = service.userRepository.count()
+            val activeUsers = service.userRepository.findActiveUsers().size.toLong()
+            val thirtyDaysAgo = java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+            val newUsers = service.userRepository.findNewUsersSince(thirtyDaysAgo).size.toLong()
+            
+            // Get user distribution by role
+            val allUsers = service.userRepository.findAll()
+            val roleMap = mutableMapOf<String, Long>()
+            allUsers.forEach { user ->
+                val role = user.role ?: "unknown"
+                roleMap[role] = (roleMap[role] ?: 0L) + 1L
+            }
+            
+            UserStats(
+                totalUsers = totalUsers,
+                activeUsers = activeUsers,
+                newUsersLast30Days = newUsers,
+                usersByRole = roleMap
             )
+        }
+        
+        // Query secret statistics
+        val secretStats = transaction(this) { service ->
+            val totalSecrets = service.secretRepository.count()
+            val thirtyDaysAgo = java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+            val oneDayAgo = java.time.Instant.now().minusSeconds(24 * 60 * 60).toString()
+            
+            // Get secrets by type
+            val allSecrets = service.secretRepository.findAll()
+            val typeMap = mutableMapOf<String, Long>()
+            allSecrets.forEach { secret ->
+                typeMap[secret.type] = (typeMap[secret.type] ?: 0L) + 1L
+            }
+            
+            // Get recently accessed secrets
+            val recentlyAccessed = service.secretAccessLogRepository.findByTimeRange(oneDayAgo, java.time.Instant.now().toString()).size.toLong()
+            val recentlyCreated = service.secretRepository.findUpdatedSince(thirtyDaysAgo).size.toLong()
+            
+            SecretStats(
+                totalSecrets = totalSecrets,
+                secretsByType = typeMap,
+                secretsAccessedLast24Hours = recentlyAccessed,
+                secretsCreatedLast30Days = recentlyCreated
+            )
+        }
+        
+        // Query workflow statistics
+        val workflowStats = transaction(this) { service ->
+            val totalWorkflows = service.workflowRepository.count()
+            val activeWorkflows = service.workflowRepository.findByStatus("active").size.toLong()
+            val thirtyDaysAgo = java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+            val now = java.time.Instant.now().toString()
+            
+            // Get workflow executions for the last 30 days
+            val recentExecutions = service.workflowExecutionRepository.findByTimeRange(thirtyDaysAgo, now)
+            val completedWorkflows = recentExecutions.count { it.status == "completed" }.toLong()
+            val failedWorkflows = recentExecutions.count { it.status == "failed" }.toLong()
+            
+            // Calculate average execution time
+            val avgExecutionTime = if (recentExecutions.isNotEmpty()) {
+                recentExecutions
+                    .filter { it.status == "completed" }
+                    .map { it.endTime.toLongOrNull() ?: 0L - it.startTime.toLongOrNull() ?: 0L }
+                    .average().toLong()
+            } else {
+                0L
+            }
+            
+            WorkflowStats(
+                totalWorkflows = totalWorkflows,
+                activeWorkflows = activeWorkflows,
+                completedWorkflowsLast30Days = completedWorkflows,
+                failedWorkflowsLast30Days = failedWorkflows,
+                averageExecutionTime = avgExecutionTime
+            )
+        }
+        
+        // Query task statistics
+        val taskStats = transaction(this) { service ->
+            val totalTasks = service.taskRepository.count()
+            val pendingTasks = service.taskRepository.findByStatus("pending").size.toLong()
+            val thirtyDaysAgo = java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+            val now = java.time.Instant.now().toString()
+            
+            // Get task executions for the last 30 days
+            val recentExecutions = service.taskExecutionRepository.findByTimeRange(thirtyDaysAgo, now)
+            val completedTasks = recentExecutions.count { it.status == "completed" }.toLong()
+            val failedTasks = recentExecutions.count { it.status == "failed" }.toLong()
+            
+            // Calculate average execution time
+            val avgExecutionTime = if (recentExecutions.isNotEmpty()) {
+                recentExecutions
+                    .filter { it.status == "completed" }
+                    .map { it.endTime.toLongOrNull() ?: 0L - it.startTime.toLongOrNull() ?: 0L }
+                    .average().toLong()
+            } else {
+                0L
+            }
+            
+            TaskStats(
+                totalTasks = totalTasks,
+                pendingTasks = pendingTasks,
+                completedTasksLast30Days = completedTasks,
+                failedTasksLast30Days = failedTasks,
+                averageExecutionTime = avgExecutionTime
+            )
+        }
+        
+        // Get recent activity
+        val recentActivity = transaction(this) { service ->
+            val oneDayAgo = java.time.Instant.now().minusSeconds(24 * 60 * 60).toString()
+            val now = java.time.Instant.now().toString()
+            
+            // Combine recent events from different sources
+            val recentEvents = mutableListOf<ActivityItem>()
+            
+            // Add recent system events
+            service.systemEventRepository.findByTimeRange(oneDayAgo, now).forEach { event ->
+                recentEvents.add(ActivityItem(
+                    id = event.id,
+                    type = "system_event",
+                    description = event.message,
+                    timestamp = event.timestamp,
+                    userId = event.userId,
+                    metadata = mapOf("source" to event.source, "type" to event.type)
+                ))
+            }
+            
+            // Add recent audit logs
+            service.auditLogRepository.findByTimeRange(oneDayAgo, now).forEach { log ->
+                recentEvents.add(ActivityItem(
+                    id = log.id,
+                    type = "audit_log",
+                    description = "User ${log.userId} performed ${log.action} on ${log.resource}",
+                    timestamp = log.timestamp,
+                    userId = log.userId,
+                    metadata = mapOf("action" to log.action, "resource" to log.resource)
+                ))
+            }
+            
+            // Sort by timestamp (most recent first) and limit to 20 items
+            recentEvents.sortedByDescending { it.timestamp }.take(20)
+        }
+        
+        // Get system health summary
+        val systemHealth = transaction(this) { service ->
+            val healthStatus = service.getHealthStatus()
+            val overallStatus = if (healthStatus.isHealthy) "healthy" else "unhealthy"
+            
+            SystemHealthSummary(
+                overallStatus = overallStatus,
+                activeServices = 10, // This would be determined by a service registry in a real implementation
+                totalServices = 10,  // This would be determined by a service registry in a real implementation
+                criticalIssues = healthStatus.issues.size,
+                lastUpdated = java.time.Instant.now().toString()
+            )
+        }
+        
+        return DashboardStats(
+            userStats = userStats,
+            secretStats = secretStats,
+            workflowStats = workflowStats,
+            taskStats = taskStats,
+            recentActivity = recentActivity,
+            systemHealth = systemHealth
         )
     }
     
     override suspend fun getSystemOverview(): SystemOverview {
-        // In a real implementation, this would return actual system overview
-        return SystemOverview(
-            totalUsers = 100,
-            totalSecrets = 200,
-            totalWorkflows = 50,
-            totalTasks = 1000,
-            activeExecutions = 10,
-            systemEvents = SystemEventStats(
-                totalEvents = 10000,
-                eventsByType = mapOf("info" to 8000L, "warning" to 1500L, "error" to 500L),
-                eventsLast24Hours = 1000,
-                errorEventsLast24Hours = 50
-            ),
-            auditLogs = AuditStats(
-                totalAuditLogs = 5000,
-                auditLogsByType = mapOf("access" to 3000L, "modification" to 2000L),
-                auditLogsLast24Hours = 500,
-                securityRelatedLogsLast24Hours = 100
-            ),
-            performance = PerformanceMetrics(
-                averageResponseTime = 50.0,
-                throughputPerSecond = 100.0,
-                errorRate = 0.01,
-                databaseConnections = 5,
-                memoryUsage = 1024 * 1024 * 1024, // 1 GB
-                cpuUsage = 0.5
+        // Implement system overview functionality with real database queries
+        // Query counts from various repositories
+        val counts = transaction(this) { service ->
+            mapOf(
+                "totalUsers" to service.userRepository.count(),
+                "totalSecrets" to service.secretRepository.count(),
+                "totalWorkflows" to service.workflowRepository.count(),
+                "totalTasks" to service.taskRepository.count()
             )
+        }
+        
+        // Get active executions count
+        val activeExecutions = transaction(this) { service ->
+            val activeWorkflowExecutions = service.workflowExecutionRepository.findByStatus("running").size.toLong()
+            val activeTaskExecutions = service.taskExecutionRepository.findByStatus("running").size.toLong()
+            activeWorkflowExecutions + activeTaskExecutions
+        }
+        
+        // Get system event statistics
+        val systemEventStats = transaction(this) { service ->
+            val totalEvents = service.systemEventRepository.count()
+            val oneDayAgo = java.time.Instant.now().minusSeconds(24 * 60 * 60).toString()
+            val now = java.time.Instant.now().toString()
+            
+            // Get events from the last 24 hours
+            val recentEvents = service.systemEventRepository.findByTimeRange(oneDayAgo, now)
+            val eventsLast24Hours = recentEvents.size.toLong()
+            val errorEventsLast24Hours = recentEvents.count { it.type == "error" }.toLong()
+            
+            // Get events by type
+            val allEvents = service.systemEventRepository.findAll()
+            val typeMap = mutableMapOf<String, Long>()
+            allEvents.forEach { event ->
+                typeMap[event.type] = (typeMap[event.type] ?: 0L) + 1L
+            }
+            
+            SystemEventStats(
+                totalEvents = totalEvents,
+                eventsByType = typeMap,
+                eventsLast24Hours = eventsLast24Hours,
+                errorEventsLast24Hours = errorEventsLast24Hours
+            )
+        }
+        
+        // Get audit log statistics
+        val auditStats = transaction(this) { service ->
+            val totalAuditLogs = service.auditLogRepository.count()
+            val oneDayAgo = java.time.Instant.now().minusSeconds(24 * 60 * 60).toString()
+            val now = java.time.Instant.now().toString()
+            
+            // Get audit logs from the last 24 hours
+            val recentLogs = service.auditLogRepository.findByTimeRange(oneDayAgo, now)
+            val logsLast24Hours = recentLogs.size.toLong()
+            val securityLogsLast24Hours = service.auditLogRepository.findSecurityRelatedLogs(oneDayAgo, now).size.toLong()
+            
+            // Get logs by type
+            val allLogs = service.auditLogRepository.findAll()
+            val typeMap = mutableMapOf<String, Long>()
+            allLogs.forEach { log ->
+                val type = log.action.split(".").firstOrNull() ?: "unknown"
+                typeMap[type] = (typeMap[type] ?: 0L) + 1L
+            }
+            
+            AuditStats(
+                totalAuditLogs = totalAuditLogs,
+                auditLogsByType = typeMap,
+                auditLogsLast24Hours = logsLast24Hours,
+                securityRelatedLogsLast24Hours = securityLogsLast24Hours
+            )
+        }
+        
+        // Get performance metrics
+        val performanceMetrics = transaction(this) { service ->
+            val healthStatus = service.getHealthStatus()
+            val poolStats = healthStatus.connectionPoolStats
+            
+            // In a real implementation, these metrics would be collected from monitoring systems
+            // For now, we'll use some calculated values based on available data
+            val runtime = Runtime.getRuntime()
+            val memoryUsage = runtime.totalMemory() - runtime.freeMemory()
+            val processors = runtime.availableProcessors()
+            val cpuUsage = poolStats.active.toDouble() / (processors * 2).coerceAtLeast(1)
+            
+            PerformanceMetrics(
+                averageResponseTime = 50.0, // This would be collected from actual response time metrics
+                throughputPerSecond = 100.0, // This would be calculated from actual request counts
+                errorRate = healthStatus.issues.size.toDouble() / 1000, // This would be calculated from actual error counts
+                databaseConnections = poolStats.active,
+                memoryUsage = memoryUsage,
+                cpuUsage = cpuUsage.coerceAtMost(1.0)
+            )
+        }
+        
+        return SystemOverview(
+            totalUsers = counts["totalUsers"] ?: 0,
+            totalSecrets = counts["totalSecrets"] ?: 0,
+            totalWorkflows = counts["totalWorkflows"] ?: 0,
+            totalTasks = counts["totalTasks"] ?: 0,
+            activeExecutions = activeExecutions,
+            systemEvents = systemEventStats,
+            auditLogs = auditStats,
+            performance = performanceMetrics
         )
     }
     
     override suspend fun generateReport(reportType: ReportType, parameters: Map<String, Any>): Report {
-        // In a real implementation, this would generate a report
+        // Implement report generation functionality with real database queries
+        val generatedAt = java.time.Instant.now().toString()
+        val title = parameters["title"]?.toString() ?: "${reportType.name} Report"
+        
+        // Prepare data and charts based on report type
+        val data = mutableMapOf<String, Any>()
+        val charts = mutableListOf<ChartData>()
+        var summary = ""
+        
+        // Execute database queries based on report type
+        transaction(this) { service ->
+            when (reportType) {
+                ReportType.USER_ACTIVITY -> {
+                    // Extract parameters
+                    val startDate = parameters["startDate"]?.toString() ?: java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+                    val endDate = parameters["endDate"]?.toString() ?: java.time.Instant.now().toString()
+                    val userId = parameters["userId"]?.toString()
+                    
+                    // Get user activity data
+                    val auditLogs = if (userId != null) {
+                        service.auditLogRepository.findByUserIdAndTimeRange(userId, startDate, endDate)
+                    } else {
+                        service.auditLogRepository.findByTimeRange(startDate, endDate)
+                    }
+                    
+                    // Process data
+                    val actionCounts = mutableMapOf<String, Int>()
+                    val activityByDay = mutableMapOf<String, Int>()
+                    val userActivityMap = mutableMapOf<String, Int>()
+                    
+                    auditLogs.forEach { log ->
+                        // Count by action
+                        val action = log.action.split(".").firstOrNull() ?: "unknown"
+                        actionCounts[action] = (actionCounts[action] ?: 0) + 1
+                        
+                        // Count by day
+                        val day = log.timestamp.substring(0, 10) // YYYY-MM-DD
+                        activityByDay[day] = (activityByDay[day] ?: 0) + 1
+                        
+                        // Count by user
+                        userActivityMap[log.userId] = (userActivityMap[log.userId] ?: 0) + 1
+                    }
+                    
+                    // Create charts
+                    val actionData = actionCounts.map { (action, count) ->
+                        DataPoint(label = action, value = count.toDouble())
+                    }
+                    charts.add(ChartData(
+                        type = "pie",
+                        title = "Actions Distribution",
+                        data = actionData
+                    ))
+                    
+                    // Populate data map
+                    data["totalActivities"] = auditLogs.size
+                    data["actionCounts"] = actionCounts
+                    data["activityByDay"] = activityByDay
+                    data["userActivityMap"] = userActivityMap
+                    data["dateRange"] = mapOf("start" to startDate, "end" to endDate)
+                    
+                    // Generate summary
+                    summary = "User activity report from ${startDate.substring(0, 10)} to ${endDate.substring(0, 10)} " +
+                        "shows ${auditLogs.size} activities" +
+                        (if (userId != null) " for user $userId" else "") + "."
+                }
+                
+                ReportType.SECRET_ACCESS -> {
+                    // Extract parameters
+                    val startDate = parameters["startDate"]?.toString() ?: java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+                    val endDate = parameters["endDate"]?.toString() ?: java.time.Instant.now().toString()
+                    
+                    // Get secret access data
+                    val accessLogs = service.secretAccessLogRepository.findByTimeRange(startDate, endDate)
+                    
+                    // Process data
+                    val accessBySecret = mutableMapOf<String, Int>()
+                    val accessByUser = mutableMapOf<String, Int>()
+                    
+                    accessLogs.forEach { log ->
+                        // Count by secret
+                        accessBySecret[log.secretId] = (accessBySecret[log.secretId] ?: 0) + 1
+                        
+                        // Count by user
+                        accessByUser[log.userId] = (accessByUser[log.userId] ?: 0) + 1
+                    }
+                    
+                    // Populate data map
+                    data["totalAccesses"] = accessLogs.size
+                    data["accessBySecret"] = accessBySecret
+                    data["accessByUser"] = accessByUser
+                    data["dateRange"] = mapOf("start" to startDate, "end" to endDate)
+                    
+                    // Generate summary
+                    summary = "Secret access report from ${startDate.substring(0, 10)} to ${endDate.substring(0, 10)} " +
+                        "shows ${accessLogs.size} accesses."
+                }
+                
+                ReportType.WORKFLOW_EXECUTION -> {
+                    // Extract parameters
+                    val startDate = parameters["startDate"]?.toString() ?: java.time.Instant.now().minusSeconds(30 * 24 * 60 * 60).toString()
+                    val endDate = parameters["endDate"]?.toString() ?: java.time.Instant.now().toString()
+                    
+                    // Get workflow execution data
+                    val executions = service.workflowExecutionRepository.findByTimeRange(startDate, endDate)
+                    
+                    // Process data
+                    val executionsByStatus = mutableMapOf<String, Int>()
+                    val executionsByWorkflow = mutableMapOf<String, Int>()
+                    
+                    executions.forEach { execution ->
+                        // Count by status
+                        executionsByStatus[execution.status] = (executionsByStatus[execution.status] ?: 0) + 1
+                        
+                        // Count by workflow
+                        executionsByWorkflow[execution.workflowId] = (executionsByWorkflow[execution.workflowId] ?: 0) + 1
+                    }
+                    
+                    // Populate data map
+                    data["totalExecutions"] = executions.size
+                    data["executionsByStatus"] = executionsByStatus
+                    data["executionsByWorkflow"] = executionsByWorkflow
+                    data["dateRange"] = mapOf("start" to startDate, "end" to endDate)
+                    
+                    // Generate summary
+                    val successRate = ((executionsByStatus["completed"]?.toDouble() ?: 0.0) / executions.size.coerceAtLeast(1) * 100).toInt()
+                    summary = "Workflow execution report from ${startDate.substring(0, 10)} to ${endDate.substring(0, 10)} " +
+                        "shows ${executions.size} executions with $successRate% success rate."
+                }
+                
+                else -> {
+                    // For other report types, provide a basic implementation
+                    data["reportType"] = reportType.name
+                    data["timestamp"] = generatedAt
+                    data["parameters"] = parameters
+                    
+                    summary = "${reportType.name} report generated at ${generatedAt.substring(0, 10)}."
+                }
+            }
+        }
+        
         return Report(
             type = reportType,
-            title = "${reportType.name} Report",
-            generatedAt = "2025-06-04T12:00:00Z",
+            title = title,
+            generatedAt = generatedAt,
             parameters = parameters,
-            data = emptyMap(),
-            summary = "Report summary",
-            charts = emptyList()
+            data = data,
+            summary = summary,
+            charts = charts
         )
     }
 }
