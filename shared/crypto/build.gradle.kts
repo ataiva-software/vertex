@@ -43,6 +43,10 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(project(":shared:testing"))
+                implementation(kotlin("test"))
+                implementation(kotlin("test-common"))
+                implementation(kotlin("test-annotations-common"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
         
@@ -59,6 +63,16 @@ kotlin {
             dependencies {
                 implementation(npm("crypto-js", "4.2.0"))
                 implementation(npm("node-forge", "1.3.1"))
+            }
+        }
+        
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test-junit"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.junit.jupiter.api)
+                implementation(libs.junit.jupiter.engine)
+                implementation(libs.mockk)
             }
         }
     }

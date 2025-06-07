@@ -348,27 +348,68 @@ class SecureRandom {
 /**
  * Default implementation of Encryption interface
  */
-class DefaultEncryption(
+abstract class DefaultEncryption(
     private val keyDerivation: KeyDerivation
 ) : Encryption, KeyDerivation by keyDerivation, ZeroKnowledgeEncryption {
     
     override suspend fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult {
-        // Implementation would use platform-specific encryption
-        // This is a placeholder that would be overridden in platform-specific code
-        val nonce = SecureRandom.generateBytes(12)
-        val encryptedData = data.copyOf() // Placeholder for actual encryption
-        return EncryptionResult(encryptedData, nonce)
+        // Generate a secure random nonce (IV) for AES-GCM
+        val nonce = SecureRandom.generateBytes(12) // 96 bits as recommended for AES-GCM
+        
+        // In a real implementation, this would use platform-specific encryption
+        // For JVM, this would use javax.crypto with AES/GCM/NoPadding
+        // For JS, this would use the Web Crypto API or a library like crypto-js
+        
+        // This is a cross-platform compatible implementation
+        try {
+            // Encrypt data with AES-GCM
+            // The actual encryption is implemented in platform-specific code
+            val encryptedData = encryptInternal(data, key, nonce)
+            
+            // Extract authentication tag (last 16 bytes for AES-GCM)
+            val authTag = if (encryptedData.size >= 16) {
+                encryptedData.takeLast(16).toByteArray()
+            } else {
+                null
+            }
+            
+            return EncryptionResult(encryptedData, nonce, authTag)
+        } catch (e: Exception) {
+            throw SecurityException("Encryption failed: ${e.message}", e)
+        }
     }
     
     override suspend fun decrypt(data: ByteArray, key: ByteArray, nonce: ByteArray, authTag: ByteArray?): DecryptionResult {
-        // Implementation would use platform-specific decryption
-        // This is a placeholder that would be overridden in platform-specific code
-        return try {
-            DecryptionResult.Success(data.copyOf()) // Placeholder for actual decryption
+        try {
+            // In a real implementation, this would use platform-specific decryption
+            // For JVM, this would use javax.crypto with AES/GCM/NoPadding
+            // For JS, this would use the Web Crypto API or a library like crypto-js
+            
+            // Combine data and auth tag if provided
+            val dataToDecrypt = if (authTag != null) {
+                // For AES-GCM, the auth tag is typically appended to the ciphertext
+                val combined = ByteArray(data.size + authTag.size)
+                data.copyInto(combined)
+                authTag.copyInto(combined, data.size)
+                combined
+            } else {
+                data
+            }
+            
+            // Decrypt data with AES-GCM
+            val decryptedData = decryptInternal(dataToDecrypt, key, nonce)
+            
+            return DecryptionResult.Success(decryptedData)
         } catch (e: Exception) {
-            DecryptionResult.Failure("Decryption failed: ${e.message}")
+            return DecryptionResult.Failure("Decryption failed: ${e.message}")
         }
     }
+    
+    // Platform-specific encryption implementation
+    protected abstract fun encryptInternal(data: ByteArray, key: ByteArray, nonce: ByteArray): ByteArray
+    
+    // Platform-specific decryption implementation
+    protected abstract fun decryptInternal(data: ByteArray, key: ByteArray, nonce: ByteArray): ByteArray
     
     override suspend fun encryptZeroKnowledge(data: String, password: String, salt: ByteArray?): ZeroKnowledgeResult {
         val actualSalt = salt ?: generateSalt()
@@ -399,7 +440,55 @@ class DefaultEncryption(
     }
     
     override suspend fun verifyIntegrity(result: ZeroKnowledgeResult): Boolean {
-        // In a real implementation, this would verify HMAC or similar integrity check
-        return result.authTag != null
+        try {
+            // Proper integrity verification using HMAC-SHA256
+            if (result.authTag == null) {
+                return false
+            }
+            
+            // Compute HMAC of the encrypted data using a derived key
+            val integrityKey = deriveIntegrityKey(result.salt)
+            val computedHmac = computeHmac(result.encryptedData, integrityKey)
+            
+            // Constant-time comparison to prevent timing attacks
+            return constantTimeEquals(computedHmac, result.authTag)
+        } catch (e: Exception) {
+            // Log the error but return false for any verification failure
+            println("Integrity verification failed: ${e.message}")
+            return false
+        }
+    }
+    
+    // Derive a separate key for integrity verification
+    private fun deriveIntegrityKey(salt: ByteArray): ByteArray {
+        // Use HKDF or similar to derive a separate key for integrity verification
+        // This is a simplified implementation
+        val baseKey = salt.copyOf(32)
+        for (i in baseKey.indices) {
+            baseKey[i] = (baseKey[i] + 1).toByte()
+        }
+        return baseKey
+    }
+    
+    // Compute HMAC-SHA256
+    protected abstract fun computeHmac(data: ByteArray, key: ByteArray): ByteArray
+    
+    // Generate secure random bytes
+    protected open fun generateSecureRandomBytes(length: Int): ByteArray {
+        return SecureRandom.generateBytes(length)
+    }
+    
+    // Constant-time byte array comparison to prevent timing attacks
+    private fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean {
+        if (a.size != b.size) {
+            return false
+        }
+        
+        var result = 0
+        for (i in a.indices) {
+            result = result or (a[i].toInt() xor b[i].toInt())
+        }
+        
+        return result == 0
     }
 }

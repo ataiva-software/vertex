@@ -615,34 +615,171 @@ class AuthenticationManager(
                 "redirect_uri=${config.redirectUri}"
     }
     
+    // Map to store OAuth2 state values with expiration times
+    private val oauth2StateStore = ConcurrentHashMap<String, OAuth2StateEntry>()
+    
     private fun storeOAuth2State(integrationId: String, state: String) {
-        // TODO: Implement proper state storage (Redis, database, etc.)
+        // Store state with expiration time (10 minutes from now)
+        val expirationTime = Clock.System.now().plus(kotlin.time.Duration.minutes(10))
+        oauth2StateStore[integrationId] = OAuth2StateEntry(state, expirationTime)
+        
+        // Schedule cleanup of expired states
+        scheduleStateCleanup()
     }
     
     private fun validateOAuth2State(integrationId: String, state: String): Boolean {
-        // TODO: Implement proper state validation
-        return true
+        val stateEntry = oauth2StateStore[integrationId] ?: return false
+        
+        // Check if state has expired
+        if (Clock.System.now() > stateEntry.expirationTime) {
+            removeOAuth2State(integrationId)
+            return false
+        }
+        
+        // Validate state using constant-time comparison to prevent timing attacks
+        return constantTimeEquals(stateEntry.state, state)
     }
     
     private fun removeOAuth2State(integrationId: String) {
-        // TODO: Implement state cleanup
+        oauth2StateStore.remove(integrationId)
     }
     
+    // Constant-time string comparison to prevent timing attacks
+    private fun constantTimeEquals(a: String, b: String): Boolean {
+        if (a.length != b.length) {
+            return false
+        }
+        
+        var result = 0
+        for (i in a.indices) {
+            result = result or (a[i].code xor b[i].code)
+        }
+        
+        return result == 0
+    }
+    
+    // Periodically clean up expired states
+    private fun scheduleStateCleanup() {
+        deliveryScope.launch {
+            delay(kotlin.time.Duration.minutes(5).inWholeMilliseconds)
+            cleanupExpiredStates()
+        }
+    }
+    
+    private fun cleanupExpiredStates() {
+        val now = Clock.System.now()
+        val expiredKeys = oauth2StateStore.entries
+            .filter { now > it.value.expirationTime }
+            .map { it.key }
+        
+        expiredKeys.forEach { oauth2StateStore.remove(it) }
+    }
+    
+    // Data class to store OAuth2 state with expiration time
+    private data class OAuth2StateEntry(
+        val state: String,
+        val expirationTime: Instant
+    )
+    
     private suspend fun exchangeOAuth2Code(code: String, config: OAuth2Config): OAuth2Token {
-        // TODO: Implement actual OAuth2 token exchange
-        return OAuth2Token(
-            accessToken = "mock_access_token",
-            refreshToken = "mock_refresh_token",
-            expiresIn = 3600
-        )
+        try {
+            // Create HTTP client
+            val client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build()
+            
+            // Prepare request body
+            val requestBody = mapOf(
+                "grant_type" to "authorization_code",
+                "code" to code,
+                "client_id" to config.clientId,
+                "client_secret" to config.clientSecret,
+                "redirect_uri" to config.redirectUri
+            ).entries.joinToString("&") { "${it.key}=${java.net.URLEncoder.encode(it.value, "UTF-8")}" }
+            
+            // Create request
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(config.tokenUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build()
+            
+            // Send request and parse response
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            if (response.statusCode() !in 200..299) {
+                throw SecurityException("OAuth2 token exchange failed: HTTP ${response.statusCode()}")
+            }
+            
+            // Parse JSON response
+            val responseJson = Json.decodeFromString<Map<String, JsonElement>>(response.body())
+            
+            // Extract token information
+            val accessToken = responseJson["access_token"]?.toString()?.trim('"')
+                ?: throw SecurityException("Missing access_token in OAuth2 response")
+            
+            val refreshToken = responseJson["refresh_token"]?.toString()?.trim('"')
+            val expiresIn = responseJson["expires_in"]?.toString()?.toIntOrNull() ?: 3600
+            
+            return OAuth2Token(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                expiresIn = expiresIn
+            )
+        } catch (e: Exception) {
+            throw SecurityException("OAuth2 token exchange failed: ${e.message}", e)
+        }
     }
     
     private suspend fun refreshOAuth2TokenInternal(refreshToken: String, config: OAuth2Config): OAuth2Token {
-        // TODO: Implement actual token refresh
-        return OAuth2Token(
-            accessToken = "refreshed_access_token",
-            refreshToken = refreshToken,
-            expiresIn = 3600
-        )
+        try {
+            // Create HTTP client
+            val client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build()
+            
+            // Prepare request body
+            val requestBody = mapOf(
+                "grant_type" to "refresh_token",
+                "refresh_token" to refreshToken,
+                "client_id" to config.clientId,
+                "client_secret" to config.clientSecret
+            ).entries.joinToString("&") { "${it.key}=${java.net.URLEncoder.encode(it.value, "UTF-8")}" }
+            
+            // Create request
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(config.tokenUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build()
+            
+            // Send request and parse response
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            if (response.statusCode() !in 200..299) {
+                throw SecurityException("OAuth2 token refresh failed: HTTP ${response.statusCode()}")
+            }
+            
+            // Parse JSON response
+            val responseJson = Json.decodeFromString<Map<String, JsonElement>>(response.body())
+            
+            // Extract token information
+            val accessToken = responseJson["access_token"]?.toString()?.trim('"')
+                ?: throw SecurityException("Missing access_token in OAuth2 response")
+            
+            // Some providers may issue a new refresh token
+            val newRefreshToken = responseJson["refresh_token"]?.toString()?.trim('"') ?: refreshToken
+            val expiresIn = responseJson["expires_in"]?.toString()?.toIntOrNull() ?: 3600
+            
+            return OAuth2Token(
+                accessToken = accessToken,
+                refreshToken = newRefreshToken,
+                expiresIn = expiresIn
+            )
+        } catch (e: Exception) {
+            throw SecurityException("OAuth2 token refresh failed: ${e.message}", e)
+        }
     }
 }

@@ -1,171 +1,139 @@
-# Eden Cryptography Library
+# Eden Cryptography Module
 
-This library provides cryptographic services for the Eden platform, with a focus on security, performance, and ease of use.
+This module provides cryptographic functionality for the Eden platform, implementing industry-standard encryption, key derivation, and integrity verification.
 
 ## Features
 
-- **Symmetric Encryption**: AES-GCM authenticated encryption
-- **Key Derivation**: Argon2id and PBKDF2 for password-based key derivation
-- **Zero-Knowledge Encryption**: Client-side encryption where the server never sees plaintext
-- **Digital Signatures**: RSA and ECDSA signature generation and verification
-- **Secure Random**: Cryptographically secure random number generation
-- **Password Hashing**: BCrypt password hashing and verification
-- **Multi-Factor Authentication**: TOTP and backup code generation
-
-## Security Considerations
-
-- **AES-GCM**: Uses 256-bit keys with 12-byte nonces and 16-byte authentication tags
-- **Argon2id**: Memory-hard key derivation function resistant to side-channel attacks
-- **Secure Random**: Uses platform-specific secure random number generators
-- **Zero-Knowledge**: Server never has access to plaintext data or encryption keys
+- **Symmetric Encryption**: AES-GCM encryption with authentication tags
+- **Zero-Knowledge Encryption**: Client-side encryption where the server never has access to unencrypted data
+- **Key Derivation**: PBKDF2 and Argon2 key derivation functions
+- **Integrity Verification**: HMAC-SHA256 for data integrity verification
+- **Multiplatform Support**: Works on JVM and JavaScript platforms
 
 ## Usage
 
-### Initialization
+### Basic Encryption and Decryption
 
 ```kotlin
-// Create crypto services using the factory
-val encryption = CryptoFactory.createEncryption()
-val keyDerivation = CryptoFactory.createKeyDerivation()
-val zkEncryption = CryptoFactory.createZeroKnowledgeEncryption()
-val secureRandom = CryptoFactory.createSecureRandom()
-```
-
-### Symmetric Encryption
-
-```kotlin
-// Generate a key
-val key = keyDerivation.generateSalt(32) // 256-bit key
+// Create an encryption instance
+val encryption = EncryptionFactory.createEncryption()
 
 // Encrypt data
-val data = "Sensitive data".toByteArray()
+val data = "Sensitive data".encodeToByteArray()
+val key = generateSecureKey() // 32 bytes for AES-256
 val encryptionResult = encryption.encrypt(data, key)
 
-// Store these values securely
-val encryptedData = encryptionResult.encryptedData
-val nonce = encryptionResult.nonce
-val authTag = encryptionResult.authTag
-
 // Decrypt data
-val decryptionResult = encryption.decrypt(encryptedData, key, nonce, authTag)
+val decryptionResult = encryption.decrypt(
+    encryptionResult.encryptedData,
+    key,
+    encryptionResult.nonce,
+    encryptionResult.authTag
+)
+
 when (decryptionResult) {
     is DecryptionResult.Success -> {
-        val decryptedData = decryptionResult.data
-        // Use decrypted data
+        val decryptedData = decryptionResult.data.decodeToString()
+        println("Decrypted: $decryptedData")
     }
     is DecryptionResult.Failure -> {
-        val errorMessage = decryptionResult.error
-        // Handle error
+        println("Decryption failed: ${decryptionResult.error}")
     }
 }
+```
+
+### Zero-Knowledge Encryption
+
+Zero-knowledge encryption ensures that sensitive data is encrypted with a user-provided password before it leaves the client. The server never has access to the unencrypted data or the encryption key.
+
+```kotlin
+// Create an encryption instance
+val encryption = EncryptionFactory.createEncryption()
+
+// Encrypt data with zero-knowledge approach
+val data = "Sensitive data"
+val password = "user-provided-password"
+val zkResult = encryption.encryptZeroKnowledge(data, password)
+
+// Store zkResult in the database (it's safe to store)
+
+// Later, decrypt the data with the user's password
+val decryptedData = encryption.decryptZeroKnowledge(zkResult, password)
 ```
 
 ### Key Derivation
 
 ```kotlin
-// Generate a salt
-val salt = keyDerivation.generateSalt(16)
+// Create a key derivation instance
+val keyDerivation = EncryptionFactory.createKeyDerivation()
+
+// Generate a random salt
+val salt = keyDerivation.generateSalt()
 
 // Derive a key using PBKDF2
-val key1 = keyDerivation.deriveKey(
+val key = keyDerivation.deriveKey(
     password = "user-password",
     salt = salt,
-    iterations = 100000,
-    keyLength = 32
+    iterations = 100000, // Higher is more secure but slower
+    keyLength = 32 // 256 bits
 )
 
-// Derive a key using Argon2id (recommended)
-val key2 = keyDerivation.deriveKeyArgon2(
+// Derive a key using Argon2 (more resistant to hardware attacks)
+val argon2Key = keyDerivation.deriveKeyArgon2(
     password = "user-password",
     salt = salt,
-    memory = 65536, // 64 MB
+    memory = 65536, // 64MB
     iterations = 3,
     parallelism = 4
 )
-
-// Derive multiple keys from a master key
-val masterKey = keyDerivation.generateSalt(32)
-val keys = keyDerivation.deriveKeys(
-    masterKey = masterKey,
-    info = "context-info",
-    count = 3,
-    keyLength = 32
-)
 ```
 
-### Zero-Knowledge Encryption
+### Integrity Verification
 
 ```kotlin
-// Encrypt data with zero-knowledge approach
-val zkResult = zkEncryption.encryptZeroKnowledge(
-    data = "Sensitive data",
-    password = "user-password"
-)
-
-// Store these values
-val encryptedData = zkResult.encryptedData
-val salt = zkResult.salt
-val nonce = zkResult.nonce
-val authTag = zkResult.authTag
-val keyDerivationParams = zkResult.keyDerivationParams
-
-// Decrypt data
-val decryptedData = zkEncryption.decryptZeroKnowledge(zkResult, "user-password")
+// Verify the integrity of zero-knowledge encrypted data
+val isValid = encryption.verifyIntegrity(zkResult)
+if (isValid) {
+    println("Data integrity verified")
+} else {
+    println("Data may have been tampered with")
+}
 ```
-
-### Secure Random
-
-```kotlin
-// Generate random bytes
-val randomBytes = secureRandom.nextBytes(32)
-
-// Generate random string
-val randomString = secureRandom.nextString(16)
-
-// Generate random string with custom charset
-val charset = "0123456789ABCDEF"
-val randomHex = secureRandom.nextString(16, charset)
-
-// Generate UUID
-val uuid = secureRandom.nextUuid()
-```
-
-## Best Practices
-
-1. **Never reuse nonces**: Always generate a fresh nonce for each encryption operation
-2. **Store salt, nonce, and auth tag**: These values are not secret and must be stored alongside the encrypted data
-3. **Use appropriate key derivation parameters**: Adjust Argon2 parameters based on your security requirements and available resources
-4. **Validate data integrity**: Always verify the authentication tag when decrypting data
-5. **Secure key storage**: Store encryption keys securely, preferably in a hardware security module (HSM) or key vault
-6. **Zero out sensitive data**: Clear sensitive data from memory as soon as it's no longer needed
 
 ## Implementation Details
 
-The library uses the BouncyCastle provider for most cryptographic operations, with platform-specific optimizations for JVM, JS, and native targets.
+### Encryption
 
-### JVM Implementation
+The encryption implementation uses AES-GCM (Galois/Counter Mode) with 256-bit keys, which provides both confidentiality and authenticity. The nonce (IV) is randomly generated for each encryption operation and must be stored alongside the ciphertext for decryption.
 
-- Uses BouncyCastle for AES-GCM encryption
-- Uses Argon2-JVM for Argon2id key derivation
-- Uses Java's SecureRandom for random number generation
-- Uses BCrypt for password hashing
+### Key Derivation
+
+- **PBKDF2**: Used for deriving encryption keys from passwords. The implementation uses HMAC-SHA256 with a configurable number of iterations.
+- **Argon2**: A memory-hard function designed to be resistant to GPU and ASIC attacks. Used for password hashing and key derivation in security-critical applications.
+
+### Integrity Verification
+
+Data integrity is verified using HMAC-SHA256, which ensures that the encrypted data has not been tampered with. The HMAC key is derived from the encryption salt using a separate key derivation process.
+
+## Security Considerations
+
+1. **Key Management**: Encryption keys should be properly managed and never stored in plaintext.
+2. **Password Strength**: For password-based encryption, ensure that users choose strong passwords.
+3. **Salt Generation**: Always use cryptographically secure random number generators for salt generation.
+4. **Iterations**: Use a high number of iterations for PBKDF2 to increase resistance to brute-force attacks.
+5. **Memory Requirements**: Argon2 requires significant memory, which should be considered in resource-constrained environments.
+
+## Platform-Specific Implementations
+
+The cryptography module uses a platform-specific provider pattern to implement cryptographic operations efficiently on each platform:
+
+- **JVM**: Uses Java Cryptography Architecture (JCA) with BouncyCastle for enhanced functionality
+- **JavaScript**: Uses Web Crypto API in browsers and Node.js crypto modules in Node environments
 
 ## Testing
 
-The library includes comprehensive tests for all cryptographic operations, including:
+The cryptography module includes comprehensive tests to ensure correctness and security:
 
-- Basic encryption/decryption tests
-- Key derivation tests
-- Zero-knowledge encryption tests
-- Digital signature tests
-- Secure random tests
-- Password hashing tests
-- MFA tests
-
-## Security Audit
-
-The library has undergone a security audit by an independent security firm. The audit report is available in the `security/audit` directory.
-
-## License
-
-This library is licensed under the MIT License. See the LICENSE file for details.
+```bash
+# Run tests
+./gradlew :shared:crypto:jvmTest
