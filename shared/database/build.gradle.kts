@@ -14,16 +14,17 @@ kotlin {
         }
     }
     
-    js(IR) {
-        browser {
-            commonWebpackConfig {
-                cssSupport {
-                    enabled.set(true)
-                }
-            }
-        }
-        nodejs()
-    }
+    // JavaScript target disabled due to JVM-specific code in commonMain
+    // js(IR) {
+    //     browser {
+    //         commonWebpackConfig {
+    //             cssSupport {
+    //                 enabled.set(true)
+    //             }
+    //         }
+    //     }
+    //     nodejs()
+    // }
     
     // Native targets disabled for Docker builds
     // linuxX64()
@@ -55,10 +56,11 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                // For future web-based database operations
-            }
-        }
+        // JavaScript target disabled
+        // val jsMain by getting {
+        //     dependencies {
+        //         // For future web-based database operations
+        //     }
+        // }
     }
 }

@@ -25,18 +25,18 @@ dependencies {
 
 gatling {
     // Gatling version
-    toolVersion.set("3.9.3")
+    toolVersion = "3.9.3"
     
     // Simulations directory
-    simulations = {
+    simulations {
         include("**/*LoadTest.scala")
     }
     
     // Log level
-    logLevel.set("WARN")
+    logLevel = "WARN"
     
     // Enable JVM arguments
-    jvmArgs.set(listOf(
+    jvmArgs = listOf(
         "-server",
         "-Xms1g",
         "-Xmx2g",
@@ -45,7 +45,7 @@ gatling {
         "-XX:+HeapDumpOnOutOfMemoryError",
         "-XX:+ParallelRefProcEnabled",
         "-XX:+UseStringDeduplication"
-    ))
+    )
 }
 
 // Task to run all load tests
@@ -53,7 +53,7 @@ tasks.register<io.gatling.gradle.GatlingRunTask>("runLoadTests") {
     group = "Load Testing"
     description = "Run all load tests"
     
-    simulations = listOf("com.ataiva.eden.performance.InsightServiceLoadTest")
+    simulations = listOf("com.ataiva.eden.performance.InsightServiceLoadTest".toString())
 }
 
 // Task to run load tests with specific parameters
@@ -61,7 +61,7 @@ tasks.register<io.gatling.gradle.GatlingRunTask>("runCustomLoadTest") {
     group = "Load Testing"
     description = "Run load tests with custom parameters"
     
-    simulations = listOf("com.ataiva.eden.performance.InsightServiceLoadTest")
+    simulations = listOf("com.ataiva.eden.performance.InsightServiceLoadTest".toString())
     
     // These can be overridden with -P command line arguments
     val baseUrl = project.findProperty("baseUrl") ?: "http://localhost:8080"

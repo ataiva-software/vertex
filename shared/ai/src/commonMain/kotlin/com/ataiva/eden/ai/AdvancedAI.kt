@@ -4,9 +4,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
 import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Advanced AI Engine for Eden DevOps Suite - Phase 3
@@ -185,11 +187,11 @@ class DefaultAdvancedAI(
                     realtimeInsights.emit(insight)
                 }
                 
-                delay(30.seconds)
+                delay(Duration.seconds(30))
                 
             } catch (e: Exception) {
                 // Log error and continue
-                delay(1.minutes)
+                delay(Duration.minutes(1))
             }
         }
     }
@@ -207,11 +209,11 @@ class DefaultAdvancedAI(
                     autonomousRecommendations.emit(recommendation)
                 }
                 
-                delay(5.minutes)
+                delay(Duration.minutes(5))
                 
             } catch (e: Exception) {
                 // Log error and continue
-                delay(2.minutes)
+                delay(Duration.minutes(2))
             }
         }
     }
@@ -219,7 +221,7 @@ class DefaultAdvancedAI(
     private suspend fun collectSystemMetrics(): SystemMetrics {
         // Implementation would collect real system metrics
         return SystemMetrics(
-            timestamp = Instant.now(),
+            timestamp = Clock.System.now(),
             cpuUsage = 0.0,
             memoryUsage = 0.0,
             diskUsage = 0.0,
@@ -231,7 +233,7 @@ class DefaultAdvancedAI(
     private suspend fun collectPerformanceData(): PerformanceData {
         // Implementation would collect performance data
         return PerformanceData(
-            timestamp = Instant.now(),
+            timestamp = Clock.System.now(),
             responseTime = 0.0,
             throughput = 0.0,
             errorRate = 0.0,
@@ -282,14 +284,14 @@ class DefaultAdvancedAI(
         
         return if (prediction.confidence > 0.8) {
             AIInsight(
-                id = "perf-${System.currentTimeMillis()}",
+                id = "perf-${Clock.System.now().toString().hashCode()}",
                 type = AIInsightType.PERFORMANCE,
                 title = "Performance Prediction",
                 description = "AI predicts potential performance degradation",
                 confidence = prediction.confidence,
                 impact = AIImpact.HIGH,
                 recommendations = listOf("Scale resources", "Optimize queries"),
-                timestamp = Instant.now()
+                timestamp = Clock.System.now()
             )
         } else null
     }
@@ -316,7 +318,7 @@ class DefaultAdvancedAI(
                         confidence = nlpResult.confidence,
                         impact = AIImpact.CRITICAL,
                         recommendations = listOf("Investigate immediately", "Block suspicious IPs"),
-                        timestamp = Instant.now()
+                        timestamp = Clock.System.now()
                     )
                 )
             }
@@ -340,21 +342,21 @@ class DefaultAdvancedAI(
         
         return if (optimalAction.confidence > 0.75) {
             AIInsight(
-                id = "res-${System.currentTimeMillis()}",
+                id = "res-${Clock.System.now().toString().hashCode()}",
                 type = AIInsightType.RESOURCE_OPTIMIZATION,
                 title = "Resource Optimization Opportunity",
                 description = "AI recommends resource optimization: ${optimalAction.description}",
                 confidence = optimalAction.confidence,
                 impact = AIImpact.MEDIUM,
                 recommendations = optimalAction.recommendations,
-                timestamp = Instant.now()
+                timestamp = Clock.System.now()
             )
         } else null
     }
     
     private suspend fun analyzeCurrentSystemState(): SystemState {
         return SystemState(
-            timestamp = Instant.now(),
+            timestamp = Clock.System.now(),
             metrics = collectSystemMetrics(),
             performance = collectPerformanceData(),
             security = collectSecurityEvents(),
@@ -397,7 +399,7 @@ class DefaultAdvancedAI(
         
         return if (resourcePrediction.confidence > 0.8 && resourcePrediction.value > 0.8) {
             AutonomousRecommendation(
-                id = "scale-${System.currentTimeMillis()}",
+                id = "scale-${Clock.System.now().toString().hashCode()}",
                 type = RecommendationType.AUTO_SCALING,
                 title = "Auto-scaling Required",
                 description = "AI predicts resource exhaustion, recommending scale-up",
@@ -411,7 +413,7 @@ class DefaultAdvancedAI(
                     )
                 ),
                 estimatedImpact = "Prevent performance degradation",
-                timestamp = Instant.now()
+                timestamp = Clock.System.now()
             )
         } else null
     }
@@ -428,13 +430,13 @@ class DefaultAdvancedAI(
                     severity = IssueSeverity.HIGH,
                     description = "Error rate is ${state.performance.errorRate}",
                     affectedComponents = listOf("api-gateway"),
-                    timestamp = Instant.now()
+                    timestamp = Clock.System.now()
                 )
             )
             
             recommendations.add(
                 AutonomousRecommendation(
-                    id = "heal-${System.currentTimeMillis()}",
+                    id = "heal-${Clock.System.now().toString().hashCode()}",
                     type = RecommendationType.SELF_HEALING,
                     title = "Self-healing Required",
                     description = "High error rate detected, initiating self-healing",
@@ -448,7 +450,7 @@ class DefaultAdvancedAI(
                         )
                     },
                     estimatedImpact = "Reduce error rate to normal levels",
-                    timestamp = Instant.now()
+                    timestamp = Clock.System.now()
                 )
             )
         }
@@ -488,7 +490,7 @@ class DefaultAdvancedAI(
                             )
                         ),
                         estimatedImpact = "Prevent security breach",
-                        timestamp = Instant.now()
+                        timestamp = Clock.System.now()
                     )
                 )
             }

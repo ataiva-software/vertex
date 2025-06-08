@@ -13,18 +13,12 @@ kotlin {
         }
     }
     
-    js(IR) {
-        nodejs()
-        browser()
-    }
+    // Remove JavaScript target as this module has JVM-specific dependencies
     
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":shared:core"))
-                implementation(project(":shared:monitoring"))
-                implementation(project(":shared:analytics"))
-                implementation(project(":shared:cloud"))
                 implementation(project(":shared:events"))
                 
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -47,6 +41,11 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
+                // JVM-only dependencies
+                implementation(project(":shared:monitoring"))
+                implementation(project(":shared:analytics"))
+                implementation(project(":shared:cloud"))
+                
                 // Deep Learning and Neural Networks
                 implementation("org.deeplearning4j:deeplearning4j-core:1.0.0-M2.1")
                 implementation("org.nd4j:nd4j-native-platform:1.0.0-M2.1")
@@ -103,11 +102,6 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                // JS-specific AI libraries (TensorFlow.js, etc.)
-                implementation("io.ktor:ktor-client-js:2.3.5")
-            }
-        }
+        // Remove jsMain sourceSet as this module is now JVM-only
     }
 }

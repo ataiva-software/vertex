@@ -43,7 +43,20 @@ kotlin {
         
         val commonTest by getting {
             dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        
+        val jvmTest by getting {
+            dependencies {
                 implementation(project(":shared:testing"))
+            }
+        }
+        
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(kotlin("test-js"))
             }
         }
         
@@ -52,6 +65,15 @@ kotlin {
                 implementation("com.auth0:java-jwt:4.4.0")
                 implementation("org.mindrot:jbcrypt:0.4")
                 // kotlinx-coroutines-core already provides JVM support
+                
+                // Add Ktor dependencies
+                implementation("io.ktor:ktor-server-core:2.3.7")
+                implementation("io.ktor:ktor-server-auth:2.3.7")
+                implementation("io.ktor:ktor-server-auth-jwt:2.3.7")
+                implementation("io.ktor:ktor-server-status-pages:2.3.7")
+                
+                // Add database dependency
+                implementation(project(":shared:database"))
             }
         }
         

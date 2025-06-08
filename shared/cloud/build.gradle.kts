@@ -13,17 +13,10 @@ kotlin {
         }
     }
     
-    js(IR) {
-        nodejs()
-        browser()
-    }
-    
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":shared:core"))
-                implementation(project(":shared:monitoring"))
-                implementation(project(":shared:deployment"))
                 
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
@@ -46,6 +39,10 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
+                // JVM-only dependencies
+                implementation(project(":shared:monitoring"))
+                implementation(project(":shared:deployment"))
+                
                 // AWS SDK
                 implementation("aws.sdk.kotlin:aws-core:1.0.30")
                 implementation("aws.sdk.kotlin:ec2:1.0.30")
@@ -95,10 +92,5 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                implementation("io.ktor:ktor-client-js:2.3.5")
-            }
-        }
     }
 }

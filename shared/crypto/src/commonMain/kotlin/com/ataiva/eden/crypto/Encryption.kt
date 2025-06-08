@@ -1,6 +1,11 @@
 package com.ataiva.eden.crypto
 
 /**
+ * Platform-independent security exception
+ */
+class CryptoSecurityException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
  * Core encryption interface for Eden services
  * Provides symmetric encryption, key derivation, and zero-knowledge encryption capabilities
  */
@@ -375,7 +380,7 @@ abstract class DefaultEncryption(
             
             return EncryptionResult(encryptedData, nonce, authTag)
         } catch (e: Exception) {
-            throw SecurityException("Encryption failed: ${e.message}", e)
+            throw CryptoSecurityException("Encryption failed: ${e.message}", e)
         }
     }
     

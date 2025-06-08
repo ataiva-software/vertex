@@ -14,16 +14,7 @@ kotlin {
         }
     }
     
-    js(IR) {
-        browser {
-            commonWebpackConfig {
-                cssSupport {
-                    enabled.set(true)
-                }
-            }
-        }
-        nodejs()
-    }
+    // Remove JavaScript target as this module has JVM-specific code
     
     // Native targets disabled for Docker builds
     // linuxX64()
@@ -37,7 +28,6 @@ kotlin {
                 api(project(":shared:core"))
                 api(project(":shared:auth"))
                 api(project(":shared:crypto"))
-                api(project(":shared:database"))
                 api(project(":shared:events"))
                 api(project(":shared:config"))
                 
@@ -52,6 +42,7 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
+                api(project(":shared:database"))
                 api(libs.bundles.testing.jvm)
                 
                 // Crypto testing utilities
@@ -59,10 +50,6 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                api(libs.kotest.framework.engine.js)
-            }
-        }
+        // Remove jsMain sourceSet as this module is now JVM-only
     }
 }

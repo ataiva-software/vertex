@@ -1,5 +1,5 @@
 plugins {
-    id("org.owasp.dependencycheck") version "8.2.1" apply false
+    id("org.owasp.dependencycheck") version "8.2.1"
     kotlin("plugin.serialization") version "1.9.20" apply false
     kotlin("jvm") version "1.9.20" apply false
     id("org.jetbrains.compose") version "1.5.11" apply false
@@ -22,22 +22,25 @@ allprojects {
         }
     }
     
-    // Apply OWASP dependency check to all projects
+    // Apply OWASP dependency check to all subprojects
     apply(plugin = "org.owasp.dependencycheck")
 }
 
 // Configure OWASP dependency check
-dependencyCheck {
+// Configure OWASP dependency check using extension
+configure<org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension> {
     failBuildOnCVSS = 7.0f // Fail on high and critical vulnerabilities
     formats = listOf("HTML", "JSON", "XML")
     suppressionFile = "${project.rootDir}/security/dependency-check-suppressions.xml"
-    analyzers {
+    
+    // Configure analyzers
+    analyzers(closureOf<org.owasp.dependencycheck.gradle.extension.AnalyzerExtension> {
         assemblyEnabled = false
         nodeEnabled = true
-        nodeAudit {
+        nodeAudit(closureOf<org.owasp.dependencycheck.gradle.extension.NodeAuditExtension> {
             enabled = true
-        }
-    }
+        })
+    })
 }
 
 subprojects {

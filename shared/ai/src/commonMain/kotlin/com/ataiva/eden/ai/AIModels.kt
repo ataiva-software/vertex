@@ -287,7 +287,7 @@ data class Environment(
 @Serializable
 data class State(
     val features: Map<String, Double>,
-    val timestamp: Instant = Instant.now(),
+    val timestamp: Instant = Clock.System.now(),
     val episodeStep: Int = 0
 )
 

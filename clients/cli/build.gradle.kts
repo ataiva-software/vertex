@@ -15,17 +15,12 @@ kotlin {
         }
     }
     
-    js(IR) {
-        nodejs()
-    }
-    
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":shared:core"))
                 implementation(project(":shared:auth"))
                 implementation(project(":shared:crypto"))
-                implementation(project(":shared:database"))
                 implementation(project(":shared:events"))
                 
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -45,6 +40,7 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
+                implementation(project(":shared:database"))
                 implementation("io.ktor:ktor-client-cio:2.3.5")
                 implementation("ch.qos.logback:logback-classic:1.4.11")
                 implementation("org.fusesource.jansi:jansi:2.4.0") // For colored console output
@@ -57,11 +53,6 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                implementation("io.ktor:ktor-client-js:2.3.5")
-            }
-        }
     }
 }
 

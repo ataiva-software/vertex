@@ -13,17 +13,10 @@ kotlin {
         }
     }
     
-    js(IR) {
-        nodejs()
-        browser()
-    }
-    
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":shared:core"))
-                implementation(project(":shared:monitoring"))
-                implementation(project(":shared:deployment"))
                 
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
@@ -44,6 +37,10 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
+                // JVM-only dependencies
+                implementation(project(":shared:monitoring"))
+                implementation(project(":shared:deployment"))
+                
                 // Machine learning and analytics libraries
                 implementation("org.apache.commons:commons-math3:3.6.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-statistics-jvm:0.2.1")
@@ -71,11 +68,5 @@ kotlin {
             }
         }
         
-        val jsMain by getting {
-            dependencies {
-                // JS-specific analytics (browser APIs, charting libraries)
-                implementation("io.ktor:ktor-client-js:2.3.5")
-            }
-        }
     }
 }

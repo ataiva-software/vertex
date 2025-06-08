@@ -60,5 +60,11 @@ kotlin {
                 implementation(npm("redis", "4.6.10"))
             }
         }
+        
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test-js"))
+            }
+        }
     }
 }

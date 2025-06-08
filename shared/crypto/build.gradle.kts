@@ -42,7 +42,6 @@ kotlin {
         
         val commonTest by getting {
             dependencies {
-                implementation(project(":shared:testing"))
                 implementation(kotlin("test"))
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
@@ -66,12 +65,19 @@ kotlin {
             }
         }
         
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test-js"))
+            }
+        }
+        
         val jvmTest by getting {
             dependencies {
+                implementation(project(":shared:testing"))
                 implementation(kotlin("test-junit"))
                 implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.junit.jupiter.api)
-                implementation(libs.junit.jupiter.engine)
+                implementation(libs.kotest.runner.junit5)
+                implementation(libs.testcontainers.junit.jupiter)
                 implementation(libs.mockk)
             }
         }

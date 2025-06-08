@@ -23,6 +23,12 @@ kotlin {
             }
         }
         nodejs()
+        
+        // Exclude JVM-specific tests from JS compilation
+        compilations["test"].defaultSourceSet.dependencies {
+            // Only depend on jsTest sources and kotlin.test
+            implementation(kotlin("test-js"))
+        }
     }
     
     // Native targets disabled for Docker builds
@@ -43,7 +49,17 @@ kotlin {
         
         val commonTest by getting {
             dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        
+        val jvmTest by getting {
+            dependencies {
                 implementation(project(":shared:testing"))
+                // Add kotest and other JVM-specific test dependencies here
+                implementation("io.kotest:kotest-runner-junit5:5.5.5")
+                implementation("io.kotest:kotest-assertions-core:5.5.5")
+                implementation("io.kotest:kotest-property:5.5.5")
             }
         }
         
@@ -60,6 +76,12 @@ kotlin {
             dependencies {
                 implementation(npm("crypto-js", "4.2.0"))
                 implementation(npm("bcryptjs", "2.4.3"))
+            }
+        }
+        
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test-js"))
             }
         }
     }
