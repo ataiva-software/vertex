@@ -1,5 +1,6 @@
 package com.ataiva.eden.insight.model
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
 
@@ -40,7 +41,7 @@ data class QueryExecution(
 data class AnalyticsResult(
     val queryId: String,
     val executionId: String,
-    val data: List<Map<String, Any>>,
+    val data: List<Map<String, @Contextual Any>>,
     val metadata: ResultMetadata,
     val generatedAt: Long = System.currentTimeMillis()
 )
@@ -168,7 +169,7 @@ data class WidgetConfiguration(
     val filters: Map<String, String> = emptyMap(),
     val colorScheme: String = "default",
     val showLegend: Boolean = true,
-    val customOptions: Map<String, Any> = emptyMap()
+    val customOptions: Map<String, @Contextual Any> = emptyMap()
 )
 
 @Serializable
@@ -266,7 +267,7 @@ data class QueryRequest(
 @Serializable
 data class QueryResponse(
     val success: Boolean,
-    val data: List<Map<String, Any>> = emptyList(),
+    val data: List<Map<String, @Contextual Any>> = emptyList(),
     val metadata: ResultMetadata? = null,
     val executionId: String? = null,
     val message: String? = null,
@@ -307,7 +308,7 @@ data class DashboardDataResponse(
 @Serializable
 data class WidgetData(
     val widgetId: String,
-    val data: List<Map<String, Any>>,
+    val data: List<Map<String, @Contextual Any>>,
     val metadata: ResultMetadata? = null,
     val error: String? = null
 )

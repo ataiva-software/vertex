@@ -8,7 +8,7 @@ import com.ataiva.eden.flow.engine.StepExecutor
 import com.ataiva.eden.database.EdenDatabaseService
 import com.ataiva.eden.database.PostgreSQLDatabaseServiceImpl
 import com.ataiva.eden.database.DatabaseConfig
-import com.ataiva.eden.config.DatabaseConfigLoader
+import com.ataiva.eden.flow.config.DatabaseConfigLoader
 import java.util.Properties
 import java.io.FileInputStream
 import io.ktor.server.application.*
@@ -20,7 +20,7 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
-import io.ktor.server.plugins.cors.*
+import io.ktor.server.plugins.cors.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.datetime.Clock
@@ -76,7 +76,6 @@ fun Application.module() {
     val workflowEngine = WorkflowEngine()
     val stepExecutor = StepExecutor()
     val flowService = FlowService(
-        databaseService = databaseService,
         workflowEngine = workflowEngine,
         stepExecutor = stepExecutor
     )
@@ -136,11 +135,20 @@ fun Application.module() {
  * Create database service with proper configuration
  */
 private fun createDatabaseService(): EdenDatabaseService {
-    // Load database configuration from file or environment variables
-    val environment = System.getenv("EDEN_ENVIRONMENT") ?: "dev"
-    val configPath = System.getenv("EDEN_CONFIG_PATH") ?: "application.properties"
+    // Load database configuration using our custom loader
+    val flowConfig = DatabaseConfigLoader.load()
     
-    val config = DatabaseConfigLoader().loadFromFile(configPath, environment)
+    // Convert to the DatabaseConfig expected by PostgreSQLDatabaseServiceImpl
+    val config = DatabaseConfig(
+        url = flowConfig.url,
+        username = flowConfig.username,
+        password = flowConfig.password,
+        driverClassName = "org.postgresql.Driver", // Default PostgreSQL driver
+        maxPoolSize = flowConfig.poolSize,
+        connectionTimeout = flowConfig.connectionTimeout,
+        idleTimeout = flowConfig.idleTimeout,
+        maxLifetime = flowConfig.maxLifetime
+    )
     
     return PostgreSQLDatabaseServiceImpl(config)
 }

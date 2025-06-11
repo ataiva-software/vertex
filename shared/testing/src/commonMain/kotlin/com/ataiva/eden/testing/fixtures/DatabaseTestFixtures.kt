@@ -61,8 +61,8 @@ object DatabaseTestFixtures {
                 fullName = "Eden Administrator",
                 isActive = true,
                 isVerified = true,
-                createdAt = TestTimeFixtures.PAST_INSTANT,
-                updatedAt = TestTimeFixtures.FIXED_INSTANT
+                createdAt = DatabaseTestTimeFixtures.PAST_INSTANT,
+                updatedAt = DatabaseTestTimeFixtures.FIXED_INSTANT
             ),
             User(
                 id = DEVELOPER_USER_ID,
@@ -71,8 +71,8 @@ object DatabaseTestFixtures {
                 fullName = "Eden Developer",
                 isActive = true,
                 isVerified = true,
-                createdAt = TestTimeFixtures.PAST_INSTANT,
-                updatedAt = TestTimeFixtures.FIXED_INSTANT
+                createdAt = DatabaseTestTimeFixtures.PAST_INSTANT,
+                updatedAt = DatabaseTestTimeFixtures.FIXED_INSTANT
             ),
             User(
                 id = REGULAR_USER_ID,
@@ -81,8 +81,8 @@ object DatabaseTestFixtures {
                 fullName = "Eden User",
                 isActive = true,
                 isVerified = false,
-                createdAt = TestTimeFixtures.FIXED_INSTANT,
-                updatedAt = TestTimeFixtures.FIXED_INSTANT
+                createdAt = DatabaseTestTimeFixtures.FIXED_INSTANT,
+                updatedAt = DatabaseTestTimeFixtures.FIXED_INSTANT
             )
         )
     }
@@ -343,7 +343,7 @@ data class User(
 /**
  * Time fixtures for consistent testing
  */
-object TestTimeFixtures {
+object DatabaseTestTimeFixtures {
     private const val BASE_TIMESTAMP = 1640995200000L // 2022-01-01T00:00:00Z
     
     val FIXED_INSTANT = Instant.fromEpochMilliseconds(BASE_TIMESTAMP)

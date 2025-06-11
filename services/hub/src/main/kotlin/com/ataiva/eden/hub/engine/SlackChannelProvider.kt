@@ -1,8 +1,8 @@
 package com.ataiva.eden.hub.engine
 
 import com.ataiva.eden.hub.model.*
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Tag
+import com.ataiva.eden.hub.stubs.MeterRegistry
+import com.ataiva.eden.hub.stubs.Tag
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -149,7 +149,7 @@ class SlackChannelProvider(
         failureCount: Int,
         priority: NotificationPriority
     ) {
-        meterRegistry?.let { registry ->
+        meterRegistry?.let { registry: MeterRegistry ->
             val tags = listOf(
                 Tag.of("result", result),
                 Tag.of("provider", "slack-api"),
@@ -283,7 +283,7 @@ class SlackChannelProvider(
                 "elements" to listOf(
                     mapOf(
                         "type" to "mrkdwn",
-                        "text" to "_Message ID: $timestamp_"
+                        "text" to "_Message ID: ${timestamp}_"
                     )
                 )
             ))

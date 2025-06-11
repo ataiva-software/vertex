@@ -1,8 +1,8 @@
 package com.ataiva.eden.hub.engine
 
 import com.ataiva.eden.hub.model.*
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Tag
+import com.ataiva.eden.hub.stubs.MeterRegistry
+import com.ataiva.eden.hub.stubs.Tag
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -103,7 +103,7 @@ class EmailChannelProvider(
      * Record metrics for email sending
      */
     private fun recordMetrics(result: String, durationMs: Long, recipientCount: Int, priority: NotificationPriority) {
-        meterRegistry?.let { registry ->
+        meterRegistry?.let { registry: MeterRegistry ->
             val tags = listOf(
                 Tag.of("result", result),
                 Tag.of("provider", config.provider),
@@ -319,7 +319,7 @@ class SendGridEmailProvider(
 ) : NotificationChannelProvider {
     
     private val logger = LoggerFactory.getLogger(SendGridEmailProvider::class.java)
-    private val client = com.sendgrid.SendGrid(apiKey)
+    private val client = com.ataiva.eden.hub.stubs.SendGrid(apiKey)
     
     // Maximum number of retry attempts for sending emails
     private val maxRetries = 3
@@ -492,14 +492,14 @@ class SendGridEmailProvider(
     ): String {
         logger.debug("Preparing SendGrid email with subject '$subject' for ${recipients.size} recipients")
         
-        val mail = com.sendgrid.Mail()
+        val mail = com.ataiva.eden.hub.stubs.Mail()
         
         // Generate message ID for tracking
         val messageId = "${System.currentTimeMillis()}.${Math.random()}@sendgrid.eden"
         mail.addHeader("Message-ID", messageId)
         
         // Set from address
-        val from = com.sendgrid.Email(fromEmail, fromName)
+        val from = com.ataiva.eden.hub.stubs.Email(fromEmail, fromName)
         mail.setFrom(from)
         
         // Set subject
@@ -512,8 +512,8 @@ class SendGridEmailProvider(
                 // Validate email address format
                 InternetAddress(recipient.address).validate()
                 
-                val to = com.sendgrid.Email(recipient.address, recipient.name)
-                val personalization = com.sendgrid.Personalization()
+                val to = com.ataiva.eden.hub.stubs.Email(recipient.address, recipient.name)
+                val personalization = com.ataiva.eden.hub.stubs.Personalization()
                 personalization.addTo(to)
                 mail.addPersonalization(personalization)
                 validRecipients.add(recipient)
@@ -529,11 +529,11 @@ class SendGridEmailProvider(
         }
         
         // Set content
-        val content = com.sendgrid.Content("text/html", body)
+        val content = com.ataiva.eden.hub.stubs.Content("text/html", body)
         mail.addContent(content)
         
         // Add plain text version
-        val plainText = com.sendgrid.Content("text/plain", stripHtml(body))
+        val plainText = com.ataiva.eden.hub.stubs.Content("text/plain", stripHtml(body))
         mail.addContent(plainText)
         
         // Set priority headers
@@ -557,16 +557,16 @@ class SendGridEmailProvider(
         }
         
         // Add tracking settings
-        val trackingSettings = com.sendgrid.TrackingSettings()
-        val clickTracking = com.sendgrid.ClickTracking()
+        val trackingSettings = com.ataiva.eden.hub.stubs.TrackingSettings()
+        val clickTracking = com.ataiva.eden.hub.stubs.ClickTracking()
         clickTracking.setEnable(true)
         clickTracking.setEnableText(true)
         trackingSettings.setClickTracking(clickTracking)
         mail.setTrackingSettings(trackingSettings)
         
         // Send request
-        val request = com.sendgrid.Request()
-        request.method = com.sendgrid.Method.POST
+        val request = com.ataiva.eden.hub.stubs.Request()
+        request.method = com.ataiva.eden.hub.stubs.Method.POST
         request.endpoint = "mail/send"
         request.body = mail.build()
         

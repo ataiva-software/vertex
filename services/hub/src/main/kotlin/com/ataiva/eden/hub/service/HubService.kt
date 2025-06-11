@@ -9,8 +9,12 @@ import com.ataiva.eden.database.EdenDatabaseService
 import com.ataiva.eden.hub.crypto.KeyManagementSystem
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.pow
+import org.slf4j.LoggerFactory
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Core Hub Service that orchestrates integrations, webhooks, and notifications
@@ -21,8 +25,9 @@ class HubService(
     private val secureRandom: SecureRandom,
     private val keyManagementSystem: KeyManagementSystem
 ) {
+    private val logger = LoggerFactory.getLogger(HubService::class.java)
     private val integrationEngine = IntegrationEngine(encryption, secureRandom)
-    private val webhookService = WebhookService(secureRandom)
+    private val webhookService = WebhookService()
     private val notificationEngine = NotificationEngine(secureRandom)
     private val eventSubscriptions = ConcurrentHashMap<String, EventSubscription>()
     
@@ -721,14 +726,14 @@ class HubService(
             val deliveryRequest = WebhookDeliveryRequest(
                 webhookId = subscription.id, // Use subscription ID as webhook ID
                 event = event.type,
-                payload = mapOf(
+                payload = mapOf<String, Any>(
                     "id" to event.id,
                     "type" to event.type,
                     "source" to event.source,
                     "data" to event.data,
                     "timestamp" to event.timestamp.toString(),
-                    "userId" to event.userId,
-                    "organizationId" to event.organizationId
+                    "userId" to (event.userId ?: ""),
+                    "organizationId" to (event.organizationId ?: "")
                 )
             )
             
@@ -752,7 +757,7 @@ class HubService(
                         timestamp = Clock.System.now(),
                         retryCount = 0,
                         maxRetries = 3,
-                        nextRetryAt = Clock.System.now().plus(kotlinx.datetime.DateTimePeriod(seconds = 60))
+                        nextRetryAt = Clock.System.now().plus(60.seconds)
                     )
                     
                     // Queue for retry if appropriate
@@ -787,7 +792,7 @@ class HubService(
                         // Create updated failure record with incremented retry count
                         val updatedFailure = failure.copy(
                             retryCount = failure.retryCount + 1,
-                            nextRetryAt = Clock.System.now().plus(kotlinx.datetime.DateTimePeriod(seconds = delaySeconds * 2))
+                            nextRetryAt = Clock.System.now().plus((delaySeconds * 2).seconds)
                         )
                         
                         // Attempt delivery again

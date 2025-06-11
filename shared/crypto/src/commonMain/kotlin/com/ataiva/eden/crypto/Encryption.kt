@@ -268,7 +268,7 @@ data class KeyPair(
  * Simple cross-platform random number generator
  * Note: This is a simplified implementation for compilation compatibility
  */
-class SecureRandom {
+class BasicRandom {
     private val random = kotlin.random.Random.Default
     
     /**
@@ -359,7 +359,7 @@ abstract class DefaultEncryption(
     
     override suspend fun encrypt(data: ByteArray, key: ByteArray): EncryptionResult {
         // Generate a secure random nonce (IV) for AES-GCM
-        val nonce = SecureRandom.generateBytes(12) // 96 bits as recommended for AES-GCM
+        val nonce = BasicRandom.generateBytes(12) // 96 bits as recommended for AES-GCM
         
         // In a real implementation, this would use platform-specific encryption
         // For JVM, this would use javax.crypto with AES/GCM/NoPadding
@@ -480,7 +480,7 @@ abstract class DefaultEncryption(
     
     // Generate secure random bytes
     protected open fun generateSecureRandomBytes(length: Int): ByteArray {
-        return SecureRandom.generateBytes(length)
+        return BasicRandom.generateBytes(length)
     }
     
     // Constant-time byte array comparison to prevent timing attacks

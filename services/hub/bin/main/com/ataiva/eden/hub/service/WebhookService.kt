@@ -1,8 +1,8 @@
 package com.ataiva.eden.hub.service
 
 import com.ataiva.eden.hub.model.*
-import com.ataiva.eden.crypto.SecureRandom
 import kotlinx.datetime.Clock
+import java.util.UUID
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
@@ -14,6 +14,7 @@ import java.net.http.HttpResponse
 import java.net.URI
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.seconds
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.min
@@ -22,9 +23,7 @@ import kotlin.math.pow
 /**
  * Webhook service for managing webhook delivery with retry mechanisms
  */
-class WebhookService(
-    private val secureRandom: SecureRandom
-) {
+class WebhookService() {
     private val webhooks = ConcurrentHashMap<String, WebhookInstance>()
     private val deliveries = ConcurrentHashMap<String, WebhookDeliveryInstance>()
     private val deliveryQueue = mutableListOf<WebhookDeliveryInstance>()
@@ -62,7 +61,7 @@ class WebhookService(
                 return HubResult.Error("At least one event must be specified")
             }
             
-            val webhookId = SecureRandom.generateUuid()
+            val webhookId = UUID.randomUUID().toString()
             val webhook = WebhookInstance(
                 id = webhookId,
                 name = request.name,
@@ -187,7 +186,7 @@ class WebhookService(
                 return HubResult.Error("Webhook is not configured for event: ${request.event}")
             }
             
-            val deliveryId = SecureRandom.generateUuid()
+            val deliveryId = UUID.randomUUID().toString()
             val delivery = WebhookDeliveryInstance(
                 id = deliveryId,
                 webhookId = request.webhookId,
@@ -305,7 +304,7 @@ class WebhookService(
                 }
                 
                 pendingDeliveries.forEach { delivery ->
-                    launch {
+                    deliveryProcessor.launch {
                         processDelivery(delivery)
                     }
                 }
@@ -380,7 +379,7 @@ class WebhookService(
                         status = DeliveryStatus.RETRYING,
                         httpStatusCode = response.statusCode(),
                         responseBody = response.body(),
-                        nextRetryAt = Clock.System.now().plus(kotlinx.datetime.DateTimePeriod(seconds = nextRetryDelay)),
+                        nextRetryAt = Clock.System.now().plus(nextRetryDelay.seconds),
                         updatedAt = Clock.System.now()
                     )
                 } else {
@@ -396,20 +395,20 @@ class WebhookService(
             deliveries[delivery.id] = updatedDelivery
             
             // Update webhook statistics
-            val webhook = webhooks[delivery.webhookId]!!
+            val currentWebhook = webhooks[delivery.webhookId]!!
             val updatedWebhook = if (updatedDelivery.status == DeliveryStatus.DELIVERED) {
-                webhook.copy(
+                currentWebhook.copy(
                     successCount = webhook.successCount + 1,
                     lastDeliveryAt = Clock.System.now(),
                     updatedAt = Clock.System.now()
                 )
             } else if (updatedDelivery.status == DeliveryStatus.ABANDONED) {
-                webhook.copy(
+                currentWebhook.copy(
                     failureCount = webhook.failureCount + 1,
                     updatedAt = Clock.System.now()
                 )
             } else {
-                webhook
+                currentWebhook
             }
             webhooks[delivery.webhookId] = updatedWebhook
             

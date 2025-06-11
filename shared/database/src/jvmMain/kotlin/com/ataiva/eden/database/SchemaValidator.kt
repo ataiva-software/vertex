@@ -41,8 +41,8 @@ class SchemaValidator(private val dataSource: DataSource) {
             // Check for pending migrations
             val pendingMigrations = flyway.info().pending()
             if (pendingMigrations.isNotEmpty()) {
-                val pendingMigrationsList = pendingMigrations.map { 
-                    "${it.version} - ${it.description}" 
+                val pendingMigrationsList = pendingMigrations.map { migration ->
+                    "${migration.version} - ${migration.description}"
                 }
                 
                 return ValidationResult(
@@ -114,7 +114,7 @@ class SchemaValidator(private val dataSource: DataSource) {
      */
     private fun validateRequiredSchemas(
         connection: Connection,
-        warnings: MutableList<String>,
+        @Suppress("UNUSED_PARAMETER") _warnings: MutableList<String>,
         errors: MutableList<String>
     ) {
         val requiredSchemas = listOf("eden", "audit")
@@ -144,7 +144,7 @@ class SchemaValidator(private val dataSource: DataSource) {
      */
     private fun validateRequiredTables(
         connection: Connection,
-        warnings: MutableList<String>,
+        @Suppress("UNUSED_PARAMETER") _warnings: MutableList<String>,
         errors: MutableList<String>
     ) {
         val requiredTables = mapOf(
@@ -191,7 +191,7 @@ class SchemaValidator(private val dataSource: DataSource) {
      */
     private fun validateRequiredColumns(
         connection: Connection,
-        warnings: MutableList<String>,
+        @Suppress("UNUSED_PARAMETER") _warnings: MutableList<String>,
         errors: MutableList<String>
     ) {
         // Define required columns for key tables
@@ -233,7 +233,7 @@ class SchemaValidator(private val dataSource: DataSource) {
     private fun validateRequiredIndexes(
         connection: Connection,
         warnings: MutableList<String>,
-        errors: MutableList<String>
+        @Suppress("UNUSED_PARAMETER") _errors: MutableList<String>
     ) {
         // Define required indexes
         val requiredIndexes = mapOf(

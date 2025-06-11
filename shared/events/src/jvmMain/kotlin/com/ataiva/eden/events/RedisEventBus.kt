@@ -23,9 +23,10 @@ class RedisEventBus(
     private val redisDatabase: Int = 0
 ) : EventBus {
     
-    private val json = Json { 
+    private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        serializersModule = eventSerializationModule
     }
     
     private val jedisPool: JedisPool by lazy {
@@ -320,10 +321,12 @@ class InMemoryEventBus : EventBus {
             throw IllegalStateException("EventBus is not started")
         }
         
-        events.forEach { event ->
-            eventScope.launch {
-                handleEvent(event)
-            }
+        kotlinx.coroutines.coroutineScope {
+            events.map { event ->
+                launch {
+                    handleEvent(event)
+                }
+            }.forEach { it.join() }
         }
     }
     
@@ -364,7 +367,21 @@ class InMemoryEventBus : EventBus {
         
         // Handle pattern subscriptions
         patternHandlers.forEach { (pattern, handlers) ->
-            if (Pattern.matches(pattern, event.eventType)) {
+            // For wildcard patterns like "user.*", match any event type that starts with the prefix
+            if (pattern.endsWith(".*")) {
+                val prefix = pattern.substring(0, pattern.length - 2)
+                if (event.eventType.startsWith(prefix)) {
+                    handlers.forEach { handler ->
+                        try {
+                            // Important: For pattern subscriptions, we need to handle the event
+                            // regardless of the handler's supported event types
+                            handler.handle(event)
+                        } catch (e: Exception) {
+                            println("Error handling pattern event in ${handler.handlerName}: ${e.message}")
+                        }
+                    }
+                }
+            } else if (Pattern.matches(pattern, event.eventType)) {
                 handlers.forEach { handler ->
                     try {
                         handler.handle(event)
@@ -390,9 +407,10 @@ class InMemoryEventBus : EventBus {
  */
 class JsonEventSerializer : EventSerializer {
     
-    private val json = Json { 
+    private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        serializersModule = eventSerializationModule
     }
     
     override fun serialize(event: DomainEvent): String {

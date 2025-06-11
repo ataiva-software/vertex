@@ -42,9 +42,12 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 // JVM-only dependencies
-                implementation(project(":shared:monitoring"))
-                implementation(project(":shared:analytics"))
-                implementation(project(":shared:cloud"))
+                // Temporarily disabled due to build issues
+                // implementation(project(":shared:monitoring"))
+                // Temporarily disabled due to missing dependency: kotlinx-statistics-jvm:0.2.1
+                // implementation(project(":shared:analytics"))
+                // Temporarily disabled due to compilation errors
+                // implementation(project(":shared:cloud"))
                 
                 // Deep Learning and Neural Networks
                 implementation("org.deeplearning4j:deeplearning4j-core:1.0.0-M2.1")
@@ -54,7 +57,8 @@ kotlin {
                 
                 // Machine Learning
                 implementation("org.apache.commons:commons-math3:3.6.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-statistics-jvm:0.2.1")
+                // Temporarily disabled due to missing dependency
+                // implementation("org.jetbrains.kotlinx:kotlinx-statistics-jvm:0.2.1")
                 implementation("smile:smile-core:3.0.2")
                 implementation("smile:smile-nlp:3.0.2")
                 implementation("smile:smile-plot:3.0.2")

@@ -296,7 +296,7 @@ class SecurityLogger(
                     }
                 }
                 else -> {
-                    if (event.success) {
+                    if (event.success == true) {
                         logger.info(message)
                     } else {
                         logger.warn(message)

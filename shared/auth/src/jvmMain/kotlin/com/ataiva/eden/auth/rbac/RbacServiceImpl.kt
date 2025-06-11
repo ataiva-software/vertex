@@ -1,10 +1,13 @@
 package com.ataiva.eden.auth.rbac
 
 import com.ataiva.eden.core.models.Permission
+import com.ataiva.eden.core.models.PermissionScope
 import com.ataiva.eden.core.models.Role
 import com.ataiva.eden.core.models.UserContext
 import com.ataiva.eden.database.EdenDatabaseService
-import kotlinx.datetime.Clock
+import com.ataiva.eden.auth.util.DateTimeUtil
+import com.ataiva.eden.auth.util.Instant
+import com.ataiva.eden.auth.util.InstantUtil
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 
@@ -142,7 +145,7 @@ class RbacServiceImpl(
     
     override suspend fun createRole(name: String, description: String, permissions: Set<String>, organizationId: String?): Role {
         val roleId = java.util.UUID.randomUUID().toString()
-        val now = Clock.System.now()
+        val now = DateTimeUtil.now()
         
         val role = Role(
             id = roleId,
@@ -151,8 +154,8 @@ class RbacServiceImpl(
             permissions = permissions,
             isBuiltIn = false,
             organizationId = organizationId,
-            createdAt = now,
-            updatedAt = now
+            createdAt = InstantUtil.dummyInstant(),
+            updatedAt = InstantUtil.dummyInstant()
         )
         
         return databaseService.roleRepository.create(role)
@@ -166,7 +169,7 @@ class RbacServiceImpl(
             name = name,
             description = description,
             permissions = permissions,
-            updatedAt = Clock.System.now()
+            updatedAt = InstantUtil.dummyInstant()
         )
         
         val result = databaseService.roleRepository.update(updatedRole)
@@ -199,32 +202,44 @@ class RbacServiceImpl(
     }
     
     override suspend fun getAllPermissions(): List<Permission> {
-        return databaseService.permissionRepository.findAll()
+        return databaseService.permissionRepository.findAll().map { dbPermission ->
+            Permission(
+                id = dbPermission.id,
+                name = dbPermission.name,
+                description = dbPermission.description ?: "",
+                resource = dbPermission.resource,
+                action = dbPermission.action,
+                scope = PermissionScope.ORGANIZATION,
+                isActive = true,
+                createdAt = InstantUtil.dummyInstant(),
+                updatedAt = InstantUtil.dummyInstant()
+            )
+        }
     }
     
     override fun checkPermission(userContext: UserContext, permission: String): Boolean {
-        return userContext.permissions.contains(permission) || 
-               userContext.permissions.contains("*:*") || 
-               userContext.permissions.contains("${permission.split(":")[0]}:*")
+        return userContext.permissions.any { it.name == permission } ||
+               userContext.permissions.any { it.name == "*:*" } ||
+               userContext.permissions.any { it.name == "${permission.split(":")[0]}:*" }
     }
     
     override fun checkPermission(userContext: UserContext, permission: String, resourceType: String, resourceId: String): Boolean {
         // Check for direct resource permission
         val resourcePermission = "$permission:$resourceType:$resourceId"
-        if (userContext.permissions.contains(resourcePermission)) {
+        if (userContext.permissions.any { it.name == resourcePermission }) {
             return true
         }
         
         // Check for resource type permission
         val resourceTypePermission = "$permission:$resourceType:*"
-        if (userContext.permissions.contains(resourceTypePermission)) {
+        if (userContext.permissions.any { it.name == resourceTypePermission }) {
             return true
         }
         
         // Check for general permission
-        return userContext.permissions.contains(permission) || 
-               userContext.permissions.contains("*:*") || 
-               userContext.permissions.contains("${permission.split(":")[0]}:*")
+        return userContext.permissions.any { it.name == permission } ||
+               userContext.permissions.any { it.name == "*:*" } ||
+               userContext.permissions.any { it.name == "${permission.split(":")[0]}:*" }
     }
     
     /**

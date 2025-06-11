@@ -244,11 +244,11 @@ data class Sort(
     
     companion object {
         fun by(vararg properties: String): Sort {
-            return Sort(properties.map { Order(it) })
+            return Sort(properties.map { property -> Order(property) })
         }
         
         fun by(direction: Direction, vararg properties: String): Sort {
-            return Sort(properties.map { Order(it, direction) })
+            return Sort(properties.map { property -> Order(property, direction) })
         }
     }
 }

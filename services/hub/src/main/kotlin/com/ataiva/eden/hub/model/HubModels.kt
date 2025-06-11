@@ -1,6 +1,7 @@
 package com.ataiva.eden.hub.model
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 // ================================
@@ -212,7 +213,7 @@ enum class WebhookStatus {
 data class WebhookDeliveryRequest(
     val webhookId: String,
     val event: String,
-    val payload: Map<String, Any>,
+    val payload: Map<String, @Contextual Any>,
     val timestamp: Instant = kotlinx.datetime.Clock.System.now()
 )
 
@@ -573,7 +574,7 @@ data class HubEvent(
     val id: String,
     val type: String,
     val source: String,
-    val data: Map<String, Any>,
+    val data: Map<String, @Contextual Any>,
     val timestamp: Instant = kotlinx.datetime.Clock.System.now(),
     val userId: String? = null,
     val organizationId: String? = null
@@ -614,6 +615,6 @@ data class IntegrationTestResult(
     val success: Boolean,
     val message: String,
     val responseTime: Long,
-    val details: Map<String, Any> = emptyMap(),
+    val details: Map<String, @Contextual Any> = emptyMap(),
     val timestamp: Instant = kotlinx.datetime.Clock.System.now()
 )

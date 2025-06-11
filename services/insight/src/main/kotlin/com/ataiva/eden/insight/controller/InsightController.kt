@@ -384,7 +384,9 @@ class InsightController(private val insightService: InsightService) {
                         // Parse time range if provided
                         null // Simplified for now
                     }
-                    val filters = call.request.queryParameters.toMap().filterKeys { it.startsWith("filter_") }
+                    val filters = call.request.queryParameters.entries()
+                        .filter { it.key.startsWith("filter_") }
+                        .associate { it.key.removePrefix("filter_") to it.value.first() }
                     
                     val request = DashboardDataRequest(
                         dashboardId = id,

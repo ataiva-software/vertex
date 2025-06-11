@@ -1,11 +1,11 @@
 package com.ataiva.eden.core.models
 
+import com.ataiva.eden.testing.extensions.shouldHaveSize
 import com.ataiva.eden.testing.mocks.MockTimeProvider
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.property.Arb
@@ -80,6 +80,8 @@ class AuditLogTest : DescribeSpec({
                         action = "test.action",
                         resource = "test",
                         resourceId = "test-123",
+                        ipAddress = "127.0.0.1",
+                        userAgent = "Test Agent",
                         timestamp = now,
                         severity = severity
                     )
@@ -100,6 +102,8 @@ class AuditLogTest : DescribeSpec({
                         action = action,
                         resource = "test",
                         resourceId = "test-123",
+                        ipAddress = "127.0.0.1",
+                        userAgent = "Test Agent",
                         timestamp = now
                     )
                     
@@ -117,6 +121,8 @@ class AuditLogTest : DescribeSpec({
                         action = "test.action",
                         resource = resource,
                         resourceId = "test-123",
+                        ipAddress = "127.0.0.1",
+                        userAgent = "Test Agent",
                         timestamp = now
                     )
                     
@@ -136,6 +142,8 @@ class AuditLogTest : DescribeSpec({
                     resource = "test",
                     resourceId = "test-123",
                     details = emptyMap(),
+                    ipAddress = "127.0.0.1",
+                    userAgent = "Test Agent",
                     timestamp = now
                 )
                 
@@ -153,6 +161,8 @@ class AuditLogTest : DescribeSpec({
                     resource = "test",
                     resourceId = "test-123",
                     details = largeDetails,
+                    ipAddress = "127.0.0.1",
+                    userAgent = "Test Agent",
                     timestamp = now
                 )
                 
@@ -460,6 +470,8 @@ class AuditLogTest : DescribeSpec({
                 resource = AuditResources.SECRET,
                 resourceId = "secret-123",
                 details = mapOf("reason" to "security_breach"),
+                ipAddress = "127.0.0.1",
+                userAgent = "Test Agent",
                 timestamp = now,
                 severity = AuditSeverity.CRITICAL
             )

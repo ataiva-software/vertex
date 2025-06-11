@@ -42,6 +42,10 @@ dependencies {
     implementation("org.graalvm.js:js:22.3.0")
     implementation("org.graalvm.js:js-scriptengine:22.3.0")
     
+    // Configuration
+    implementation("io.github.config4k:config4k:0.5.0")
+    implementation("com.typesafe:config:1.4.2")
+    
     // Logging
     implementation(libs.bundles.logging)
     

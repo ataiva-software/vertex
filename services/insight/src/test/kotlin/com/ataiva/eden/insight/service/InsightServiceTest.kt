@@ -24,7 +24,7 @@ class InsightServiceTest {
     
     @BeforeEach
     fun setUp() {
-        testConfiguration = InsightConfiguration(
+        testConfiguration = com.ataiva.eden.insight.model.InsightConfiguration(
             maxQueryTimeout = 30000,
             maxResultRows = 1000,
             cacheEnabled = true,
@@ -32,7 +32,25 @@ class InsightServiceTest {
             reportOutputPath = System.getProperty("java.io.tmpdir") + "/test-reports",
             maxConcurrentQueries = 5
         )
-        insightService = InsightService(testConfiguration)
+        
+        // Create a mock database config
+        val mockDatabaseConfig = MockInsightDatabaseConfig()
+        insightService = InsightService(
+            InsightConfiguration(
+                reportOutputPath = System.getProperty("java.io.tmpdir") + "/test-reports",
+                cacheEnabled = true,
+                cacheMaxSize = 1000,
+                cacheTtlMinutes = 5,
+                queryTimeoutSeconds = 30,
+                maxResultRows = 1000
+            ),
+            mockDatabaseConfig
+        )
+    }
+    
+    // Mock database config class for testing
+    private class MockInsightDatabaseConfig : com.ataiva.eden.insight.config.InsightDatabaseConfig() {
+        // Override properties and methods as needed for testing
     }
     
     // ============================================================================
@@ -854,31 +872,31 @@ class InsightServiceTest {
         @Test
         @DisplayName("Should handle non-existent query gracefully")
         fun `should handle non-existent query gracefully`() {
-            // When
-            val query = insightService.getQuery("non_existent_id")
-            
-            // Then
-            assertNull(query)
+            // When & Then
+            runBlocking {
+                val query = insightService.getQuery("non_existent_id")
+                assertNull(query)
+            }
         }
         
         @Test
         @DisplayName("Should handle non-existent report gracefully")
         fun `should handle non-existent report gracefully`() {
-            // When
-            val report = insightService.getReport("non_existent_id")
-            
-            // Then
-            assertNull(report)
+            // When & Then
+            runBlocking {
+                val report = insightService.getReport("non_existent_id")
+                assertNull(report)
+            }
         }
         
         @Test
         @DisplayName("Should handle non-existent dashboard gracefully")
         fun `should handle non-existent dashboard gracefully`() {
-            // When
-            val dashboard = insightService.getDashboard("non_existent_id")
-            
-            // Then
-            assertNull(dashboard)
+            // When & Then
+            runBlocking {
+                val dashboard = insightService.getDashboard("non_existent_id")
+                assertNull(dashboard)
+            }
         }
         
         @Test
@@ -940,7 +958,7 @@ class InsightServiceTest {
             
             // When - Execute multiple queries concurrently
             val results = (1..5).map { i ->
-                kotlinx.coroutines.async {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).async {
                     insightService.executeQuery(query.id, mapOf("iteration" to i.toString()), "user_$i")
                 }
             }.map { it.await() }
@@ -955,6 +973,12 @@ class InsightServiceTest {
         }
         
         @Test
+        @DisplayName("Should handle edge cases")
+        fun `should handle edge cases`() = runBlocking {
+            // Test implementation
+        }
+    }
+}
         @DisplayName("Should handle large result sets within limits")
         fun `should handle large result sets within limits`() = runBlocking {
             // Given

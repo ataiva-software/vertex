@@ -281,7 +281,7 @@ private fun Route.proxyToService(httpClient: HttpClient, service: ServiceInfo?) 
     }
 }
 
-private fun shouldForwardHeader(headerName: String): Boolean {
+internal fun shouldForwardHeader(headerName: String): Boolean {
     val skipHeaders = setOf(
         "host", "connection", "upgrade", "proxy-connection",
         "proxy-authenticate", "proxy-authorization", "te", "trailers", "transfer-encoding"
@@ -289,7 +289,7 @@ private fun shouldForwardHeader(headerName: String): Boolean {
     return !skipHeaders.contains(headerName.lowercase())
 }
 
-private fun shouldForwardResponseHeader(headerName: String): Boolean {
+internal fun shouldForwardResponseHeader(headerName: String): Boolean {
     val skipHeaders = setOf(
         "connection", "upgrade", "proxy-connection", "transfer-encoding"
     )

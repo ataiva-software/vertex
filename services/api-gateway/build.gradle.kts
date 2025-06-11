@@ -25,6 +25,19 @@ dependencies {
     implementation(libs.bundles.ktor.server)
     implementation(libs.bundles.ktor.client)
     
+    // Additional Ktor server plugins
+    implementation("io.ktor:ktor-server-forwarded-header-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-http-redirect-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-hsts-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-compression-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-default-headers-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-metrics-jvm:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-call-id-jvm:${libs.versions.ktor.get()}")
+    
+    // Micrometer and Prometheus for metrics
+    implementation("io.ktor:ktor-server-metrics-micrometer-jvm:${libs.versions.ktor.get()}")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
+    
     // Database
     implementation(libs.bundles.database)
     

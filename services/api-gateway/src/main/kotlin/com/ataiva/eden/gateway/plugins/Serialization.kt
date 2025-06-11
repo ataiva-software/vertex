@@ -1,11 +1,14 @@
 package com.ataiva.eden.gateway.plugins
 
 import io.ktor.http.*
+import io.ktor.serialization.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
+import io.ktor.server.plugins.callid.*
+import io.ktor.server.request.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -22,13 +25,16 @@ import java.util.*
 fun Application.configureSerialization() {
     val logger = LoggerFactory.getLogger("SerializationPlugin")
     
+    // Store environment in a local variable to avoid access issues
+    val appEnvironment = environment
+    
     // Install Content Negotiation
     @OptIn(ExperimentalSerializationApi::class)
     install(ContentNegotiation) {
         // Configure JSON serialization
         json(Json {
             // Pretty print JSON in development mode
-            prettyPrint = environment.developmentMode
+            prettyPrint = appEnvironment.developmentMode
             
             // Be lenient when parsing JSON
             isLenient = true
@@ -94,7 +100,7 @@ fun Application.configureSerialization() {
             logger.error("Unhandled exception: ${cause.message}", cause)
             
             // Don't expose internal error details in production
-            val errorMessage = if (environment.developmentMode) {
+            val errorMessage = if (appEnvironment.developmentMode) {
                 cause.message ?: "Internal server error"
             } else {
                 "Internal server error"
@@ -112,12 +118,13 @@ fun Application.configureSerialization() {
         
         // Handle 404 Not Found
         status(HttpStatusCode.NotFound) { call, status ->
+            val path = call.request.path()
             call.respond(
                 status,
                 mapOf(
                     "error" to "Not found",
                     "message" to "The requested resource was not found",
-                    "path" to call.request.path(),
+                    "path" to path,
                     "timestamp" to Date().time
                 )
             )
@@ -125,13 +132,15 @@ fun Application.configureSerialization() {
         
         // Handle 405 Method Not Allowed
         status(HttpStatusCode.MethodNotAllowed) { call, status ->
+            val method = call.request.httpMethod.value
+            val path = call.request.path()
             call.respond(
                 status,
                 mapOf(
                     "error" to "Method not allowed",
                     "message" to "The HTTP method is not supported for this resource",
-                    "method" to call.request.httpMethod.value,
-                    "path" to call.request.path(),
+                    "method" to method,
+                    "path" to path,
                     "timestamp" to Date().time
                 )
             )
@@ -139,12 +148,13 @@ fun Application.configureSerialization() {
         
         // Handle 415 Unsupported Media Type
         status(HttpStatusCode.UnsupportedMediaType) { call, status ->
+            val contentType = call.request.contentType().toString()
             call.respond(
                 status,
                 mapOf(
                     "error" to "Unsupported media type",
                     "message" to "The content type is not supported",
-                    "contentType" to (call.request.contentType().toString()),
+                    "contentType" to contentType,
                     "timestamp" to Date().time
                 )
             )
@@ -154,7 +164,8 @@ fun Application.configureSerialization() {
     // Add response transformation interceptor for consistent response format
     intercept(ApplicationCallPipeline.Plugins) {
         // Add correlation ID to all responses if available
-        call.response.header("X-Correlation-ID", call.callId ?: UUID.randomUUID().toString())
+        val correlationId = call.request.header("X-Correlation-ID") ?: UUID.randomUUID().toString()
+        call.response.header("X-Correlation-ID", correlationId)
     }
     
     logger.info("Serialization configured with JSON content negotiation and error handling")

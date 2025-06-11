@@ -12,7 +12,8 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.callloging.*
+import org.slf4j.LoggerFactory
+import io.ktor.server.request.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
@@ -29,7 +30,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -51,6 +51,7 @@ class InsightApplication {
     private val schedulerThreadPool = Executors.newScheduledThreadPool(4)
     
     // Dispatchers for different types of operations
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val ioDispatcher = Dispatchers.IO.limitedParallelism(32)
     val cpuDispatcher = cpuThreadPool
     val defaultDispatcher = Dispatchers.Default
@@ -105,11 +106,19 @@ class InsightApplication {
             )
             
             // Initialize insight service
+            // Create model config for the analytics engine
+            val modelConfig = com.ataiva.eden.insight.model.InsightConfiguration(
+                maxQueryTimeout = insightConfig.queryTimeoutSeconds * 1000,
+                maxResultRows = insightConfig.maxResultRows,
+                cacheEnabled = insightConfig.cacheEnabled,
+                cacheTtl = insightConfig.cacheTtlMinutes * 60,
+                reportOutputPath = insightConfig.reportOutputPath,
+                maxConcurrentQueries = 10
+            )
+            
             insightService = InsightService(
-                configuration = insightConfig,
-                databaseConfig = databaseConfig,
-                cacheService = cacheService,
-                metricsService = metricsService
+                serviceConfig = insightConfig,
+                databaseConfig = databaseConfig
             )
             
             logger.info("Insight Service initialized successfully")
@@ -134,15 +143,11 @@ class InsightApplication {
             
             // Optimize socket options
             tcpKeepAlive = true                    // Keep connections alive
-            reuseAddress = true                    // Allow socket address reuse
             
             // Configure request queue
             requestQueueLimit = 16384              // Increase request queue size
             runningLimit = 1000                    // Max number of running requests
-            responseWriteTimeoutSeconds = 120L     // Response write timeout
-            
-            // Configure idle timeout
-            socketTimeout = 60000                  // Socket timeout in milliseconds
+            responseWriteTimeoutSeconds = 120      // Response write timeout
         }) {
             // Configure Ktor application
             configureRouting()
@@ -186,15 +191,16 @@ class InsightApplication {
                 // Update cache metrics
                 if (::cacheService.isInitialized) {
                     val cacheStats = cacheService.getStats()
-                    cacheStats["in_memory"]?.let { stats ->
-                        if (stats is Map<*, *>) {
-                            metricsService.updateCacheSize("in_memory", (stats["size"] as? Number)?.toLong() ?: 0)
-                        }
+                    val inMemoryStats = cacheStats["in_memory"] as? Map<String, Any>
+                    if (inMemoryStats != null) {
+                        val size = (inMemoryStats["size"] as? Number)?.toLong() ?: 0
+                        metricsService.updateCacheSize("in_memory", size)
                     }
-                    cacheStats["redis"]?.let { stats ->
-                        if (stats is Map<*, *>) {
-                            metricsService.updateCacheSize("redis", (stats["key_count"] as? Number)?.toLong() ?: 0)
-                        }
+                    
+                    val redisStats = cacheStats["redis"] as? Map<String, Any>
+                    if (redisStats != null) {
+                        val keyCount = (redisStats["key_count"] as? Number)?.toLong() ?: 0
+                        metricsService.updateCacheSize("redis", keyCount)
                     }
                 }
                 
@@ -311,17 +317,21 @@ class InsightApplication {
         // Support for forwarded headers
         install(ForwardedHeaders)
         
-        // Request logging
-        install(CallLogging) {
-            level = Level.INFO
-            filter { call -> call.request.path().startsWith("/api") }
-            format { call ->
-                val status = call.response.status()
-                val httpMethod = call.request.httpMethod.value
-                val path = call.request.path()
-                val userAgent = call.request.headers["User-Agent"]
-                val duration = call.processingTimeMillis()
-                "$httpMethod $path - $status - $duration ms - $userAgent"
+        // Request logging using interceptors instead of CallLogging plugin
+        val logger = LoggerFactory.getLogger("InsightService")
+        
+        // Add request/response interceptors for logging
+        intercept(ApplicationCallPipeline.Monitoring) {
+            // Log request details
+            logger.info("Received request: ${call.request.httpMethod.value} ${call.request.path()}")
+            
+            try {
+                // Continue with the request
+                proceed()
+            } finally {
+                // Log response details
+                val status = call.response.status() ?: HttpStatusCode.InternalServerError
+                logger.info("Completed request: ${call.request.httpMethod.value} ${call.request.path()} with status $status")
             }
         }
     }

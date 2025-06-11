@@ -166,9 +166,12 @@ class EventBusTest {
         
         val deserialized = serializer.deserialize(serialized, event.eventType)
         assertNotNull(deserialized)
-        assertTrue(deserialized is UserCreatedEvent)
+        assertNotNull(deserialized)
         assertEquals(event.eventId, deserialized.eventId)
-        assertEquals(event.email, (deserialized as UserCreatedEvent).email)
+        when (deserialized) {
+            is UserCreatedEvent -> assertEquals(event.email, deserialized.email)
+            else -> fail("Expected UserCreatedEvent but got ${deserialized::class.simpleName}")
+        }
         
         val supportedTypes = serializer.getSupportedTypes()
         assertTrue(supportedTypes.contains("user.created"))

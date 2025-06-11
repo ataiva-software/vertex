@@ -38,7 +38,8 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 // JVM-only dependencies
-                implementation(project(":shared:monitoring"))
+                // Temporarily disabled due to build issues
+                // implementation(project(":shared:monitoring"))
                 implementation(project(":shared:deployment"))
                 
                 // Machine learning and analytics libraries

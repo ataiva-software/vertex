@@ -24,19 +24,19 @@ enum class CacheType {
  * Provides caching functionality using both in-memory (Caffeine) and Redis caches.
  */
 class CacheService(
-    private val redisCacheConfig: RedisCacheConfig? = null
+    val redisCacheConfig: RedisCacheConfig? = null
 ) {
-    private val logger = LoggerFactory.getLogger(CacheService::class.java)
-    private val config = ConfigFactory.load().getConfig("insight.cache")
-    private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
+    val logger = LoggerFactory.getLogger(CacheService::class.java)
+    val config = ConfigFactory.load().getConfig("insight.cache")
+    val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
     
     // In-memory cache using Caffeine
-    private val inMemoryCache: Cache<String, String>?
+    val inMemoryCache: Cache<String, String>?
     
     // Cache settings
-    private val inMemoryEnabled: Boolean
-    private val inMemoryTtlMinutes: Long
-    private val redisEnabled: Boolean
+    val inMemoryEnabled: Boolean
+    val inMemoryTtlMinutes: Long
+    val redisEnabled: Boolean
     
     // Cache policies
     private val cachePolicies: Map<String, CacheType>
@@ -215,48 +215,12 @@ class CacheService(
     /**
      * Parse memory used from Redis INFO command output
      */
-    private fun parseRedisMemoryUsed(info: String): Long {
+    fun parseRedisMemoryUsed(info: String): Long {
         val memoryLine = info.lines().find { it.startsWith("used_memory:") }
         return memoryLine?.split(":")?.getOrNull(1)?.toLongOrNull() ?: 0
     }
     
-    /**
-     * Get cache statistics
-     */
-    fun getStats(): Map<String, Any> {
-        val stats = mutableMapOf<String, Any>()
-        
-        if (inMemoryEnabled && inMemoryCache != null) {
-            val caffeineStats = inMemoryCache.stats()
-            stats["in_memory"] = mapOf(
-                "size" to inMemoryCache.estimatedSize(),
-                "hit_count" to caffeineStats.hitCount(),
-                "miss_count" to caffeineStats.missCount(),
-                "hit_rate" to caffeineStats.hitRate(),
-                "eviction_count" to caffeineStats.evictionCount()
-            )
-        }
-        
-        if (redisEnabled) {
-            val redisInfo = redisCacheConfig?.syncCommands?.info() ?: ""
-            val keyCount = redisCacheConfig?.syncCommands?.dbsize() ?: 0
-            
-            stats["redis"] = mapOf(
-                "key_count" to keyCount,
-                "memory_used" to parseRedisMemoryUsed(redisInfo)
-            )
-        }
-        
-        return stats
-    }
-    
-    /**
-     * Parse memory used from Redis INFO command output
-     */
-    private fun parseRedisMemoryUsed(info: String): Long {
-        val memoryLine = info.lines().find { it.startsWith("used_memory:") }
-        return memoryLine?.split(":")?.getOrNull(1)?.toLongOrNull() ?: 0
-    }
+    // Duplicate getStats method removed
     
     /**
      * Close cache connections

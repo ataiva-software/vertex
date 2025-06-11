@@ -64,8 +64,8 @@ object TestFixtures {
         profile: UserProfile = createTestUserProfile(),
         isActive: Boolean = true,
         emailVerified: Boolean = true
-    ): User {
-        return User(
+    ): com.ataiva.eden.core.models.User {
+        return com.ataiva.eden.core.models.User(
             id = id,
             email = email,
             passwordHash = TEST_PASSWORD_HASH,
@@ -200,9 +200,9 @@ object TestFixtures {
      * Creates a complete test user context
      */
     fun createTestUserContext(
-        user: User = createTestUser(),
+        user: com.ataiva.eden.core.models.User = createTestUser(),
         organizationId: String = TEST_ORG_ID
-    ): UserContext {
+    ): com.ataiva.eden.core.models.UserContext {
         val session = createTestUserSession(userId = user.id)
         val permissions = setOf(
             createTestPermission("perm-1", "org:read", "org", "read"),
@@ -213,7 +213,7 @@ object TestFixtures {
             createTestMembership(userId = user.id, organizationId = organizationId)
         )
         
-        return UserContext(
+        return com.ataiva.eden.core.models.UserContext(
             user = user,
             session = session,
             permissions = permissions,
@@ -226,7 +226,7 @@ object TestFixtures {
      */
     object BulkData {
         
-        fun createMultipleUsers(count: Int = 5): List<User> {
+        fun createMultipleUsers(count: Int = 5): List<com.ataiva.eden.core.models.User> {
             return (1..count).map { index ->
                 createTestUser(
                     id = "test-user-$index",
@@ -387,15 +387,15 @@ object NewSchemaTestFixtures {
         userId: String = TestFixtures.TEST_USER_ID,
         taskType: String = "shell"
     ): Map<String, Any> {
-        return mapOf(
+        return mapOf<String, Any>(
             "id" to id,
             "name" to name,
             "description" to "Test task for development",
             "task_type" to taskType,
-            "configuration" to mapOf(
+            "configuration" to mapOf<String, Any>(
                 "command" to "echo 'Test task execution'"
             ),
-            "schedule_cron" to null,
+            "schedule_cron" to "" as Any,
             "user_id" to userId,
             "is_active" to true,
             "created_at" to TestTimeFixtures.FIXED_INSTANT,
@@ -412,17 +412,17 @@ object NewSchemaTestFixtures {
         triggeredBy: String = TestFixtures.TEST_USER_ID,
         status: String = "completed"
     ): Map<String, Any> {
-        return mapOf(
+        return mapOf<String, Any>(
             "id" to id,
             "workflow_id" to workflowId,
             "triggered_by" to triggeredBy,
             "status" to status,
-            "input_data" to mapOf("test" to "input"),
-            "output_data" to if (status == "completed") mapOf("result" to "success") else null,
-            "error_message" to if (status == "failed") "Test error message" else null,
+            "input_data" to mapOf<String, Any>("test" to "input"),
+            "output_data" to (if (status == "completed") mapOf<String, Any>("result" to "success") else mapOf<String, Any>()) as Any,
+            "error_message" to (if (status == "failed") "Test error message" else "") as Any,
             "started_at" to TestTimeFixtures.FIXED_INSTANT,
-            "completed_at" to if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else null,
-            "duration_ms" to if (status in listOf("completed", "failed")) 30000 else null
+            "completed_at" to (if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else TestTimeFixtures.FIXED_INSTANT) as Any,
+            "duration_ms" to (if (status in listOf("completed", "failed")) 30000 else 0) as Any
         )
     }
     
@@ -435,19 +435,19 @@ object NewSchemaTestFixtures {
         status: String = "completed",
         priority: Int = 0
     ): Map<String, Any> {
-        return mapOf(
+        return mapOf<String, Any>(
             "id" to id,
             "task_id" to taskId,
             "status" to status,
             "priority" to priority,
-            "input_data" to mapOf("test" to "input"),
-            "output_data" to if (status == "completed") mapOf("result" to "success") else null,
-            "error_message" to if (status == "failed") "Test error message" else null,
+            "input_data" to mapOf<String, Any>("test" to "input"),
+            "output_data" to (if (status == "completed") mapOf<String, Any>("result" to "success") else mapOf<String, Any>()) as Any,
+            "error_message" to (if (status == "failed") "Test error message" else "") as Any,
             "progress_percentage" to if (status == "completed") 100 else 0,
             "queued_at" to TestTimeFixtures.FIXED_INSTANT,
-            "started_at" to if (status != "queued") TestTimeFixtures.FIXED_INSTANT else null,
-            "completed_at" to if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else null,
-            "duration_ms" to if (status in listOf("completed", "failed")) 15000 else null
+            "started_at" to (if (status != "queued") TestTimeFixtures.FIXED_INSTANT else TestTimeFixtures.FIXED_INSTANT) as Any,
+            "completed_at" to (if (status in listOf("completed", "failed")) TestTimeFixtures.FUTURE_INSTANT else TestTimeFixtures.FIXED_INSTANT) as Any,
+            "duration_ms" to (if (status in listOf("completed", "failed")) 15000 else 0) as Any
         )
     }
     
@@ -461,16 +461,16 @@ object NewSchemaTestFixtures {
         severity: String = "info",
         userId: String? = TestFixtures.TEST_USER_ID
     ): Map<String, Any> {
-        return mapOf(
+        return mapOf<String, Any>(
             "id" to id,
             "event_type" to eventType,
             "source_service" to sourceService,
-            "event_data" to mapOf(
+            "event_data" to mapOf<String, Any>(
                 "message" to "Test event",
                 "details" to "Additional test details"
             ),
             "severity" to severity,
-            "user_id" to userId,
+            "user_id" to (userId ?: "") as Any,
             "created_at" to TestTimeFixtures.FIXED_INSTANT
         )
     }
@@ -485,14 +485,14 @@ object NewSchemaTestFixtures {
         resource: String = "test_resource",
         resourceId: String? = null
     ): Map<String, Any> {
-        return mapOf(
+        return mapOf<String, Any>(
             "id" to id,
             "user_id" to userId,
             "organization_id" to TestFixtures.TEST_ORG_ID,
             "action" to action,
             "resource" to resource,
-            "resource_id" to resourceId,
-            "details" to mapOf(
+            "resource_id" to (resourceId ?: "") as Any,
+            "details" to mapOf<String, Any>(
                 "action" to action.lowercase(),
                 "resource_type" to resource
             ),

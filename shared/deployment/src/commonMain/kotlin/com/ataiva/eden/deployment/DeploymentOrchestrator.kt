@@ -195,6 +195,7 @@ class DefaultDeploymentOrchestrator(
             DeploymentStrategy.BLUE_GREEN -> estimatedTime += 3.minutes
             DeploymentStrategy.CANARY -> estimatedTime += 5.minutes
             DeploymentStrategy.RECREATE -> estimatedTime += 30.seconds
+            else -> estimatedTime += 2.minutes // Default case for null or future strategies
         }
         
         // Add time based on replicas

@@ -22,7 +22,7 @@
 package com.ataiva.eden.crypto
 
 import org.bouncycastle.crypto.engines.AESEngine
-import org.bouncycastle.crypto.modes.GCMBlockCipher
+import org.bouncycastle.crypto.modes.GCMSIVBlockCipher
 import org.bouncycastle.crypto.params.AEADParameters
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -36,7 +36,8 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import de.mkammerer.argon2.Argon2Factory
-import de.mkammerer.argon2.Argon2Types
+import de.mkammerer.argon2.Argon2Factory.Argon2Types
+import java.nio.charset.StandardCharsets
 
 /**
  * BouncyCastle implementation of the Encryption interface for JVM platform
@@ -53,10 +54,27 @@ import de.mkammerer.argon2.Argon2Types
  * - HKDF for key derivation
  * - Secure random number generation
  */
-class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryption {
+class BouncyCastleEncryption : DefaultEncryption(object : KeyDerivation {
+    override suspend fun deriveKey(password: String, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
+        throw UnsupportedOperationException("Not implemented in constructor")
+    }
     
-    private val secureRandom = SecureRandom()
-    private val cryptoDispatcher = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
+    override suspend fun deriveKeyArgon2(password: String, salt: ByteArray, memory: Int, iterations: Int, parallelism: Int): ByteArray {
+        throw UnsupportedOperationException("Not implemented in constructor")
+    }
+    
+    override suspend fun generateSalt(length: Int): ByteArray {
+        throw UnsupportedOperationException("Not implemented in constructor")
+    }
+    
+    override suspend fun deriveKeys(masterKey: ByteArray, info: String, count: Int, keyLength: Int): List<ByteArray> {
+        throw UnsupportedOperationException("Not implemented in constructor")
+    }
+}), DigitalSignature, ZeroKnowledgeEncryption {
+    
+    private val secureRandom = java.security.SecureRandom()
+    private val executor = Executors.newFixedThreadPool(4)
+    private val cryptoDispatcher = executor.asCoroutineDispatcher()
     
     init {
         // Register BouncyCastle provider if not already registered
@@ -69,7 +87,8 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
         val nonce = ByteArray(12)
         secureRandom.nextBytes(nonce)
         
-        val cipher = GCMBlockCipher(AESEngine())
+        // Use GCMSIVBlockCipher which is the modern replacement for GCMBlockCipher
+        val cipher = GCMSIVBlockCipher(AESEngine.newInstance())
         val parameters = AEADParameters(KeyParameter(key), 128, nonce)
         
         cipher.init(true, parameters)
@@ -92,7 +111,8 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
                 return@withContext DecryptionResult.Failure("Authentication tag is required for GCM mode")
             }
             
-            val cipher = GCMBlockCipher(AESEngine())
+            // Use GCMSIVBlockCipher which is the modern replacement for GCMBlockCipher
+            val cipher = GCMSIVBlockCipher(AESEngine.newInstance())
             val parameters = AEADParameters(KeyParameter(key), 128, nonce)
             
             cipher.init(false, parameters)
@@ -167,7 +187,7 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
             
             // Generate the hash with the specified parameters
             // memory in kibibytes (KB), iterations, parallelism
-            val hash = argon2.hash(iterations, memory, parallelism, passwordChars, salt)
+            val hash = argon2.hash(iterations, memory, parallelism, passwordChars, StandardCharsets.UTF_8)
             
             // Convert the hash to a byte array
             return@withContext hash.toByteArray()
@@ -236,8 +256,153 @@ class BouncyCastleEncryption : Encryption, KeyDerivation, ZeroKnowledgeEncryptio
         result.authTag != null
     }
     
+    // Digital Signature Implementation
+    override suspend fun generateKeyPair(): KeyPair = withContext(cryptoDispatcher) {
+        val keyPairGenerator = java.security.KeyPairGenerator.getInstance("RSA", "BC")
+        keyPairGenerator.initialize(2048)
+        val javaKeyPair = keyPairGenerator.generateKeyPair()
+        
+        KeyPair(
+            publicKey = javaKeyPair.public.encoded,
+            privateKey = javaKeyPair.private.encoded
+        )
+    }
+    
+    override suspend fun sign(data: ByteArray, privateKey: ByteArray): ByteArray = withContext(cryptoDispatcher) {
+        val keyFactory = java.security.KeyFactory.getInstance("RSA", "BC")
+        val privateKeySpec = java.security.spec.PKCS8EncodedKeySpec(privateKey)
+        val privateKeyObj = keyFactory.generatePrivate(privateKeySpec)
+        
+        val signature = java.security.Signature.getInstance("SHA256withRSA", "BC")
+        signature.initSign(privateKeyObj)
+        signature.update(data)
+        signature.sign()
+    }
+    
+    override suspend fun verify(data: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean = withContext(cryptoDispatcher) {
+        val keyFactory = java.security.KeyFactory.getInstance("RSA", "BC")
+        val publicKeySpec = java.security.spec.X509EncodedKeySpec(publicKey)
+        val publicKeyObj = keyFactory.generatePublic(publicKeySpec)
+        
+        val sig = java.security.Signature.getInstance("SHA256withRSA", "BC")
+        sig.initVerify(publicKeyObj)
+        sig.update(data)
+        sig.verify(signature)
+    }
+    
+    // Implementation of abstract methods from DefaultEncryption
+    override fun encryptInternal(data: ByteArray, key: ByteArray, nonce: ByteArray): ByteArray {
+        val cipher = GCMSIVBlockCipher(AESEngine.newInstance())
+        val parameters = AEADParameters(KeyParameter(key), 128, nonce)
+        
+        cipher.init(true, parameters)
+        
+        val encryptedData = ByteArray(cipher.getOutputSize(data.size))
+        val len = cipher.processBytes(data, 0, data.size, encryptedData, 0)
+        cipher.doFinal(encryptedData, len)
+        
+        return encryptedData
+    }
+    
+    override fun decryptInternal(data: ByteArray, key: ByteArray, nonce: ByteArray): ByteArray {
+        val cipher = GCMSIVBlockCipher(AESEngine.newInstance())
+        val parameters = AEADParameters(KeyParameter(key), 128, nonce)
+        
+        cipher.init(false, parameters)
+        
+        val decryptedData = ByteArray(cipher.getOutputSize(data.size))
+        val len = cipher.processBytes(data, 0, data.size, decryptedData, 0)
+        cipher.doFinal(decryptedData, len)
+        
+        return decryptedData
+    }
+    
+    override fun computeHmac(data: ByteArray, key: ByteArray): ByteArray {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        return mac.doFinal(data)
+    }
+    
+    // Password Hashing and Validation
+    suspend fun hashPassword(password: String): String = withContext(cryptoDispatcher) {
+        val bcrypt = org.mindrot.jbcrypt.BCrypt.gensalt()
+        org.mindrot.jbcrypt.BCrypt.hashpw(password, bcrypt)
+    }
+    
+    suspend fun verifyPassword(password: String, hash: String): Boolean = withContext(cryptoDispatcher) {
+        try {
+            org.mindrot.jbcrypt.BCrypt.checkpw(password, hash)
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    // Password Strength Validation
+    suspend fun validatePasswordStrength(password: String): PasswordValidationResult = withContext(cryptoDispatcher) {
+        val errors = mutableListOf<String>()
+        
+        if (password.length < 8) {
+            errors.add("Password must be at least 8 characters long")
+        }
+        
+        if (!password.any { it.isDigit() }) {
+            errors.add("Password must contain at least one digit")
+        }
+        
+        if (!password.any { it.isUpperCase() }) {
+            errors.add("Password must contain at least one uppercase letter")
+        }
+        
+        if (!password.any { it.isLowerCase() }) {
+            errors.add("Password must contain at least one lowercase letter")
+        }
+        
+        if (!password.any { !it.isLetterOrDigit() }) {
+            errors.add("Password must contain at least one special character")
+        }
+        
+        // Calculate score based on password complexity
+        val score = when {
+            password.length < 6 -> 10
+            password.length < 8 -> 40
+            password.length >= 12 && errors.isEmpty() -> 100
+            errors.isEmpty() -> 80
+            errors.size == 1 -> 60
+            errors.size == 2 -> 40
+            else -> 20
+        }
+        
+        PasswordValidationResult(errors.isEmpty(), errors, score)
+    }
+    
+    // MFA Support
+    suspend fun generateSecret(): String = withContext(cryptoDispatcher) {
+        val bytes = ByteArray(20)
+        secureRandom.nextBytes(bytes)
+        org.apache.commons.codec.binary.Base32().encodeAsString(bytes)
+    }
+    
+    suspend fun generateQrCodeUrl(userId: String, secret: String, issuer: String): String = withContext(cryptoDispatcher) {
+        "otpauth://totp/$issuer:$userId?secret=$secret&issuer=$issuer"
+    }
+    
+    suspend fun generateBackupCodes(count: Int): List<String> = withContext(cryptoDispatcher) {
+        (0 until count).map {
+            val bytes = ByteArray(8)
+            secureRandom.nextBytes(bytes)
+            bytes.joinToString("") { byte -> "%02x".format(byte) }
+        }
+    }
+    
     // Clean up resources
     fun close() {
         cryptoDispatcher.close()
     }
+    
+    // Password validation result class
+    data class PasswordValidationResult(
+        val isValid: Boolean,
+        val errors: List<String>,
+        val score: Int
+    )
 }

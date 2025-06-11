@@ -3,6 +3,8 @@ package com.ataiva.eden.insight
 import com.ataiva.eden.insight.controller.InsightController
 import com.ataiva.eden.insight.model.*
 import com.ataiva.eden.insight.service.InsightService
+import com.ataiva.eden.insight.service.InsightConfiguration
+import com.ataiva.eden.insight.config.InsightDatabaseConfig
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -13,8 +15,10 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.plugins.cors.routing.*
-import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.defaultheaders.*
+import io.ktor.util.*
+import org.slf4j.LoggerFactory
+import io.ktor.server.request.*
 import kotlinx.serialization.json.Json
 import org.slf4j.event.Level
 
@@ -49,10 +53,22 @@ fun Application.module() {
         allowCredentials = true
     }
     
-    // Configure logging
-    install(CallLogging) {
-        level = Level.INFO
-        filter { call -> call.request.path().startsWith("/api") }
+    // Configure logging using interceptors instead of CallLogging plugin
+    val logger = LoggerFactory.getLogger("InsightService")
+    
+    // Add request/response interceptors for logging
+    intercept(ApplicationCallPipeline.Monitoring) {
+        // Log request details
+        logger.info("Received request: ${call.request.httpMethod.value} ${call.request.path()}")
+        
+        try {
+            // Continue with the request
+            proceed()
+        } finally {
+            // Log response details
+            val status = call.response.status() ?: HttpStatusCode.InternalServerError
+            logger.info("Completed request: ${call.request.httpMethod.value} ${call.request.path()} with status $status")
+        }
     }
     
     // Configure default headers
@@ -111,15 +127,30 @@ fun Application.module() {
     
     // Initialize services
     val insightConfiguration = InsightConfiguration(
-        maxQueryTimeout = 300000, // 5 minutes
-        maxResultRows = 100000,
-        cacheEnabled = true,
-        cacheTtl = 3600, // 1 hour
         reportOutputPath = System.getProperty("java.io.tmpdir") + "/eden-reports",
+        cacheEnabled = true,
+        cacheMaxSize = 10000,
+        cacheTtlMinutes = 60,
+        queryTimeoutSeconds = 300,
+        maxResultRows = 100000,
         maxConcurrentQueries = 10
     )
     
-    val insightService = InsightService(insightConfiguration)
+    // Create service configuration
+    val serviceConfig = InsightConfiguration(
+        reportOutputPath = System.getProperty("java.io.tmpdir") + "/eden-reports",
+        cacheEnabled = true,
+        cacheMaxSize = 10000,
+        cacheTtlMinutes = 60,
+        queryTimeoutSeconds = 300,
+        maxResultRows = 100000
+    )
+    
+    // Create database config
+    val databaseConfig = InsightDatabaseConfig()
+    
+    // Create insight service
+    val insightService = InsightService(serviceConfig, databaseConfig)
     val insightController = InsightController(insightService)
     
     // Configure routing

@@ -5,163 +5,6 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 /**
- * Request to create a new workflow
- */
-@Serializable
-data class CreateWorkflowRequest(
-    val name: String,
-    val description: String?,
-    val definition: Map<String, @Serializable(with = AnySerializer::class) Any>,
-    val userId: String
-)
-
-/**
- * Request to update a workflow
- */
-@Serializable
-data class UpdateWorkflowRequest(
-    val workflowId: String,
-    val description: String?,
-    val definition: Map<String, @Serializable(with = AnySerializer::class) Any>?,
-    val userId: String
-)
-
-/**
- * Request to list workflows
- */
-@Serializable
-data class ListWorkflowsRequest(
-    val userId: String,
-    val status: String? = null,
-    val namePattern: String? = null,
-    val includeArchived: Boolean = false
-)
-
-/**
- * Request to execute a workflow
- */
-@Serializable
-data class ExecuteWorkflowRequest(
-    val workflowId: String,
-    val userId: String,
-    val inputData: Map<String, @Serializable(with = AnySerializer::class) Any>? = null,
-    val triggeredBy: String? = null
-)
-
-/**
- * Request to list executions
- */
-@Serializable
-data class ListExecutionsRequest(
-    val userId: String,
-    val workflowId: String? = null,
-    val status: String? = null,
-    val limit: Int? = null
-)
-
-/**
- * Workflow response
- */
-@Serializable
-data class WorkflowResponse(
-    val id: String,
-    val name: String,
-    val description: String?,
-    val definition: Map<String, @Serializable(with = AnySerializer::class) Any>,
-    val status: String,
-    val version: Int,
-    val createdAt: Instant,
-    val updatedAt: Instant
-) {
-    companion object {
-        fun fromWorkflow(workflow: Workflow): WorkflowResponse {
-            return WorkflowResponse(
-                id = workflow.id,
-                name = workflow.name,
-                description = workflow.description,
-                definition = workflow.definition,
-                status = workflow.status,
-                version = workflow.version,
-                createdAt = workflow.createdAt,
-                updatedAt = workflow.updatedAt
-            )
-        }
-    }
-}
-
-/**
- * Execution response
- */
-@Serializable
-data class ExecutionResponse(
-    val id: String,
-    val workflowId: String,
-    val triggeredBy: String?,
-    val status: String,
-    val inputData: Map<String, @Serializable(with = AnySerializer::class) Any>?,
-    val outputData: Map<String, @Serializable(with = AnySerializer::class) Any>?,
-    val errorMessage: String?,
-    val startedAt: Instant,
-    val completedAt: Instant?,
-    val durationMs: Int?
-) {
-    companion object {
-        fun fromExecution(execution: WorkflowExecution): ExecutionResponse {
-            return ExecutionResponse(
-                id = execution.id,
-                workflowId = execution.workflowId,
-                triggeredBy = execution.triggeredBy,
-                status = execution.status,
-                inputData = execution.inputData,
-                outputData = execution.outputData,
-                errorMessage = execution.errorMessage,
-                startedAt = execution.startedAt,
-                completedAt = execution.completedAt,
-                durationMs = execution.durationMs
-            )
-        }
-    }
-}
-
-/**
- * Step response
- */
-@Serializable
-data class StepResponse(
-    val id: String,
-    val executionId: String,
-    val stepName: String,
-    val stepType: String,
-    val status: String,
-    val inputData: Map<String, @Serializable(with = AnySerializer::class) Any>?,
-    val outputData: Map<String, @Serializable(with = AnySerializer::class) Any>?,
-    val errorMessage: String?,
-    val startedAt: Instant?,
-    val completedAt: Instant?,
-    val durationMs: Int?,
-    val stepOrder: Int
-) {
-    companion object {
-        fun fromStep(step: WorkflowStep): StepResponse {
-            return StepResponse(
-                id = step.id,
-                executionId = step.executionId,
-                stepName = step.stepName,
-                stepType = step.stepType,
-                status = step.status,
-                inputData = step.inputData,
-                outputData = step.outputData,
-                errorMessage = step.errorMessage,
-                startedAt = step.startedAt,
-                completedAt = step.completedAt,
-                durationMs = step.durationMs,
-                stepOrder = step.stepOrder
-            )
-        }
-    }
-}
-
-/**
  * Workflow template response
  */
 @Serializable
@@ -316,27 +159,6 @@ data class ImportWorkflowResponse(
 )
 
 /**
- * API response wrapper
- */
-@Serializable
-data class ApiResponse<T>(
-    val success: Boolean,
-    val data: T? = null,
-    val error: String? = null,
-    val timestamp: Instant = kotlinx.datetime.Clock.System.now()
-) {
-    companion object {
-        fun <T> success(data: T): ApiResponse<T> {
-            return ApiResponse(success = true, data = data)
-        }
-        
-        fun <T> error(message: String): ApiResponse<T> {
-            return ApiResponse(success = false, error = message)
-        }
-    }
-}
-
-/**
  * Health check response for Flow service
  */
 @Serializable
@@ -388,14 +210,7 @@ object AnySerializer : kotlinx.serialization.KSerializer<Any> {
                 @Suppress("UNCHECKED_CAST")
                 listSerializer.serialize(encoder, value as List<Any>)
             }
-            is Map<*, *> -> {
-                val mapSerializer = kotlinx.serialization.builtins.MapSerializer(
-                    kotlinx.serialization.builtins.serializer<String>(),
-                    AnySerializer
-                )
-                @Suppress("UNCHECKED_CAST")
-                mapSerializer.serialize(encoder, value as Map<String, Any>)
-            }
+            is Map<*, *> -> encoder.encodeString(value.toString())
             else -> encoder.encodeString(value.toString())
         }
     }

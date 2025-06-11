@@ -158,7 +158,7 @@ class DefaultConnectionPool(
     
     override suspend fun close() {
         closed = true
-        connections.forEach { it.close() }
+        connections.forEach { connection -> connection.close() }
         connections.clear()
     }
     

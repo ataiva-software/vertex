@@ -58,10 +58,10 @@ class FlowController(
                         ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.error<List<WorkflowResponse>>("userId is required"))
                     
                     val request = ListWorkflowsRequest(
-                        userId = userId,
+                        name = call.request.queryParameters["namePattern"],
                         status = call.request.queryParameters["status"],
-                        namePattern = call.request.queryParameters["namePattern"],
-                        includeArchived = call.request.queryParameters["includeArchived"]?.toBoolean() ?: false
+                        page = 0,
+                        size = 20
                     )
                     
                     when (val result = flowService.listWorkflows(request)) {
@@ -106,9 +106,11 @@ class FlowController(
                         ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.error<WorkflowResponse>("Workflow ID is required"))
                     
                     val updateData = call.receive<UpdateWorkflowRequest>()
-                    val request = updateData.copy(workflowId = workflowId)
                     
-                    when (val result = flowService.updateWorkflow(request)) {
+                    val userId = call.request.queryParameters["userId"]
+                        ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.error<WorkflowResponse>("userId is required"))
+                    
+                    when (val result = flowService.updateWorkflow(updateData, workflowId, userId)) {
                         is FlowResult.Success -> {
                             call.respond(HttpStatusCode.OK, ApiResponse.success(result.data))
                         }
@@ -176,10 +178,10 @@ class FlowController(
                         ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.error<List<ExecutionResponse>>("userId is required"))
                     
                     val request = ListExecutionsRequest(
-                        userId = userId,
                         workflowId = call.request.queryParameters["workflowId"],
                         status = call.request.queryParameters["status"],
-                        limit = call.request.queryParameters["limit"]?.toIntOrNull()
+                        page = 0,
+                        size = call.request.queryParameters["limit"]?.toIntOrNull() ?: 20
                     )
                     
                     when (val result = flowService.listExecutions(request)) {
@@ -383,8 +385,18 @@ class FlowController(
                 try {
                     val request = call.receive<ValidateWorkflowRequest>()
                     
-                    val validationResult = workflowEngine.validateDefinition(request.definition)
-                    val steps = workflowEngine.parseSteps(request.definition)
+                    // Convert Map to JSON string for validation
+                    val definitionJson = kotlinx.serialization.json.Json.encodeToString(
+                        kotlinx.serialization.json.JsonObject.serializer(),
+                        kotlinx.serialization.json.buildJsonObject {
+                            request.definition.forEach { (key, value) ->
+                                put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                            }
+                        }
+                    )
+                    
+                    val validationResult = workflowEngine.validateDefinition(definitionJson)
+                    val steps = workflowEngine.parseSteps(definitionJson)
                     
                     val response = ValidateWorkflowResponse(
                         isValid = validationResult.isValid,
@@ -413,7 +425,14 @@ class FlowController(
                     val failed = mutableListOf<BulkOperationError>()
                     
                     for (workflowRequest in request.workflows) {
-                        val createRequest = workflowRequest.copy(userId = request.userId)
+                        // Create a new request with the same properties
+                        val createRequest = CreateWorkflowRequest(
+                            name = workflowRequest.name,
+                            description = workflowRequest.description,
+                            definition = workflowRequest.definition,
+                            metadata = workflowRequest.metadata,
+                            tags = workflowRequest.tags
+                        )
                         
                         when (val result = flowService.createWorkflow(createRequest)) {
                             is FlowResult.Success -> successful.add(result.data)
@@ -445,9 +464,10 @@ class FlowController(
                     val request = call.receive<SearchWorkflowsRequest>()
                     
                     val listRequest = ListWorkflowsRequest(
-                        userId = request.userId,
+                        name = request.query,
                         status = request.status,
-                        namePattern = request.query
+                        page = request.offset / request.limit,
+                        size = request.limit
                     )
                     
                     when (val result = flowService.listWorkflows(listRequest)) {

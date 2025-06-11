@@ -1,6 +1,11 @@
 package com.ataiva.eden.flow.engine
 
 import kotlinx.serialization.json.*
+import com.ataiva.eden.database.repositories.Workflow
+import com.ataiva.eden.database.repositories.WorkflowStep
+import com.ataiva.eden.flow.model.WorkflowEngineHealth
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
 
 /**
  * Workflow engine for parsing and validating workflow definitions
@@ -10,7 +15,20 @@ class WorkflowEngine {
     /**
      * Validate workflow definition
      */
-    fun validateDefinition(definition: Map<String, Any>): ValidationResult {
+    fun validateDefinition(definition: String): ValidationResult {
+        val definitionMap = try {
+            Json.decodeFromString<Map<String, Any>>(definition)
+        } catch (e: Exception) {
+            return ValidationResult(false, listOf("Invalid JSON format: ${e.message}"))
+        }
+        
+        return validateDefinitionMap(definitionMap)
+    }
+    
+    /**
+     * Validate workflow definition map
+     */
+    private fun validateDefinitionMap(definition: Map<String, Any>): ValidationResult {
         val errors = mutableListOf<String>()
         
         try {
@@ -28,6 +46,7 @@ class WorkflowEngine {
                     if (step !is Map<*, *>) {
                         errors.add("Step $index must be an object")
                     } else {
+                        @Suppress("UNCHECKED_CAST")
                         val stepMap = step as Map<String, Any>
                         validateStep(stepMap, index, errors)
                     }
@@ -52,16 +71,30 @@ class WorkflowEngine {
     /**
      * Parse workflow steps from definition
      */
-    fun parseSteps(definition: Map<String, Any>): List<StepDefinition> {
+    fun parseSteps(definition: String): List<StepDefinition> {
+        val definitionMap = try {
+            Json.decodeFromString<Map<String, Any>>(definition)
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        
+        return parseStepsFromMap(definitionMap)
+    }
+    
+    /**
+     * Parse steps from definition map
+     */
+    private fun parseStepsFromMap(definition: Map<String, Any>): List<StepDefinition> {
         val steps = definition["steps"] as? List<*> ?: return emptyList()
         
         return steps.mapIndexed { index, step ->
+            @Suppress("UNCHECKED_CAST")
             val stepMap = step as Map<String, Any>
             StepDefinition(
                 name = stepMap["name"] as String,
                 type = stepMap["type"] as String,
-                inputData = stepMap["input"] as? Map<String, Any>,
-                config = stepMap["config"] as? Map<String, Any> ?: emptyMap(),
+                inputData = @Suppress("UNCHECKED_CAST") stepMap["input"] as? Map<String, Any>,
+                config = @Suppress("UNCHECKED_CAST") stepMap["config"] as? Map<String, Any> ?: emptyMap(),
                 dependsOn = stepMap["dependsOn"] as? List<String> ?: emptyList(),
                 condition = stepMap["condition"] as? String,
                 retryPolicy = parseRetryPolicy(stepMap["retry"] as? Map<String, Any>),
@@ -192,6 +225,17 @@ class WorkflowEngine {
             initialDelay = retryConfig["initialDelay"] as? Int ?: 1000,
             maxDelay = retryConfig["maxDelay"] as? Int ?: 30000,
             retryOn = retryConfig["retryOn"] as? List<String> ?: listOf("error", "timeout")
+        )
+    }
+    
+    /**
+     * Get workflow engine health status
+     */
+    fun getHealthStatus(): WorkflowEngineHealth {
+        return WorkflowEngineHealth(
+            available = true,
+            supportedStepTypes = SUPPORTED_STEP_TYPES.toList(),
+            maxConcurrentExecutions = 10
         )
     }
     

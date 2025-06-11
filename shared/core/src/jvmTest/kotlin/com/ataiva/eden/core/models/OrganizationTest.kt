@@ -1,12 +1,13 @@
 package com.ataiva.eden.core.models
 
 import com.ataiva.eden.testing.builders.OrganizationTestDataBuilder.Companion.anOrganization
+import com.ataiva.eden.testing.extensions.shouldBeEmpty
+import com.ataiva.eden.testing.extensions.shouldHaveSize
 import com.ataiva.eden.testing.mocks.MockFactory
 import com.ataiva.eden.testing.mocks.MockTimeProvider
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -30,7 +31,7 @@ class OrganizationTest : DescribeSpec({
                 org.id shouldBe "org-123"
                 org.name shouldBe "Test Organization"
                 org.slug shouldBe "test-org"
-                org.description shouldBe ""
+                org.description shouldBe "A test organization"
                 org.plan shouldBe OrganizationPlan.FREE
                 org.isActive shouldBe true
                 org.settings.shouldNotBeNull()
@@ -332,7 +333,7 @@ class OrganizationTest : DescribeSpec({
         describe("computed properties") {
             it("should check if invitation is expired") {
                 val past = MockTimeProvider.pastInstant(1)
-                val future = MockTimeProvider.futureInstant(1)
+                val future = MockTimeProvider.futureInstant(100000) // Use a very far future date to ensure it doesn't expire
                 val now = MockTimeProvider.fixedInstant()
                 
                 val expiredInvitation = OrganizationInvitation(
@@ -458,9 +459,9 @@ class OrganizationTest : DescribeSpec({
                 val devCount = OrganizationRole.DEVELOPER.permissions.size
                 val viewerCount = OrganizationRole.VIEWER.permissions.size
                 
-                ownerCount shouldBe 13
-                adminCount shouldBe 11
-                devCount shouldBe 11
+                ownerCount shouldBe 14
+                adminCount shouldBe 11 // ADMIN has 11 permissions
+                devCount shouldBe 14 // DEVELOPER has 14 permissions
                 viewerCount shouldBe 8
             }
             

@@ -8,7 +8,6 @@ import io.ktor.server.plugins.httpsredirect.*
 import io.ktor.server.plugins.hsts.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.defaultheaders.*
-import io.ktor.server.plugins.callloging.*
 import io.ktor.server.request.*
 import org.slf4j.event.Level
 import org.slf4j.LoggerFactory
@@ -23,13 +22,17 @@ private val log = LoggerFactory.getLogger("com.ataiva.eden.gateway.config.Securi
  * Implements security best practices for web applications
  */
 fun Application.configureSecurityHeaders() {
+    // Store environment in a local variable to avoid access issues
+    val appEnvironment = environment
+    
     // HTTPS Redirect - Redirect all HTTP requests to HTTPS
     // Only enable in production environments
-    if (environment.config.propertyOrNull("ktor.deployment.environment")?.getString() == "production") {
+    if (appEnvironment.config.propertyOrNull("ktor.deployment.environment")?.getString() == "production") {
         install(HttpsRedirect) {
             sslPort = 443
             permanentRedirect = true
-            excludePrefix("/health", "/metrics")
+            excludePrefix("/health")
+            excludePrefix("/metrics")
         }
         
         // HSTS - HTTP Strict Transport Security
@@ -43,16 +46,16 @@ fun Application.configureSecurityHeaders() {
     // Default Headers - Add security headers to all responses
     install(DefaultHeaders) {
         // Content Security Policy - Restrict which resources can be loaded
-        header(HttpHeaders.ContentSecurityPolicy, buildContentSecurityPolicy())
+        header("Content-Security-Policy", buildContentSecurityPolicy())
         
         // X-Content-Type-Options - Prevent MIME type sniffing
-        header(HttpHeaders.XContentTypeOptions, "nosniff")
+        header("X-Content-Type-Options", "nosniff")
         
         // X-Frame-Options - Prevent clickjacking
-        header(HttpHeaders.XFrameOptions, "DENY")
+        header("X-Frame-Options", "DENY")
         
         // X-XSS-Protection - Enable XSS filtering in browsers
-        header(HttpHeaders.XssProtection, "1; mode=block")
+        header("X-XSS-Protection", "1; mode=block")
         
         // Referrer-Policy - Control how much referrer information is included
         header("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -84,36 +87,28 @@ fun Application.configureSecurityHeaders() {
         }
     }
     
-    // Call Logging - Log all requests
-    install(CallLogging) {
-        level = Level.INFO
-        filter { call -> call.request.path().startsWith("/") }
-        format { call ->
-            val status = call.response.status()
-            val httpMethod = call.request.httpMethod.value
-            val path = call.request.path()
-            val userAgent = call.request.headers["User-Agent"]
-            val clientIp = call.request.origin.remoteHost
-            
-            "$clientIp [$httpMethod] $path - $status - $userAgent"
-        }
-    }
+    // Note: Call logging is configured in the Monitoring.kt file
 }
 
 /**
  * Configure CORS for the API Gateway
  */
 fun Application.configureCors() {
+    // Store environment in a local variable to avoid access issues
+    val appEnvironment = environment
+    
     install(CORS) {
         // Allow specific origins in production
-        val allowedOrigins = environment.config.propertyOrNull("security.cors.allowed-origins")
+        val allowedOrigins = appEnvironment.config.propertyOrNull("security.cors.allowed-origins")
             ?.getList() ?: listOf("http://localhost:3000", "https://eden.ataiva.com")
         
         // In development, allow all origins
-        if (environment.developmentMode) {
+        if (appEnvironment.developmentMode) {
             anyHost()
         } else {
-            allowedOrigins.forEach { allowHost(it, schemes = listOf("http", "https")) }
+            allowedOrigins.forEach { 
+                allowHost(it, schemes = listOf("http", "https")) 
+            }
         }
         
         // Allow credentials (cookies, authorization headers)
@@ -187,54 +182,57 @@ private fun buildPermissionsPolicy(): String {
  * Configure rate limiting for the API Gateway
  */
 fun Application.configureRateLimiting() {
+    // Store environment in a local variable to avoid access issues
+    val appEnvironment = environment
+    
     // Install the rate limiting plugin with configurable settings
     install(RateLimitingPlugin) {
         // Configure the rate limiter with settings from application configuration
         rateLimiter = TokenBucketRateLimiter(
             // Default limit: 60 requests per minute
-            defaultLimit = environment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60,
-            defaultWindow = environment.config.propertyOrNull("security.ratelimit.default-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds,
+            defaultLimit = appEnvironment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60,
+            defaultWindow = appEnvironment.config.propertyOrNull("security.ratelimit.default-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds,
             
             // Path-specific limits
             pathLimits = mapOf(
                 // Authentication endpoints: 20 requests per minute
                 "/api/v1/auth" to TokenBucketRateLimiter.PathLimit(
-                    environment.config.propertyOrNull("security.ratelimit.auth-limit")?.getString()?.toInt() ?: 20,
-                    environment.config.propertyOrNull("security.ratelimit.auth-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                    appEnvironment.config.propertyOrNull("security.ratelimit.auth-limit")?.getString()?.toInt() ?: 20,
+                    appEnvironment.config.propertyOrNull("security.ratelimit.auth-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
                 ),
                 
                 // User management endpoints: 30 requests per minute
                 "/api/v1/users" to TokenBucketRateLimiter.PathLimit(
-                    environment.config.propertyOrNull("security.ratelimit.users-limit")?.getString()?.toInt() ?: 30,
-                    environment.config.propertyOrNull("security.ratelimit.users-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                    appEnvironment.config.propertyOrNull("security.ratelimit.users-limit")?.getString()?.toInt() ?: 30,
+                    appEnvironment.config.propertyOrNull("security.ratelimit.users-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
                 ),
                 
                 // Vault endpoints: 50 requests per minute
                 "/api/v1/vault" to TokenBucketRateLimiter.PathLimit(
-                    environment.config.propertyOrNull("security.ratelimit.vault-limit")?.getString()?.toInt() ?: 50,
-                    environment.config.propertyOrNull("security.ratelimit.vault-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                    appEnvironment.config.propertyOrNull("security.ratelimit.vault-limit")?.getString()?.toInt() ?: 50,
+                    appEnvironment.config.propertyOrNull("security.ratelimit.vault-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
                 ),
                 
                 // Workflow endpoints: 40 requests per minute
                 "/api/v1/workflows" to TokenBucketRateLimiter.PathLimit(
-                    environment.config.propertyOrNull("security.ratelimit.workflows-limit")?.getString()?.toInt() ?: 40,
-                    environment.config.propertyOrNull("security.ratelimit.workflows-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
+                    appEnvironment.config.propertyOrNull("security.ratelimit.workflows-limit")?.getString()?.toInt() ?: 40,
+                    appEnvironment.config.propertyOrNull("security.ratelimit.workflows-window-seconds")?.getString()?.toInt()?.seconds ?: 60.seconds
                 )
             ),
             
             // IP blacklist and whitelist from configuration
-            ipBlacklist = environment.config.propertyOrNull("security.ratelimit.ip-blacklist")?.getList()?.toSet() ?: emptySet(),
-            ipWhitelist = environment.config.propertyOrNull("security.ratelimit.ip-whitelist")?.getList()?.toSet() ?: emptySet()
+            ipBlacklist = appEnvironment.config.propertyOrNull("security.ratelimit.ip-blacklist")?.getList()?.toSet() ?: emptySet(),
+            ipWhitelist = appEnvironment.config.propertyOrNull("security.ratelimit.ip-whitelist")?.getList()?.toSet() ?: emptySet()
         )
         
         // Paths to exclude from rate limiting
-        excludedPaths = environment.config.propertyOrNull("security.ratelimit.excluded-paths")?.getList()
+        excludedPaths = appEnvironment.config.propertyOrNull("security.ratelimit.excluded-paths")?.getList()
             ?: listOf("/health", "/metrics", "/favicon.ico")
         
         // Header to use for client IP identification (for proxied requests)
-        ipHeaderName = environment.config.propertyOrNull("security.ratelimit.ip-header")?.getString() ?: "X-Forwarded-For"
+        ipHeaderName = appEnvironment.config.propertyOrNull("security.ratelimit.ip-header")?.getString() ?: "X-Forwarded-For"
     }
     
     // Log that rate limiting has been configured
-    log.info("Rate limiting configured with default limit of ${environment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60} requests per minute")
+    log.info("Rate limiting configured with default limit of ${appEnvironment.config.propertyOrNull("security.ratelimit.default-limit")?.getString()?.toInt() ?: 60} requests per minute")
 }

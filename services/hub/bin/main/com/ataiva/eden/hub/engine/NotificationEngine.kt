@@ -1,7 +1,8 @@
 package com.ataiva.eden.hub.engine
 
 import com.ataiva.eden.hub.model.*
-import com.ataiva.eden.crypto.SecureRandom
+import java.util.UUID
+import java.security.SecureRandom
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.*
@@ -20,7 +21,7 @@ import java.util.regex.Pattern
  * Multi-channel notification engine with template support
  */
 class NotificationEngine(
-    private val secureRandom: SecureRandom
+    private val secureRandom: Any // Accept any type to match the constructor signature
 ) {
     private val templates = ConcurrentHashMap<String, NotificationTemplateInstance>()
     private val deliveries = ConcurrentHashMap<String, NotificationDeliveryInstance>()
@@ -55,12 +56,12 @@ class NotificationEngine(
     suspend fun createTemplate(request: CreateNotificationTemplateRequest): HubResult<NotificationTemplateResponse> {
         return try {
             // Validate template variables
-            val variables = extractVariables(request.body)
+            val variables = extractVariables(request.body).toMutableList()
             if (request.subject != null) {
                 variables.addAll(extractVariables(request.subject))
             }
             
-            val templateId = SecureRandom.generateUuid()
+            val templateId = UUID.randomUUID().toString()
             val template = NotificationTemplateInstance(
                 id = templateId,
                 name = request.name,
@@ -175,7 +176,7 @@ class NotificationEngine(
                 return HubResult.Error("Notification body cannot be empty")
             }
             
-            val deliveryId = SecureRandom.generateUuid()
+            val deliveryId = UUID.randomUUID().toString()
             val delivery = NotificationDeliveryInstance(
                 id = deliveryId,
                 type = request.type,
@@ -356,7 +357,7 @@ class NotificationEngine(
                 }
                 
                 pendingDeliveries.forEach { delivery ->
-                    launch {
+                    deliveryProcessor.launch {
                         processDelivery(delivery)
                     }
                 }

@@ -109,10 +109,11 @@ class ReportRepositoryImpl(
             .filter { it.schedule?.enabled == true } // Additional filter on the schedule enabled flag
     }
 
-    override suspend fun findScheduledBefore(time: Long): List<Report> = transaction(database) {
+    override suspend fun findScheduledBefore(time: Long): List<Report> {
         // This is a simplified implementation
         // In a real implementation, we would use a JSON operator to check the nextExecution field
-        findScheduled().filter { report ->
+        val scheduledReports = findScheduled()
+        return scheduledReports.filter { report ->
             report.schedule?.nextExecution?.let { it <= time } ?: false
         }
     }

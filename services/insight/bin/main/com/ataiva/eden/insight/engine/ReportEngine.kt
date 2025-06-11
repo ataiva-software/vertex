@@ -26,13 +26,13 @@ import com.itextpdf.layout.Document
 import com.itextpdf.layout.element.Cell
 import com.itextpdf.layout.element.Paragraph
 import com.itextpdf.layout.element.Table
-import com.itextpdf.layout.property.TextAlignment
-import com.itextpdf.layout.property.UnitValue
+import com.itextpdf.layout.properties.TextAlignment
+import com.itextpdf.layout.properties.UnitValue
 import com.itextpdf.kernel.geom.PageSize
 import com.itextpdf.layout.element.Image
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.layout.borders.Border
-import com.itextpdf.layout.property.HorizontalAlignment
+import com.itextpdf.layout.properties.HorizontalAlignment
 import org.jfree.chart.ChartFactory
 import org.jfree.chart.ChartUtils
 import org.jfree.chart.plot.PlotOrientation
@@ -270,7 +270,7 @@ class ReportEngine(
                             if (queryData.isNotEmpty()) {
                                 // Create table for query results
                                 val columns = queryData.first().keys.toList()
-                                val table = Table(UnitValue.createPercentArray(columns.size))
+                                val table = Table(columns.size)
                                     .useAllAvailableWidth()
                                     .setMarginTop(10f)
                                     .setMarginBottom(10f)
@@ -316,7 +316,7 @@ class ReportEngine(
                                     val chartImage = generateChart(type, title, chartData)
                                     if (chartImage != null) {
                                         val image = Image(ImageDataFactory.create(chartImage))
-                                            .setWidth(UnitValue.createPercentValue(80f))
+                                            .setWidth(80f)
                                             .setHorizontalAlignment(HorizontalAlignment.CENTER)
                                         document.add(image)
                                     }

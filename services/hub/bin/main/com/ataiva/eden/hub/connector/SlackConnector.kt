@@ -716,7 +716,7 @@ class SlackConnector : IntegrationConnector {
             )
             
             // Add optional parameters
-            parameters["as_user"]?.let { requestBody["as_user"] = it }
+            parameters["as_user"]?.let { requestBody["as_user"] = it.toString() }
             
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$baseUrl/chat.delete"))

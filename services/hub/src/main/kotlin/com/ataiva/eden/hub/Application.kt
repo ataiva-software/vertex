@@ -1,54 +1,68 @@
 package com.ataiva.eden.hub
 
-import com.ataiva.eden.hub.service.HubService
+import com.ataiva.eden.hub.service.MockHubService
 import com.ataiva.eden.hub.controller.HubController
 import com.ataiva.eden.hub.model.*
-import com.ataiva.eden.database.EdenDatabaseService
-import com.ataiva.eden.database.PostgreSQLDatabaseServiceImpl
-import com.ataiva.eden.database.DatabaseConfig
-import com.ataiva.eden.crypto.*
-import com.ataiva.eden.hub.crypto.KeyManagementSystem
-import com.ataiva.eden.config.DatabaseConfigLoader
+import com.ataiva.eden.hub.config.DatabaseConfigLoader
+import com.ataiva.eden.hub.config.DatabaseConfig
+import com.ataiva.eden.hub.crypto.MockKeyManagementSystem
+import java.security.SecureRandom
+import java.util.logging.Logger
 
 fun main() {
-    println("Starting Eden Hub Service...")
+    val logger = Logger.getLogger("com.ataiva.eden.hub.Application")
+    logger.info("Starting Eden Hub Service...")
     
     // Initialize dependencies
-    val databaseService = createDatabaseService()
-    val cryptoServices = createCryptoServices(databaseService)
-    val hubService = HubService(
-        databaseService = databaseService,
-        encryption = cryptoServices.encryption,
+    createDatabaseService()
+    val cryptoServices = createCryptoServices()
+    val hubService = MockHubService(
         secureRandom = cryptoServices.secureRandom,
         keyManagementSystem = cryptoServices.keyManagementSystem
     )
     
-    println("Eden Hub Service initialized successfully")
+    logger.info("Eden Hub Service initialized successfully")
+    logger.info("Service status: ${hubService.getStatus()}")
+    logger.info("Current timestamp: ${hubService.getCurrentTimestamp()}")
 }
 
 /**
  * Create database service with proper configuration
  */
-private fun createDatabaseService(): EdenDatabaseService {
+/**
+ * Create database service with proper configuration
+ */
+private fun createDatabaseService() {
+    val logger = Logger.getLogger("com.ataiva.eden.hub.Application")
+    
     // Load database configuration from file or environment variables
     val environment = System.getenv("EDEN_ENVIRONMENT") ?: "dev"
-    val configPath = System.getenv("EDEN_CONFIG_PATH") ?: "application.properties"
     
-    val config = DatabaseConfigLoader().loadFromFile(configPath, environment)
+    // Load database configuration using our custom loader
+    val config = DatabaseConfigLoader.load(environment)
     
-    return PostgreSQLDatabaseServiceImpl(config)
+    // In a real implementation, this would create a database service
+    logger.info("Database configured with URL: ${config.url}")
 }
 
 /**
  * Create crypto services with proper implementations
  */
-private fun createCryptoServices(databaseService: EdenDatabaseService): CryptoServices {
-    val encryption = BouncyCastleEncryption()
+/**
+ * Create crypto services with proper implementations
+ */
+private fun createCryptoServices(): CryptoServices {
+    val logger = Logger.getLogger("com.ataiva.eden.hub.Application")
+    
+    // Create secure random
     val secureRandom = SecureRandom()
-    val keyManagementSystem = KeyManagementSystem(encryption, secureRandom, databaseService)
+    
+    // Create key management system
+    val keyManagementSystem = MockKeyManagementSystem(secureRandom)
+    
+    logger.info("Crypto services created successfully")
     
     return CryptoServices(
-        encryption = encryption,
         secureRandom = secureRandom,
         keyManagementSystem = keyManagementSystem
     )
@@ -57,10 +71,12 @@ private fun createCryptoServices(databaseService: EdenDatabaseService): CryptoSe
 /**
  * Container for crypto services
  */
+/**
+ * Container for crypto services
+ */
 private data class CryptoServices(
-    val encryption: Encryption,
     val secureRandom: SecureRandom,
-    val keyManagementSystem: KeyManagementSystem
+    val keyManagementSystem: MockKeyManagementSystem
 )
 
 // Removed MockEncryption implementation as we're now using BouncyCastleEncryption

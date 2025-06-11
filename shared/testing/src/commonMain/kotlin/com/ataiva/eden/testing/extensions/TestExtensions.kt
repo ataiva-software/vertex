@@ -140,9 +140,9 @@ object TestTiming {
     
     fun measureTime(block: () -> Unit): Long {
         // Simple timing implementation for testing using multiplatform approach
-        val start = kotlin.system.getTimeMillis()
+        val start = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
         block()
-        return kotlin.system.getTimeMillis() - start
+        return kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - start
     }
     
     fun assertExecutionTime(maxMillis: Long, block: () -> Unit) {

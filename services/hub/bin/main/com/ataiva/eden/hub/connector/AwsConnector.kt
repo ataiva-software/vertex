@@ -9,9 +9,11 @@ import kotlinx.coroutines.future.await
 import org.slf4j.LoggerFactory
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.core.retry.RetryPolicy
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.cloudwatch.model.Statistic
 import software.amazon.awssdk.services.ec2.Ec2AsyncClient
 import software.amazon.awssdk.services.ec2.model.*
 import software.amazon.awssdk.services.s3.S3AsyncClient
@@ -313,7 +315,7 @@ class AwsConnector : IntegrationConnector {
             
             // Add state filter if specified
             if (state.isNotEmpty()) {
-                val filter = Filter.builder()
+                val filter = software.amazon.awssdk.services.ec2.model.Filter.builder()
                     .name("instance-state-name")
                     .values(state)
                     .build()
@@ -596,7 +598,7 @@ class AwsConnector : IntegrationConnector {
             
             val request = InvokeRequest.builder()
                 .functionName(functionName)
-                .payload(payload.toByteArray(StandardCharsets.UTF_8))
+                .payload(SdkBytes.fromByteArray(payload.toByteArray(StandardCharsets.UTF_8)))
                 .invocationType(invocationType)
                 .build()
                 
@@ -659,14 +661,14 @@ class AwsConnector : IntegrationConnector {
                 .period(period)
                 .startTime(java.time.Instant.parse(startTime))
                 .endTime(java.time.Instant.parse(endTime))
-                .statistics(statistic)
+                .statistics(Statistic.fromValue(statistic))
                 .build()
                 
             // Get metric data
-            val response = cloudWatchClient.getMetricStatistics(metricRequest).await()
+            val response = cloudWatchClient.getMetricStatistics(metricRequest as software.amazon.awssdk.services.cloudwatch.model.GetMetricStatisticsRequest).await()
             
             // Process datapoints
-            val datapoints = response.datapoints().map { datapoint ->
+            val datapoints = response.datapoints().map { datapoint: software.amazon.awssdk.services.cloudwatch.model.Datapoint ->
                 mapOf(
                     "timestamp" to datapoint.timestamp().toString(),
                     "value" to when (statistic) {

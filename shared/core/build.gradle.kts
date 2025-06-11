@@ -44,6 +44,7 @@ kotlin {
                 implementation(libs.uuid)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             }
         }
         
@@ -56,10 +57,8 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(project(":shared:testing"))
-                // Add kotest and other JVM-specific test dependencies here
-                implementation("io.kotest:kotest-runner-junit5:5.5.5")
-                implementation("io.kotest:kotest-assertions-core:5.5.5")
-                implementation("io.kotest:kotest-property:5.5.5")
+                
+                // No need to add additional Kotest dependencies as they're provided by shared:testing
             }
         }
         

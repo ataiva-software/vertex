@@ -1,68 +1,75 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.20"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    id("io.ktor.plugin") version libs.versions.ktor.get()
     application
 }
 
 group = "com.ataiva.eden"
 version = "1.0.0"
-java.sourceCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
     mavenCentral()
 }
 
-val exposedVersion = "0.41.1"
-val ktorVersion = "2.3.0"
-val kotlinxSerializationVersion = "1.5.0"
-val hikariCpVersion = "5.0.1"
-val postgresqlVersion = "42.6.0"
 val flywayVersion = "9.16.0"
-val logbackVersion = "1.4.7"
-val junitVersion = "5.9.3"
 val h2Version = "2.1.214"
-val mockkVersion = "1.13.5"
 val lettuceVersion = "6.2.3.RELEASE"
 val caffeineVersion = "3.1.5"
 val prometheusVersion = "0.16.0"
 
 dependencies {
+    // Shared libraries
+    implementation(project(":shared:core"))
+    implementation(project(":shared:auth"))
+    implementation(project(":shared:crypto"))
+    implementation(project(":shared:database"))
+    implementation(project(":shared:events"))
+    implementation(project(":shared:config"))
+    
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
+    implementation(libs.kotlin.reflect)
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines.core)
     
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation(libs.kotlinx.serialization.json)
     
     // Exposed (SQL framework)
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    
-    // Database
-    implementation("com.zaxxer:HikariCP:$hikariCpVersion")
-    implementation("org.postgresql:postgresql:$postgresqlVersion")
+    implementation(libs.bundles.database)
+    implementation("org.jetbrains.exposed:exposed-java-time:${libs.versions.exposed.get()}")
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     
     // Ktor (HTTP server)
-    implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation(libs.bundles.ktor.server)
+    
+    // Additional Ktor server plugins
+    implementation("io.ktor:ktor-server-call-logging:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-default-headers:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-compression:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-server-forwarded-header:${libs.versions.ktor.get()}")
     
     // Configuration
-    implementation("com.typesafe:config:1.4.2")
+    implementation(libs.typesafe.config)
     
     // Logging
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
-    implementation("org.slf4j:slf4j-api:2.0.7")
+    implementation(libs.bundles.logging)
     
     // Report Generation
     implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.itextpdf:layout:7.2.5")
+    implementation("com.itextpdf:kernel:7.2.5")
+    implementation("com.itextpdf:io:7.2.5")
+    implementation("com.itextpdf:commons:7.2.5")
+    implementation("com.itextpdf:styled-xml-parser:7.2.5")
+    implementation("com.itextpdf:svg:7.2.5")
+    implementation("com.itextpdf:forms:7.2.5")
+    implementation("com.itextpdf:pdfa:7.2.5")
+    implementation("com.itextpdf:sign:7.2.5")
+    implementation("com.itextpdf:barcodes:7.2.5")
     implementation("org.apache.poi:poi:5.2.3")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("org.apache.commons:commons-csv:1.10.0")
@@ -81,18 +88,17 @@ dependencies {
     implementation("io.prometheus:simpleclient_pushgateway:$prometheusVersion")
     
     // Testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    testImplementation("io.mockk:mockk:$mockkVersion")
+    testImplementation(project(":shared:testing"))
+    testImplementation(libs.bundles.testing.jvm)
     testImplementation("com.h2database:h2:$h2Version")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.0")
-    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.server.tests)
 }
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 }
 

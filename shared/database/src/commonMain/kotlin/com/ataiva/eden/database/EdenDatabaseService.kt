@@ -20,6 +20,11 @@ interface EdenDatabaseService {
     val systemEventRepository: SystemEventRepository
     val auditLogRepository: AuditLogRepository
     
+    // RBAC repositories
+    val userRoleRepository: UserRoleRepository
+    val roleRepository: RoleRepository
+    val permissionRepository: PermissionRepository
+    
     // Database management
     suspend fun initialize(): Boolean
     suspend fun migrate(): List<String>

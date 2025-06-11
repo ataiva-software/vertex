@@ -53,6 +53,7 @@ data class SystemPerformanceData(
     val totalStartedThreadCount: Long,
     val gcCollectionCount: Long,
     val gcCollectionTimeMs: Long,
+    @Contextual
     val uptime: Duration
 )
 
@@ -310,13 +311,13 @@ class PerformanceMonitor(
 /**
  * Extension function to measure and record the execution time of a block of code
  */
-inline fun <T> PerformanceMonitor.measure(operationName: String, block: () -> T): T {
+inline fun <T> PerformanceMonitor.measure(operationName: String, noinline block: () -> T): T {
     return trackOperation(operationName, block)
 }
 
 /**
  * Extension function to measure and record the execution time of a suspending block of code
  */
-suspend inline fun <T> PerformanceMonitor.measureSuspend(operationName: String, crossinline block: suspend () -> T): T {
+suspend inline fun <T> PerformanceMonitor.measureSuspend(operationName: String, noinline block: suspend () -> T): T {
     return trackSuspendOperation(operationName, block)
 }

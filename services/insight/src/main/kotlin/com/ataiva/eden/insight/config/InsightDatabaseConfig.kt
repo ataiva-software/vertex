@@ -109,15 +109,15 @@ class InsightDatabaseConfig(
         transaction(database) {
             // Create all tables defined in InsightTables.kt
             SchemaUtils.createMissingTablesAndColumns(
-                AnalyticsQueriesTable,
-                QueryExecutionsTable,
-                ReportTemplatesTable,
-                ReportsTable,
-                ReportExecutionsTable,
-                DashboardsTable,
-                MetricsTable,
-                MetricValuesTable,
-                KPIsTable
+                AnalyticsQueries,
+                QueryExecutions,
+                ReportTemplates,
+                Reports,
+                ReportExecutions,
+                Dashboards,
+                Metrics,
+                MetricValues,
+                KPIs
             )
         }
     }

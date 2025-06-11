@@ -2,6 +2,7 @@ package com.ataiva.eden.flow.engine
 
 import com.ataiva.eden.database.repositories.WorkflowStep
 import com.ataiva.eden.flow.service.ExpressionEvaluator
+import com.ataiva.eden.flow.engine.StepResult
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.*
@@ -269,7 +270,7 @@ class StepExecutor {
                 
                 // Load database configuration
                 val environment = config["environment"] as? String ?: "dev"
-                val dbConfig = com.ataiva.eden.config.DatabaseConfigLoader.load(environment)
+                val dbConfig = com.ataiva.eden.flow.config.DatabaseConfigLoader.load()
                 
                 logger.info("Executing SQL query on connection '$connectionName' in environment '$environment'")
                 

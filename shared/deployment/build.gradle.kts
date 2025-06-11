@@ -40,7 +40,8 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 // JVM-only dependencies
-                implementation(project(":shared:monitoring"))
+                // Temporarily disabled due to build issues
+                // implementation(project(":shared:monitoring"))
                 
                 // Kubernetes client
                 implementation("io.fabric8:kubernetes-client:6.9.2")
