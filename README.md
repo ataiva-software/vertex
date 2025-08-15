@@ -22,13 +22,13 @@ Unlike traditional DevOps stacks that require dozens of separate tools, Eden del
 ```bash
 # Traditional DevOps Stack
 vault server &           # 50MB+ memory
-jenkins &               # 200MB+ memory  
-prometheus &            # 100MB+ memory
-grafana &              # 80MB+ memory
+jenkins &                # 200MB+ memory  
+prometheus &             # 100MB+ memory
+grafana &                # 80MB+ memory
 # ... 10+ more services
 
 # Eden DevOps Suite
-./eden server           # 19MB binary, all services included
+./eden server            # 19MB binary, all services included
 ```
 
 ### Core Services
@@ -45,18 +45,18 @@ grafana &              # 80MB+ memory
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Eden Binary (19MB)                          │
-├─────────────────────────────────────────────────────────────────┤
+┌────────────────────────────────────────────────────────────────────┐
+│                     Eden Binary (19MB)                             │
+├────────────────────────────────────────────────────────────────────┤
 │ API Gateway │ Vault │ Flow │ Task │ Monitor │ Sync │ Insight │ Hub │
 │   Port 8000 │ 8080  │ 8081 │ 8082 │  8083   │ 8084 │  8085   │8086 │
-├─────────────────────────────────────────────────────────────────┤
-│                    Shared Infrastructure                         │
-│  Database Pool • Event Bus • Crypto • Config • Logging          │
-├─────────────────────────────────────────────────────────────────┤
-│                       Data Layer                                 │
-│              PostgreSQL + Redis + File System                   │
-└─────────────────────────────────────────────────────────────────┘
+├────────────────────────────────────────────────────────────────────┤
+│                    Shared Infrastructure                           │
+│  Database Pool • Event Bus • Crypto • Config • Logging             │
+├────────────────────────────────────────────────────────────────────┤
+│                       Data Layer                                   │
+│              PostgreSQL + Redis + File System                      │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -90,6 +90,7 @@ make build
 ## 📋 Deployment Modes
 
 ### 1. All Services Mode (Production)
+
 ```bash
 ./bin/eden server
 # Runs all 8 services concurrently on ports 8000-8086
@@ -97,6 +98,7 @@ make build
 ```
 
 ### 2. Single Service Mode (Development)
+
 ```bash
 ./bin/eden service vault --port 8080
 ./bin/eden service flow --port 8081
@@ -104,6 +106,7 @@ make build
 ```
 
 ### 3. CLI Mode (Operations)
+
 ```bash
 ./bin/eden vault list
 ./bin/eden flow run deploy-prod
@@ -112,6 +115,7 @@ make build
 ```
 
 ### 4. Container Mode (Cloud)
+
 ```bash
 docker run -p 8000-8086:8000-8086 eden:latest server
 # Containerized deployment with health checks
@@ -311,11 +315,13 @@ helm install eden ./charts/eden
 ## 📚 Documentation
 
 ### Getting Started
+
 - [Installation Guide](docs/installation.md)
 - [Quick Start Tutorial](docs/quick-start.md)
 - [Configuration Guide](docs/configuration.md)
 
 ### Service Documentation
+
 - [Vault Service](docs/services/vault.md)
 - [Flow Service](docs/services/flow.md)
 - [Task Service](docs/services/task.md)
@@ -325,6 +331,7 @@ helm install eden ./charts/eden
 - [Hub Service](docs/services/hub.md)
 
 ### Operations
+
 - [Deployment Guide](docs/deployment.md)
 - [Monitoring Guide](docs/monitoring.md)
 - [Security Guide](docs/security.md)
@@ -376,16 +383,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🎯 Why Eden?
 
 ### For Startups
+
 - **Rapid Deployment**: Get DevOps infrastructure in minutes
 - **Cost Effective**: One solution instead of dozens of tools
 - **Easy to Learn**: Unified interface and comprehensive documentation
 
 ### For Enterprises
+
 - **Reduced Complexity**: Simplify your DevOps toolchain
 - **Enhanced Security**: Zero-knowledge architecture and compliance
 - **Cost Optimization**: Significant reduction in licensing and infrastructure costs
 
 ### For DevOps Teams
+
 - **Unified Experience**: One tool, one interface, one workflow
 - **Powerful CLI**: Automate everything with comprehensive command-line tools
 - **Extensible**: API-first design and plugin architecture
@@ -394,4 +404,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Eden DevOps Suite** - Creating the perfect environment for modern development teams.
 
-*Ready to revolutionize your DevOps workflow? Download Eden and experience the future of unified DevOps platforms.*
+_Ready to revolutionize your DevOps workflow? Download Eden and experience the future of unified DevOps platforms._
