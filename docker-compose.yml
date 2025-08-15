@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/database/init:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eden -d eden_dev"]
       interval: 10s
@@ -53,6 +53,8 @@ services:
           memory: 512M
     environment:
       - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
+      # Note: We're still using port 5432 here because inside the Docker network,
+      # the postgres container exposes port 5432, not 5433 (which is only for host access)
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=debug
       - JWT_SECRET=dev_jwt_secret_change_in_production
@@ -74,248 +76,27 @@ services:
     networks:
       - eden_network
 
-  # Eden Vault Service
-  vault-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: vault
-    container_name: eden-vault
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - ENCRYPTION_KEY=dev_encryption_key_change_in_production
-      - LOG_LEVEL=debug
-    ports:
-      - "8081:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-    networks:
-      - eden_network
+  # Note: Other services are temporarily disabled in settings.gradle.kts
+  # Only api-gateway is currently enabled for building
 
-  # Eden Hub Service
-  hub-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: hub
-    container_name: eden-hub
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8082:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-    networks:
-      - eden_network
-
-  # Eden Flow Service
-  flow-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: flow
-    container_name: eden-flow
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - VAULT_SERVICE_URL=http://vault-service:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8083:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-      vault-service:
-        condition: service_started
-    networks:
-      - eden_network
-
-  # Eden Task Service
-  task-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: task
-    container_name: eden-task
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - HUB_SERVICE_URL=http://hub-service:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8084:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-      hub-service:
-        condition: service_started
-    networks:
-      - eden_network
-
-  # Eden Monitor Service
-  monitor-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: monitor
-    container_name: eden-monitor
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8085:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-    networks:
-      - eden_network
-
-  # Eden Sync Service
-  sync-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: sync
-    container_name: eden-sync
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8086:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-    networks:
-      - eden_network
-
-  # Eden Insight Service
-  insight-service:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/base/service.Dockerfile
-      args:
-        SERVICE_NAME: insight
-    container_name: eden-insight
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
-      - REDIS_URL=redis://redis:6379
-      - API_GATEWAY_URL=http://api-gateway:8080
-      - LOG_LEVEL=debug
-    ports:
-      - "8087:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api-gateway:
-        condition: service_healthy
-    networks:
-      - eden_network
-
-  # Web UI (Development)
-  web-ui:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/web/Dockerfile
-    container_name: eden-web-ui
-    environment:
-      - API_BASE_URL=http://localhost:8080
-      - NODE_ENV=development
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api-gateway
-    networks:
-      - eden_network
-    volumes:
-      - ./clients/web:/app
-      - /app/node_modules
+  # Web UI (Development) - Temporarily disabled due to missing source files
+  # web-ui:
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/web/Dockerfile
+  #   container_name: eden-web-ui
+  #   environment:
+  #     - API_BASE_URL=http://localhost:8080
+  #     - NODE_ENV=development
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api-gateway
+  #   networks:
+  #     - eden_network
+  #   volumes:
+  #     - ./clients/web:/app
+  #     - /app/node_modules
 
 volumes:
   postgres_data:

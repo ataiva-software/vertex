@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: eden-postgres
+    environment:
+      POSTGRES_DB: eden
+      POSTGRES_USER: eden
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eden -d eden"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and events
+  redis:
+    image: redis:7-alpine
+    container_name: eden-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Vault Service
+  vault:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.vault
+    container_name: eden-vault
+    environment:
+      DB_HOST: postgres
+      DB_NAME: eden
+      DB_USER: eden
+      DB_PASSWORD: secret
+      DB_SSL_MODE: disable
+      MASTER_PASSWORD: super-secret-master-password
+      GIN_MODE: release
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: eden-network

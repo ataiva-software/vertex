@@ -25,7 +25,7 @@ RUN echo "Building service: ${SERVICE_NAME} with memory optimization" && \
     --no-parallel \
     --build-cache \
     --gradle-user-home=/tmp/.gradle \
-    --org.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m"
+    -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m"
 
 # Runtime stage
 FROM eclipse-temurin:17-jre

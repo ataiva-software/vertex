@@ -1,0 +1,1184 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>vault: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/ataivadev/eden/cmd/vault/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/ataivadev/eden/internal/vault/models.go (75.0%)</option>
+				
+				<option value="file2">github.com/ataivadev/eden/internal/vault/service.go (76.6%)</option>
+				
+				<option value="file3">github.com/ataivadev/eden/pkg/core/types.go (95.7%)</option>
+				
+				<option value="file4">github.com/ataivadev/eden/pkg/crypto/encryption.go (76.6%)</option>
+				
+				<option value="file5">github.com/ataivadev/eden/pkg/database/connection.go (27.5%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "os/signal"
+        "strings"
+        "syscall"
+        "time"
+
+        "github.com/ataivadev/eden/internal/vault"
+        "github.com/ataivadev/eden/pkg/core"
+        "github.com/ataivadev/eden/pkg/database"
+        "github.com/gin-gonic/gin"
+)
+
+func main() <span class="cov0" title="0">{
+        // Create service info
+        serviceInfo := core.NewServiceInfo("vault", "1.0.0", 8080)
+        
+        // Database configuration
+        dbConfig := &amp;database.Config{
+                Host:     getEnv("DB_HOST", "localhost"),
+                Port:     5432,
+                Database: getEnv("DB_NAME", "eden"),
+                Username: getEnv("DB_USER", "eden"),
+                Password: getEnv("DB_PASSWORD", "secret"),
+                SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+        }
+
+        // Create database connection pool
+        pool := database.NewConnectionPool(dbConfig)
+        if err := pool.Connect(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to connect to database: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer pool.Close()
+
+        // Auto-migrate database schema
+        if err := pool.DB.AutoMigrate(&amp;vault.Secret{}, &amp;vault.AuditLog{}); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to migrate database: %v", err)
+        }</span>
+
+        // Create vault service
+        <span class="cov0" title="0">vaultService := vault.NewService()
+        vaultService.SetDB(pool.DB)
+        vaultService.SetMasterPassword(getEnv("MASTER_PASSWORD", "default-master-password"))
+
+        // Create HTTP router
+        router := gin.Default()
+
+        // Health check endpoint
+        router.GET("/health", func(c *gin.Context) </span><span class="cov0" title="0">{
+                healthCheck := database.NewHealthCheck(pool)
+                status := healthCheck.Check(c.Request.Context())
+                
+                if status.Healthy </span><span class="cov0" title="0">{
+                        serviceInfo.SetStatus(core.ServiceStatusHealthy)
+                        c.JSON(http.StatusOK, gin.H{
+                                "status":  "healthy",
+                                "service": serviceInfo,
+                                "database": status,
+                        })
+                }</span> else<span class="cov0" title="0"> {
+                        serviceInfo.SetStatus(core.ServiceStatusUnhealthy)
+                        c.JSON(http.StatusServiceUnavailable, gin.H{
+                                "status":  "unhealthy",
+                                "service": serviceInfo,
+                                "database": status,
+                        })
+                }</span>
+        })
+
+        // Service info endpoint
+        <span class="cov0" title="0">router.GET("/info", func(c *gin.Context) </span><span class="cov0" title="0">{
+                c.JSON(http.StatusOK, serviceInfo)
+        }</span>)
+
+        // Vault API routes
+        <span class="cov0" title="0">v1 := router.Group("/api/v1")
+        </span><span class="cov0" title="0">{
+                // Secrets endpoints
+                v1.POST("/secrets", createSecret(vaultService))
+                v1.GET("/secrets", listSecrets(vaultService))
+                v1.GET("/secrets/:key", getSecret(vaultService))
+                v1.PUT("/secrets/:key", updateSecret(vaultService))
+                v1.DELETE("/secrets/:key", deleteSecret(vaultService))
+        }</span>
+
+        // Create HTTP server
+        <span class="cov0" title="0">server := &amp;http.Server{
+                Addr:    fmt.Sprintf(":%d", serviceInfo.Port),
+                Handler: router,
+        }
+
+        // Start server in a goroutine
+        go func() </span><span class="cov0" title="0">{
+                log.Printf("Starting Vault service on port %d", serviceInfo.Port)
+                serviceInfo.SetStatus(core.ServiceStatusHealthy)
+                
+                if err := server.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        log.Fatalf("Failed to start server: %v", err)
+                }</span>
+        }()
+
+        // Wait for interrupt signal to gracefully shutdown the server
+        <span class="cov0" title="0">quit := make(chan os.Signal, 1)
+        signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-quit
+        
+        log.Println("Shutting down Vault service...")
+        serviceInfo.SetStatus(core.ServiceStatusStopping)
+
+        // Give outstanding requests 30 seconds to complete
+        ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer cancel()
+
+        if err := server.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Server forced to shutdown: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">serviceInfo.SetStatus(core.ServiceStatusStopped)
+        log.Println("Vault service stopped")</span>
+}
+
+// HTTP handlers
+
+func createSecret(service *vault.Service) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                userID := getUserID(c)
+                if userID == "" </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">var secret vault.Secret
+                if err := c.ShouldBindJSON(&amp;secret); err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">if err := service.StoreSecret(c.Request.Context(), userID, &amp;secret); err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">c.JSON(http.StatusCreated, gin.H{"message": "Secret created successfully"})</span>
+        }
+}
+
+func listSecrets(service *vault.Service) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                userID := getUserID(c)
+                if userID == "" </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">secrets, err := service.ListSecrets(c.Request.Context(), userID)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{"secrets": secrets})</span>
+        }
+}
+
+func getSecret(service *vault.Service) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                userID := getUserID(c)
+                if userID == "" </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">key := c.Param("key")
+                secret, err := service.GetSecret(c.Request.Context(), userID, key)
+                if err != nil </span><span class="cov0" title="0">{
+                        if contains(err.Error(), "not found") </span><span class="cov0" title="0">{
+                                c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+                        }</span> else<span class="cov0" title="0"> {
+                                c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+                        }</span>
+                        <span class="cov0" title="0">return</span>
+                }
+
+                <span class="cov0" title="0">c.JSON(http.StatusOK, secret)</span>
+        }
+}
+
+func updateSecret(service *vault.Service) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                userID := getUserID(c)
+                if userID == "" </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">key := c.Param("key")
+                var secret vault.Secret
+                if err := c.ShouldBindJSON(&amp;secret); err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">secret.Key = key // Ensure key matches URL parameter
+                if err := service.UpdateSecret(c.Request.Context(), userID, &amp;secret); err != nil </span><span class="cov0" title="0">{
+                        if contains(err.Error(), "not found") </span><span class="cov0" title="0">{
+                                c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+                        }</span> else<span class="cov0" title="0"> {
+                                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        }</span>
+                        <span class="cov0" title="0">return</span>
+                }
+
+                <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{"message": "Secret updated successfully"})</span>
+        }
+}
+
+func deleteSecret(service *vault.Service) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                userID := getUserID(c)
+                if userID == "" </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+                        return
+                }</span>
+
+                <span class="cov0" title="0">key := c.Param("key")
+                if err := service.DeleteSecret(c.Request.Context(), userID, key); err != nil </span><span class="cov0" title="0">{
+                        if contains(err.Error(), "not found") </span><span class="cov0" title="0">{
+                                c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+                        }</span> else<span class="cov0" title="0"> {
+                                c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+                        }</span>
+                        <span class="cov0" title="0">return</span>
+                }
+
+                <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{"message": "Secret deleted successfully"})</span>
+        }
+}
+
+// Helper functions
+
+func getEnv(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+func getUserID(c *gin.Context) string <span class="cov0" title="0">{
+        // In a real implementation, this would extract user ID from JWT token
+        // For now, we'll use a header for testing
+        return c.GetHeader("X-User-ID")
+}</span>
+
+func contains(s, substr string) bool <span class="cov0" title="0">{
+        return strings.Contains(s, substr)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package vault
+
+import (
+        "database/sql/driver"
+        "encoding/json"
+        "errors"
+        "time"
+
+        "gorm.io/gorm"
+)
+
+// StringSlice is a custom type for handling string slices in GORM
+type StringSlice []string
+
+// Scan implements the Scanner interface for database deserialization
+func (s *StringSlice) Scan(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov0" title="0">{
+                *s = StringSlice{}
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">switch v := value.(type) </span>{
+        case []byte:<span class="cov8" title="1">
+                return json.Unmarshal(v, s)</span>
+        case string:<span class="cov8" title="1">
+                return json.Unmarshal([]byte(v), s)</span>
+        default:<span class="cov0" title="0">
+                return errors.New("cannot scan into StringSlice")</span>
+        }
+}
+
+// Value implements the Valuer interface for database serialization
+func (s StringSlice) Value() (driver.Value, error) <span class="cov8" title="1">{
+        if len(s) == 0 </span><span class="cov8" title="1">{
+                return "[]", nil
+        }</span>
+        <span class="cov8" title="1">return json.Marshal(s)</span>
+}
+
+// Secret represents a stored secret
+type Secret struct {
+        ID          uint        `json:"id" gorm:"primaryKey"`
+        UserID      string      `json:"user_id" gorm:"index;not null"`
+        Key         string      `json:"key" gorm:"not null"`
+        Value       string      `json:"value,omitempty" gorm:"not null"` // Encrypted
+        Description string      `json:"description"`
+        Tags        StringSlice `json:"tags" gorm:"type:text"`
+        CreatedAt   time.Time   `json:"created_at"`
+        UpdatedAt   time.Time   `json:"updated_at"`
+        DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+// TableName returns the table name for the Secret model
+func (Secret) TableName() string <span class="cov8" title="1">{
+        return "secrets"
+}</span>
+
+// SecretListItem represents a secret in list operations (without value)
+type SecretListItem struct {
+        Key         string      `json:"key"`
+        Description string      `json:"description"`
+        Tags        StringSlice `json:"tags"`
+        CreatedAt   time.Time   `json:"created_at"`
+        UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+// AuditLog represents an audit log entry for secret operations
+type AuditLog struct {
+        ID        uint      `json:"id" gorm:"primaryKey"`
+        UserID    string    `json:"user_id" gorm:"index;not null"`
+        SecretKey string    `json:"secret_key" gorm:"not null"`
+        Action    string    `json:"action" gorm:"not null"` // CREATE, READ, UPDATE, DELETE
+        IPAddress string    `json:"ip_address"`
+        UserAgent string    `json:"user_agent"`
+        CreatedAt time.Time `json:"created_at"`
+}
+
+// TableName returns the table name for the AuditLog model
+func (AuditLog) TableName() string <span class="cov8" title="1">{
+        return "audit_logs"
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package vault
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "strings"
+
+        "github.com/ataivadev/eden/pkg/crypto"
+        "gorm.io/gorm"
+)
+
+// Service provides vault operations
+type Service struct {
+        db       *gorm.DB
+        password string // Master password for encryption
+}
+
+// NewService creates a new vault service
+func NewService() *Service <span class="cov8" title="1">{
+        return &amp;Service{
+                password: "default-master-password", // In real implementation, this would come from config
+        }
+}</span>
+
+// SetDB sets the database connection
+func (s *Service) SetDB(db *gorm.DB) <span class="cov8" title="1">{
+        s.db = db
+}</span>
+
+// SetMasterPassword sets the master password for encryption
+func (s *Service) SetMasterPassword(password string) <span class="cov0" title="0">{
+        s.password = password
+}</span>
+
+// StoreSecret stores a new secret
+func (s *Service) StoreSecret(ctx context.Context, userID string, secret *Secret) error <span class="cov8" title="1">{
+        if err := s.validateSecret(secret); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        // Check if secret already exists
+        <span class="cov8" title="1">var existing Secret
+        err := s.db.Where("user_id = ? AND key = ?", userID, secret.Key).First(&amp;existing).Error
+        if err == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("secret with key '%s' already exists", secret.Key)
+        }</span>
+        <span class="cov8" title="1">if !errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check existing secret: %w", err)
+        }</span>
+
+        // Encrypt the value
+        <span class="cov8" title="1">encryptedValue, err := crypto.EncryptAES([]byte(secret.Value), s.password)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to encrypt secret: %w", err)
+        }</span>
+
+        // Create new secret record
+        <span class="cov8" title="1">newSecret := &amp;Secret{
+                UserID:      userID,
+                Key:         secret.Key,
+                Value:       string(encryptedValue),
+                Description: secret.Description,
+                Tags:        StringSlice(secret.Tags),
+        }
+
+        if err := s.db.Create(newSecret).Error; err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to store secret: %w", err)
+        }</span>
+
+        // Log the operation
+        <span class="cov8" title="1">s.logOperation(userID, secret.Key, "CREATE", "", "")
+
+        return nil</span>
+}
+
+// GetSecret retrieves a secret by key
+func (s *Service) GetSecret(ctx context.Context, userID, key string) (*Secret, error) <span class="cov8" title="1">{
+        var secret Secret
+        err := s.db.Where("user_id = ? AND key = ?", userID, key).First(&amp;secret).Error
+        if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("secret '%s' not found", key)
+        }</span>
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to retrieve secret: %w", err)
+        }</span>
+
+        // Decrypt the value
+        <span class="cov8" title="1">decryptedValue, err := crypto.DecryptAES([]byte(secret.Value), s.password)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to decrypt secret: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">secret.Value = string(decryptedValue)
+
+        // Log the operation
+        s.logOperation(userID, key, "READ", "", "")
+
+        return &amp;secret, nil</span>
+}
+
+// ListSecrets returns a list of secrets for a user (without values)
+func (s *Service) ListSecrets(ctx context.Context, userID string) ([]*SecretListItem, error) <span class="cov8" title="1">{
+        var secrets []Secret
+        err := s.db.Select("key, description, tags, created_at, updated_at").
+                Where("user_id = ?", userID).
+                Find(&amp;secrets).Error
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to list secrets: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">items := make([]*SecretListItem, len(secrets))
+        for i, secret := range secrets </span><span class="cov8" title="1">{
+                items[i] = &amp;SecretListItem{
+                        Key:         secret.Key,
+                        Description: secret.Description,
+                        Tags:        secret.Tags,
+                        CreatedAt:   secret.CreatedAt,
+                        UpdatedAt:   secret.UpdatedAt,
+                }
+        }</span>
+
+        <span class="cov8" title="1">return items, nil</span>
+}
+
+// UpdateSecret updates an existing secret
+func (s *Service) UpdateSecret(ctx context.Context, userID string, secret *Secret) error <span class="cov8" title="1">{
+        if err := s.validateSecret(secret); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Check if secret exists
+        <span class="cov8" title="1">var existing Secret
+        err := s.db.Where("user_id = ? AND key = ?", userID, secret.Key).First(&amp;existing).Error
+        if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                return fmt.Errorf("secret '%s' not found", secret.Key)
+        }</span>
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to find secret: %w", err)
+        }</span>
+
+        // Encrypt the new value
+        <span class="cov8" title="1">encryptedValue, err := crypto.EncryptAES([]byte(secret.Value), s.password)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to encrypt secret: %w", err)
+        }</span>
+
+        // Update the secret
+        <span class="cov8" title="1">updates := map[string]interface{}{
+                "value":       string(encryptedValue),
+                "description": secret.Description,
+                "tags":        StringSlice(secret.Tags),
+        }
+
+        if err := s.db.Model(&amp;existing).Updates(updates).Error; err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update secret: %w", err)
+        }</span>
+
+        // Log the operation
+        <span class="cov8" title="1">s.logOperation(userID, secret.Key, "UPDATE", "", "")
+
+        return nil</span>
+}
+
+// DeleteSecret deletes a secret
+func (s *Service) DeleteSecret(ctx context.Context, userID, key string) error <span class="cov8" title="1">{
+        // Check if secret exists
+        var secret Secret
+        err := s.db.Where("user_id = ? AND key = ?", userID, key).First(&amp;secret).Error
+        if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                return fmt.Errorf("secret '%s' not found", key)
+        }</span>
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to find secret: %w", err)
+        }</span>
+
+        // Delete the secret (soft delete)
+        <span class="cov8" title="1">if err := s.db.Delete(&amp;secret).Error; err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete secret: %w", err)
+        }</span>
+
+        // Log the operation
+        <span class="cov8" title="1">s.logOperation(userID, key, "DELETE", "", "")
+
+        return nil</span>
+}
+
+// validateSecret validates a secret before storing/updating
+func (s *Service) validateSecret(secret *Secret) error <span class="cov8" title="1">{
+        if strings.TrimSpace(secret.Key) == "" </span><span class="cov8" title="1">{
+                return errors.New("key is required")
+        }</span>
+        <span class="cov8" title="1">if strings.TrimSpace(secret.Value) == "" </span><span class="cov8" title="1">{
+                return errors.New("value is required")
+        }</span>
+        <span class="cov8" title="1">if len(secret.Key) &gt; 255 </span><span class="cov8" title="1">{
+                return errors.New("key too long (max 255 characters)")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// logOperation logs an audit entry
+func (s *Service) logOperation(userID, secretKey, action, ipAddress, userAgent string) <span class="cov8" title="1">{
+        if s.db == nil </span><span class="cov0" title="0">{
+                return // Skip logging if no database connection
+        }</span>
+
+        <span class="cov8" title="1">auditLog := &amp;AuditLog{
+                UserID:    userID,
+                SecretKey: secretKey,
+                Action:    action,
+                IPAddress: ipAddress,
+                UserAgent: userAgent,
+        }
+
+        // Log errors but don't fail the operation
+        if err := s.db.Create(auditLog).Error; err != nil </span><span class="cov0" title="0">{
+                // In a real implementation, this would use proper logging
+                fmt.Printf("Failed to log audit entry: %v\n", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package core
+
+import (
+        "errors"
+        "fmt"
+        "strings"
+        "time"
+)
+
+// ServiceStatus represents the current status of a service
+type ServiceStatus int
+
+const (
+        ServiceStatusStarting ServiceStatus = iota
+        ServiceStatusHealthy
+        ServiceStatusUnhealthy
+        ServiceStatusStopping
+        ServiceStatusStopped
+)
+
+// String returns the string representation of ServiceStatus
+func (s ServiceStatus) String() string <span class="cov8" title="1">{
+        switch s </span>{
+        case ServiceStatusStarting:<span class="cov8" title="1">
+                return "starting"</span>
+        case ServiceStatusHealthy:<span class="cov8" title="1">
+                return "healthy"</span>
+        case ServiceStatusUnhealthy:<span class="cov8" title="1">
+                return "unhealthy"</span>
+        case ServiceStatusStopping:<span class="cov8" title="1">
+                return "stopping"</span>
+        case ServiceStatusStopped:<span class="cov8" title="1">
+                return "stopped"</span>
+        default:<span class="cov0" title="0">
+                return "unknown"</span>
+        }
+}
+
+// ServiceInfo contains information about a service
+type ServiceInfo struct {
+        Name            string        `json:"name"`
+        Version         string        `json:"version"`
+        Port            int           `json:"port"`
+        Status          ServiceStatus `json:"status"`
+        StartTime       time.Time     `json:"start_time"`
+        LastHealthCheck time.Time     `json:"last_health_check"`
+}
+
+// NewServiceInfo creates a new ServiceInfo instance
+func NewServiceInfo(name, version string, port int) *ServiceInfo <span class="cov8" title="1">{
+        now := time.Now()
+        return &amp;ServiceInfo{
+                Name:            name,
+                Version:         version,
+                Port:            port,
+                Status:          ServiceStatusStarting,
+                StartTime:       now,
+                LastHealthCheck: now,
+        }
+}</span>
+
+// SetStatus updates the service status and health check timestamp
+func (s *ServiceInfo) SetStatus(status ServiceStatus) <span class="cov8" title="1">{
+        s.Status = status
+        s.LastHealthCheck = time.Now()
+}</span>
+
+// Uptime returns the duration since the service started
+func (s *ServiceInfo) Uptime() time.Duration <span class="cov8" title="1">{
+        return time.Since(s.StartTime)
+}</span>
+
+// HealthStatus represents the health status of a service or component
+type HealthStatus struct {
+        Healthy   bool                   `json:"healthy"`
+        Message   string                 `json:"message"`
+        Timestamp time.Time              `json:"timestamp"`
+        Details   map[string]interface{} `json:"details,omitempty"`
+}
+
+// NewHealthStatus creates a new HealthStatus instance
+func NewHealthStatus(healthy bool, message string) *HealthStatus <span class="cov8" title="1">{
+        return &amp;HealthStatus{
+                Healthy:   healthy,
+                Message:   message,
+                Timestamp: time.Now(),
+                Details:   make(map[string]interface{}),
+        }
+}</span>
+
+// NewHealthStatusWithDetails creates a new HealthStatus instance with details
+func NewHealthStatusWithDetails(healthy bool, message string, details map[string]interface{}) *HealthStatus <span class="cov8" title="1">{
+        return &amp;HealthStatus{
+                Healthy:   healthy,
+                Message:   message,
+                Timestamp: time.Now(),
+                Details:   details,
+        }
+}</span>
+
+// Result represents the result of an operation
+type Result struct {
+        Success   bool        `json:"success"`
+        Data      interface{} `json:"data,omitempty"`
+        Error     string      `json:"error,omitempty"`
+        Timestamp time.Time   `json:"timestamp"`
+}
+
+// Success creates a successful result
+func Success(data interface{}) *Result <span class="cov8" title="1">{
+        return &amp;Result{
+                Success:   true,
+                Data:      data,
+                Timestamp: time.Now(),
+        }
+}</span>
+
+// Error creates an error result
+func Error(message string) *Result <span class="cov8" title="1">{
+        return &amp;Result{
+                Success:   false,
+                Error:     message,
+                Timestamp: time.Now(),
+        }
+}</span>
+
+// ErrorFromErr creates an error result from a Go error
+func ErrorFromErr(err error) *Result <span class="cov8" title="1">{
+        return &amp;Result{
+                Success:   false,
+                Error:     err.Error(),
+                Timestamp: time.Now(),
+        }
+}</span>
+
+// ValidateRequired validates that a string field is not empty
+func ValidateRequired(value, fieldName string) error <span class="cov8" title="1">{
+        if strings.TrimSpace(value) == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("%s is required", fieldName)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ValidatePort validates that a port number is valid
+func ValidatePort(port int) error <span class="cov8" title="1">{
+        if port &lt; 1 || port &gt; 65535 </span><span class="cov8" title="1">{
+                return errors.New("port must be between 1 and 65535")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package crypto
+
+import (
+        "crypto/aes"
+        "crypto/cipher"
+        "crypto/rand"
+        "crypto/sha256"
+        "errors"
+        "fmt"
+        "io"
+
+        "golang.org/x/crypto/bcrypt"
+        "golang.org/x/crypto/pbkdf2"
+)
+
+const (
+        // SaltLength is the length of salt used for key derivation
+        SaltLength = 16
+        // KeyLength is the length of derived keys (AES-256)
+        KeyLength = 32
+        // NonceLength is the length of nonce used for AES-GCM
+        NonceLength = 12
+        // PBKDF2Iterations is the number of iterations for PBKDF2
+        PBKDF2Iterations = 100000
+)
+
+// EncryptAES encrypts data using AES-256-GCM with a password-derived key
+func EncryptAES(data []byte, password string) ([]byte, error) <span class="cov8" title="1">{
+        if password == "" </span><span class="cov8" title="1">{
+                return nil, errors.New("password cannot be empty")
+        }</span>
+
+        // Generate a random salt
+        <span class="cov8" title="1">salt, err := GenerateRandomBytes(SaltLength)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to generate salt: %w", err)
+        }</span>
+
+        // Derive key from password and salt
+        <span class="cov8" title="1">key, err := DeriveKey(password, salt)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to derive key: %w", err)
+        }</span>
+
+        // Create AES cipher
+        <span class="cov8" title="1">block, err := aes.NewCipher(key)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create cipher: %w", err)
+        }</span>
+
+        // Create GCM mode
+        <span class="cov8" title="1">gcm, err := cipher.NewGCM(block)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create GCM: %w", err)
+        }</span>
+
+        // Generate nonce
+        <span class="cov8" title="1">nonce, err := GenerateRandomBytes(NonceLength)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to generate nonce: %w", err)
+        }</span>
+
+        // Encrypt data
+        <span class="cov8" title="1">ciphertext := gcm.Seal(nil, nonce, data, nil)
+
+        // Combine salt + nonce + ciphertext
+        result := make([]byte, 0, SaltLength+NonceLength+len(ciphertext))
+        result = append(result, salt...)
+        result = append(result, nonce...)
+        result = append(result, ciphertext...)
+
+        return result, nil</span>
+}
+
+// DecryptAES decrypts data using AES-256-GCM with a password-derived key
+func DecryptAES(encryptedData []byte, password string) ([]byte, error) <span class="cov8" title="1">{
+        if password == "" </span><span class="cov0" title="0">{
+                return nil, errors.New("password cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">if len(encryptedData) &lt; SaltLength+NonceLength </span><span class="cov0" title="0">{
+                return nil, errors.New("encrypted data too short")
+        }</span>
+
+        // Extract salt, nonce, and ciphertext
+        <span class="cov8" title="1">salt := encryptedData[:SaltLength]
+        nonce := encryptedData[SaltLength : SaltLength+NonceLength]
+        ciphertext := encryptedData[SaltLength+NonceLength:]
+
+        // Derive key from password and salt
+        key, err := DeriveKey(password, salt)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to derive key: %w", err)
+        }</span>
+
+        // Create AES cipher
+        <span class="cov8" title="1">block, err := aes.NewCipher(key)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create cipher: %w", err)
+        }</span>
+
+        // Create GCM mode
+        <span class="cov8" title="1">gcm, err := cipher.NewGCM(block)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create GCM: %w", err)
+        }</span>
+
+        // Decrypt data
+        <span class="cov8" title="1">plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to decrypt: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return plaintext, nil</span>
+}
+
+// DeriveKey derives a key from password and salt using PBKDF2
+func DeriveKey(password string, salt []byte) ([]byte, error) <span class="cov8" title="1">{
+        if password == "" </span><span class="cov0" title="0">{
+                return nil, errors.New("password cannot be empty")
+        }</span>
+        <span class="cov8" title="1">if len(salt) == 0 </span><span class="cov0" title="0">{
+                return nil, errors.New("salt cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">key := pbkdf2.Key([]byte(password), salt, PBKDF2Iterations, KeyLength, sha256.New)
+        return key, nil</span>
+}
+
+// GenerateSalt generates a random salt
+func GenerateSalt() ([]byte, error) <span class="cov8" title="1">{
+        return GenerateRandomBytes(SaltLength)
+}</span>
+
+// GenerateRandomBytes generates random bytes of specified length
+func GenerateRandomBytes(length int) ([]byte, error) <span class="cov8" title="1">{
+        if length == 0 </span><span class="cov8" title="1">{
+                return []byte{}, nil
+        }</span>
+
+        <span class="cov8" title="1">bytes := make([]byte, length)
+        if _, err := io.ReadFull(rand.Reader, bytes); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to generate random bytes: %w", err)
+        }</span>
+        <span class="cov8" title="1">return bytes, nil</span>
+}
+
+// HashPassword hashes a password using bcrypt
+func HashPassword(password string) (string, error) <span class="cov8" title="1">{
+        if password == "" </span><span class="cov0" title="0">{
+                return "", errors.New("password cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to hash password: %w", err)
+        }</span>
+        <span class="cov8" title="1">return string(hash), nil</span>
+}
+
+// VerifyPassword verifies a password against its hash
+func VerifyPassword(password, hash string) bool <span class="cov8" title="1">{
+        err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+        return err == nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package database
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/ataivadev/eden/pkg/core"
+        "gorm.io/driver/postgres"
+        "gorm.io/gorm"
+        "gorm.io/gorm/logger"
+)
+
+// Config holds database connection configuration
+type Config struct {
+        Host     string `json:"host" yaml:"host"`
+        Port     int    `json:"port" yaml:"port"`
+        Database string `json:"database" yaml:"database"`
+        Username string `json:"username" yaml:"username"`
+        Password string `json:"password" yaml:"password"`
+        SSLMode  string `json:"ssl_mode" yaml:"ssl_mode"`
+}
+
+// Validate validates the database configuration
+func (c *Config) Validate() error <span class="cov8" title="1">{
+        if err := core.ValidateRequired(c.Host, "host"); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := core.ValidateRequired(c.Database, "database"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := core.ValidateRequired(c.Username, "username"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := core.ValidateRequired(c.Password, "password"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := core.ValidatePort(c.Port); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// DSN returns the PostgreSQL data source name
+func (c *Config) DSN() string <span class="cov8" title="1">{
+        sslMode := c.SSLMode
+        if sslMode == "" </span><span class="cov8" title="1">{
+                sslMode = "require"
+        }</span>
+        
+        <span class="cov8" title="1">return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
+                c.Host, c.Username, c.Password, c.Database, c.Port, sslMode)</span>
+}
+
+// ConnectionPool manages database connections
+type ConnectionPool struct {
+        Config          *Config
+        DB              *gorm.DB
+        MaxOpenConns    int
+        MaxIdleConns    int
+        ConnMaxLifetime time.Duration
+}
+
+// NewConnectionPool creates a new connection pool
+func NewConnectionPool(config *Config) *ConnectionPool <span class="cov8" title="1">{
+        return &amp;ConnectionPool{
+                Config:          config,
+                MaxOpenConns:    10,
+                MaxIdleConns:    5,
+                ConnMaxLifetime: 5 * time.Minute,
+        }
+}</span>
+
+// Connect establishes a connection to the database
+func (p *ConnectionPool) Connect() error <span class="cov0" title="0">{
+        if err := p.Config.Validate(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid config: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">db, err := gorm.Open(postgres.Open(p.Config.DSN()), &amp;gorm.Config{
+                Logger: logger.Default.LogMode(logger.Info),
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to connect to database: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">sqlDB, err := db.DB()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get underlying sql.DB: %w", err)
+        }</span>
+
+        // Configure connection pool
+        <span class="cov0" title="0">sqlDB.SetMaxOpenConns(p.MaxOpenConns)
+        sqlDB.SetMaxIdleConns(p.MaxIdleConns)
+        sqlDB.SetConnMaxLifetime(p.ConnMaxLifetime)
+
+        p.DB = db
+        return nil</span>
+}
+
+// Close closes the database connection
+func (p *ConnectionPool) Close() error <span class="cov0" title="0">{
+        if p.DB == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">sqlDB, err := p.DB.DB()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get underlying sql.DB: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return sqlDB.Close()</span>
+}
+
+// HealthCheck provides database health checking functionality
+type HealthCheck struct {
+        Pool    *ConnectionPool
+        Timeout time.Duration
+}
+
+// NewHealthCheck creates a new health check
+func NewHealthCheck(pool *ConnectionPool) *HealthCheck <span class="cov8" title="1">{
+        return &amp;HealthCheck{
+                Pool:    pool,
+                Timeout: 30 * time.Second,
+        }
+}</span>
+
+// Check performs a health check on the database
+func (h *HealthCheck) Check(ctx context.Context) *core.HealthStatus <span class="cov0" title="0">{
+        if h.Pool.DB == nil </span><span class="cov0" title="0">{
+                return core.NewHealthStatus(false, "Database not connected")
+        }</span>
+
+        // Create context with timeout
+        <span class="cov0" title="0">checkCtx, cancel := context.WithTimeout(ctx, h.Timeout)
+        defer cancel()
+
+        sqlDB, err := h.Pool.DB.DB()
+        if err != nil </span><span class="cov0" title="0">{
+                return core.NewHealthStatus(false, fmt.Sprintf("Failed to get database instance: %v", err))
+        }</span>
+
+        // Ping the database
+        <span class="cov0" title="0">if err := sqlDB.PingContext(checkCtx); err != nil </span><span class="cov0" title="0">{
+                return core.NewHealthStatus(false, fmt.Sprintf("Database ping failed: %v", err))
+        }</span>
+
+        // Get database stats
+        <span class="cov0" title="0">stats := sqlDB.Stats()
+        details := map[string]interface{}{
+                "open_connections":     stats.OpenConnections,
+                "in_use":              stats.InUse,
+                "idle":                stats.Idle,
+                "wait_count":          stats.WaitCount,
+                "wait_duration":       stats.WaitDuration.String(),
+                "max_idle_closed":     stats.MaxIdleClosed,
+                "max_lifetime_closed": stats.MaxLifetimeClosed,
+        }
+
+        return core.NewHealthStatusWithDetails(true, "Database is healthy", details)</span>
+}
+
+// Repository provides base repository functionality
+type Repository struct {
+        DB *gorm.DB
+}
+
+// NewRepository creates a new repository
+func NewRepository(db *gorm.DB) *Repository <span class="cov0" title="0">{
+        return &amp;Repository{DB: db}
+}</span>
+
+// Transaction executes a function within a database transaction
+func (r *Repository) Transaction(fn func(*gorm.DB) error) error <span class="cov0" title="0">{
+        return r.DB.Transaction(fn)
+}</span>
+
+// Migrate runs database migrations for the given models
+func (r *Repository) Migrate(models ...interface{}) error <span class="cov0" title="0">{
+        return r.DB.AutoMigrate(models...)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

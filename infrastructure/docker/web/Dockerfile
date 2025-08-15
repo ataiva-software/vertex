@@ -1,25 +1,32 @@
 # Multi-stage build for Eden Web UI
-FROM node:18-alpine as builder
+FROM openjdk:17-jdk-slim as builder
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package files
-COPY clients/web/package*.json ./
+# Copy gradle files for dependency resolution
+COPY gradle/ gradle/
+COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Make gradlew executable
+RUN chmod +x ./gradlew
 
-# Copy source code
-COPY clients/web/ .
+# Copy shared modules that web depends on
+COPY shared/ shared/
 
-# Build the application
-RUN npm run build
+# Copy web client code
+COPY clients/ clients/
+
+# Build the Kotlin/JS application
+RUN ./gradlew :clients:web:jsBrowserProductionWebpack --no-daemon
 
 # Production stage
 FROM nginx:alpine
 
 # Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/clients/web/build/distributions /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY infrastructure/docker/web/nginx.conf /etc/nginx/conf.d/default.conf

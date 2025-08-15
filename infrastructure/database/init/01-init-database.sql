@@ -195,7 +195,7 @@ SELECT create_hypertable('monitor_results', 'time', if_not_exists => TRUE);
 
 -- Audit logs
 CREATE TABLE IF NOT EXISTS audit.audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID DEFAULT gen_random_uuid(),
     organization_id UUID REFERENCES eden.organizations(id),
     user_id UUID REFERENCES eden.users(id),
     action VARCHAR(100) NOT NULL,
@@ -204,8 +204,9 @@ CREATE TABLE IF NOT EXISTS audit.audit_logs (
     details JSONB DEFAULT '{}',
     ip_address INET,
     user_agent TEXT,
-    timestamp TIMESTAMPTZ DEFAULT NOW(),
-    severity VARCHAR(20) DEFAULT 'INFO'
+    timestamp TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    severity VARCHAR(20) DEFAULT 'INFO',
+    PRIMARY KEY (id, timestamp)
 );
 
 -- Convert audit_logs to hypertable
