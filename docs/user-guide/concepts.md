@@ -1,12 +1,12 @@
-# Eden DevOps Suite - Core Concepts
+# Vertex DevOps Suite - Core Concepts
 
-## What is Eden?
+## What is Vertex?
 
-**Eden** is a unified DevOps and productivity platform designed to create a _perfect, pristine_ environment for developers and operations teams. It combines secrets management, infrastructure automation, task orchestration, monitoring, and workflow automation into a single, integrated suite.
+**Vertex** is a unified DevOps and productivity platform designed to create a _perfect, pristine_ environment for developers and operations teams. It combines secrets management, infrastructure automation, task orchestration, monitoring, and workflow automation into a single, integrated suite.
 
 ## Core Philosophy
 
-Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal conditions — Eden aims to deliver:
+Inspired by the Garden of Vertex — a symbol of purity, simplicity, and ideal conditions — Vertex aims to deliver:
 
 ### 🌱 Seamless Developer Experience
 - **Zero friction onboarding**: Get started in minutes, not hours
@@ -28,9 +28,9 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - **Scale effortlessly**: Grows with your team and organization
 - **No vendor lock-in**: Open source with standard protocols
 
-## The Eden Suite Components
+## The Vertex Suite Components
 
-### Eden Vault - Zero-Knowledge Secrets Management
+### Vertex Vault - Zero-Knowledge Secrets Management
 
 **Purpose**: Secure storage and management of secrets, API keys, and sensitive configuration.
 
@@ -46,7 +46,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Secure CI/CD pipeline secrets
 - Team secret sharing with access controls
 
-### Eden Flow - Secure Workflow Automation
+### Vertex Flow - Secure Workflow Automation
 
 **Purpose**: Automate complex workflows with built-in security and monitoring.
 
@@ -62,7 +62,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Compliance and security automation
 - Cross-system data synchronization
 
-### Eden Task - Distributed Task Orchestration
+### Vertex Task - Distributed Task Orchestration
 
 **Purpose**: Scalable task execution for CI/CD pipelines and data processing.
 
@@ -78,7 +78,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Scheduled maintenance tasks
 - Batch job processing
 
-### Eden Monitor - Global Uptime & Performance Monitoring
+### Vertex Monitor - Global Uptime & Performance Monitoring
 
 **Purpose**: Privacy-conscious monitoring with global reach and intelligent alerting.
 
@@ -94,7 +94,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - SLA compliance tracking
 - Incident response automation
 
-### Eden Sync - Multi-Cloud Cost Optimization
+### Vertex Sync - Multi-Cloud Cost Optimization
 
 **Purpose**: Visibility and optimization across multiple cloud providers.
 
@@ -110,7 +110,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Budget management and alerts
 - Vendor cost comparison
 
-### Eden Insight - Privacy-First Analytics
+### Vertex Insight - Privacy-First Analytics
 
 **Purpose**: Real-time analytics dashboards without compromising user privacy.
 
@@ -126,7 +126,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Business intelligence dashboards
 - Custom metric tracking
 
-### Eden Hub - Service Discovery & Configuration Management
+### Vertex Hub - Service Discovery & Configuration Management
 
 **Purpose**: Centralized service discovery, configuration, and integration management.
 
@@ -142,46 +142,46 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Service health monitoring
 - API gateway and routing
 
-## The Eden CLI Experience
+## The Vertex CLI Experience
 
 ### Unified Command Interface
 
-The `eden` CLI provides a single entry point for all Eden components:
+The `vertex` CLI provides a single entry point for all Vertex components:
 
 ```bash
 # Secrets management
-eden vault set DATABASE_URL="postgresql://..."
-eden vault get DATABASE_URL
+vertex vault set DATABASE_URL="postgresql://..."
+vertex vault get DATABASE_URL
 
 # Workflow automation
-eden flow run deployment-pipeline
-eden flow status pipeline-123
+vertex flow run deployment-pipeline
+vertex flow status pipeline-123
 
 # Task orchestration
-eden task submit build-job.yaml
-eden task logs job-456
+vertex task submit build-job.yaml
+vertex task logs job-456
 
 # Monitoring
-eden monitor status
-eden monitor create check --url https://api.example.com
+vertex monitor status
+vertex monitor create check --url https://api.example.com
 
 # Multi-cloud sync
-eden sync costs --provider aws,gcp
-eden sync optimize --recommendations
+vertex sync costs --provider aws,gcp
+vertex sync optimize --recommendations
 
 # Analytics
-eden insight dashboard --name "API Performance"
-eden insight metrics --export csv
+vertex insight dashboard --name "API Performance"
+vertex insight metrics --export csv
 
 # Service discovery
-eden hub register service --name api --port 8080
-eden hub discover --service database
+vertex hub register service --name api --port 8080
+vertex hub discover --service database
 ```
 
 ### Context-Aware Intelligence
 
 The CLI automatically detects:
-- **Project Configuration**: Reads `.eden.yml` for project-specific settings
+- **Project Configuration**: Reads `.vertex.yml` for project-specific settings
 - **User Permissions**: Respects role-based access controls
 - **Environment Context**: Adapts behavior based on dev/staging/prod
 - **Service Dependencies**: Understands service relationships
@@ -200,43 +200,43 @@ The CLI automatically detects:
 1. **Initial Setup**
    ```bash
    # Install and authenticate
-   eden auth login --email developer@company.com
+   vertex auth login --email developer@company.com
    
    # Store project secrets
-   eden vault set DATABASE_URL="postgresql://localhost/myapp"
-   eden vault set API_KEY="sk-1234567890"
+   vertex vault set DATABASE_URL="postgresql://localhost/myapp"
+   vertex vault set API_KEY="sk-1234567890"
    ```
 
 2. **Development Workflow**
    ```bash
    # Create deployment workflow
-   eden flow create deployment --template ci-cd
+   vertex flow create deployment --template ci-cd
    
    # Run tests and deploy
-   eden task submit test-suite.yaml
-   eden flow run deployment --env staging
+   vertex task submit test-suite.yaml
+   vertex flow run deployment --env staging
    ```
 
 3. **Monitoring & Optimization**
    ```bash
    # Set up monitoring
-   eden monitor create --url https://staging.myapp.com
+   vertex monitor create --url https://staging.myapp.com
    
    # Check cloud costs
-   eden sync costs --this-month
-   eden sync optimize --auto-apply
+   vertex sync costs --this-month
+   vertex sync optimize --auto-apply
    ```
 
 ### Team Collaboration
 
 1. **Team Onboarding**
    - Admin invites team members through web UI
-   - New members authenticate via CLI: `eden auth login`
+   - New members authenticate via CLI: `vertex auth login`
    - Automatic access to team secrets and workflows
 
 2. **Shared Workflows**
    - Workflows stored in version control
-   - Team members can run: `eden flow run shared-deployment`
+   - Team members can run: `vertex flow run shared-deployment`
    - Centralized monitoring and alerting
 
 3. **Role-Based Access**
@@ -250,7 +250,7 @@ The CLI automatically detects:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Your Device   │    │  Eden Platform  │    │  Encrypted DB   │
+│   Your Device   │    │  Vertex Platform  │    │  Encrypted DB   │
 │                 │    │                 │    │                 │
 │ 🔑 Master Key   │────│ Encrypted    │────│ Encrypted    │
 │ 🔓 Decrypt      │    │    Data Only    │    │    Data Only    │
@@ -260,7 +260,7 @@ The CLI automatically detects:
 
 **Key Principles**:
 - **Client-Side Encryption**: All sensitive data encrypted before leaving your device
-- **Zero Server Knowledge**: Eden servers never see your unencrypted data
+- **Zero Server Knowledge**: Vertex servers never see your unencrypted data
 - **Key Derivation**: Master keys derived from your password using strong algorithms
 - **Perfect Forward Secrecy**: Each session uses unique encryption keys
 
@@ -275,8 +275,8 @@ The CLI automatically detects:
 
 ### For Individuals
 1. **Try the Quick Start**: [5-minute setup guide](../getting-started/quick-start.md)
-2. **Explore Components**: Start with Eden Vault for secrets management
-3. **Build Workflows**: Create your first automation with Eden Flow
+2. **Explore Components**: Start with Vertex Vault for secrets management
+3. **Build Workflows**: Create your first automation with Vertex Flow
 
 ### For Teams
 1. **Plan Architecture**: Review [Architecture Overview](../architecture/overview.md)
@@ -292,4 +292,4 @@ The CLI automatically detects:
 
 ---
 
-**Eden DevOps Suite** - Creating the perfect environment for modern development teams.
+**Vertex DevOps Suite** - Creating the perfect environment for modern development teams.

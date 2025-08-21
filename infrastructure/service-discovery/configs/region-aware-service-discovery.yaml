@@ -5,13 +5,13 @@
 global:
   provider: kubernetes
   service_mesh: istio
-  domain: eden.svc.cluster.local
+  domain: vertex.svc.cluster.local
   cross_region_enabled: true
   cross_region_protocol: https
   cross_region_port: 443
   tags:
     Environment: production
-    Service: eden
+    Service: vertex
     ManagedBy: terraform
 
 # Region definitions
@@ -22,7 +22,7 @@ regions:
     kubernetes_context: eks-us-east-1
     service_mesh_enabled: true
     service_mesh_gateway: istio-ingressgateway.istio-system.svc.cluster.local
-    dns_suffix: us-east-1.eden.svc.cluster.local
+    dns_suffix: us-east-1.vertex.svc.cluster.local
     
   - name: us-west-2
     provider: aws
@@ -30,12 +30,12 @@ regions:
     kubernetes_context: eks-us-west-2
     service_mesh_enabled: true
     service_mesh_gateway: istio-ingressgateway.istio-system.svc.cluster.local
-    dns_suffix: us-west-2.eden.svc.cluster.local
+    dns_suffix: us-west-2.vertex.svc.cluster.local
 
 # Service definitions
 services:
   - name: api-gateway
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -48,7 +48,7 @@ services:
       - us-west-2
     
   - name: vault-service
-    namespace: eden
+    namespace: vertex
     port: 8200
     protocol: https
     cross_region_discovery: true
@@ -61,7 +61,7 @@ services:
       - us-west-2
     
   - name: hub-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -74,7 +74,7 @@ services:
       - us-west-2
     
   - name: flow-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -87,7 +87,7 @@ services:
       - us-west-2
     
   - name: task-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -100,7 +100,7 @@ services:
       - us-west-2
     
   - name: monitor-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -113,7 +113,7 @@ services:
       - us-west-2
     
   - name: sync-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -126,7 +126,7 @@ services:
       - us-west-2
     
   - name: insight-service
-    namespace: eden
+    namespace: vertex
     port: 8080
     protocol: http
     cross_region_discovery: true
@@ -159,17 +159,17 @@ service_mesh:
               name: https
               protocol: HTTPS
             hosts:
-              - "*.eden.svc.cluster.local"
+              - "*.vertex.svc.cluster.local"
             tls:
               mode: SIMPLE
-              credentialName: eden-cross-region-cert
+              crvertextialName: vertex-cross-region-cert
     
     # Virtual services for cross-region communication
     virtual_services:
       - name: cross-region-services
-        namespace: eden
+        namespace: vertex
         hosts:
-          - "*.eden.svc.cluster.local"
+          - "*.vertex.svc.cluster.local"
         gateways:
           - istio-system/cross-region-gateway
         http:
@@ -178,15 +178,15 @@ service_mesh:
                   prefix: /
             route:
               - destination:
-                  host: "{{service}}.eden.svc.cluster.local"
+                  host: "{{service}}.vertex.svc.cluster.local"
                   port:
                     number: "{{port}}"
     
     # Destination rules for traffic policies
     destination_rules:
       - name: cross-region-services
-        namespace: eden
-        host: "*.eden.svc.cluster.local"
+        namespace: vertex
+        host: "*.vertex.svc.cluster.local"
         traffic_policy:
           load_balancer:
             simple: ROUND_ROBIN
@@ -222,21 +222,21 @@ dns:
           loadbalance
       }
       
-      eden.svc.cluster.local:53 {
+      vertex.svc.cluster.local:53 {
           errors
           cache 30
           forward . {{dns_server}}
           reload
       }
       
-      us-east-1.eden.svc.cluster.local:53 {
+      us-east-1.vertex.svc.cluster.local:53 {
           errors
           cache 30
           forward . {{us_east_1_dns_server}}
           reload
       }
       
-      us-west-2.eden.svc.cluster.local:53 {
+      us-west-2.vertex.svc.cluster.local:53 {
           errors
           cache 30
           forward . {{us_west_2_dns_server}}

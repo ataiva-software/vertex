@@ -1,12 +1,12 @@
-# Prometheus alerting rules for Eden DevOps Suite backup monitoring
+# Prometheus alerting rules for Vertex DevOps Suite backup monitoring
 # These rules define alerts for backup job failures, stale backups, and other backup-related issues
 
 groups:
-  - name: eden_backup_alerts
+  - name: vertex_backup_alerts
     rules:
       # Alert when backup job fails
       - alert: BackupJobFailed
-        expr: eden_backup_status{status=~"missing|stale|failed"} == 0
+        expr: vertex_backup_status{status=~"missing|stale|failed"} == 0
         for: 5m
         labels:
           severity: critical
@@ -14,11 +14,11 @@ groups:
         annotations:
           summary: "Backup job failed: {{ $labels.type }}"
           description: "The {{ $labels.type }} backup job has failed or is missing. Check the backup logs for details."
-          runbook_url: "https://wiki.example.com/eden/runbooks/backup-failures"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/backup-failures"
 
       # Alert when backup is too old
       - alert: BackupTooOld
-        expr: time() - eden_backup_age_seconds > 86400  # 24 hours
+        expr: time() - vertex_backup_age_seconds > 86400  # 24 hours
         for: 1h
         labels:
           severity: critical
@@ -26,11 +26,11 @@ groups:
         annotations:
           summary: "Backup too old: {{ $labels.type }}"
           description: "The {{ $labels.type }} backup is more than 24 hours old. Last backup: {{ $labels.file }}"
-          runbook_url: "https://wiki.example.com/eden/runbooks/stale-backups"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/stale-backups"
 
       # Alert when backup size changes significantly
       - alert: BackupSizeAbnormal
-        expr: abs(eden_backup_size_bytes / eden_backup_size_bytes offset 1d - 1) > 0.5  # 50% change
+        expr: abs(vertex_backup_size_bytes / vertex_backup_size_bytes offset 1d - 1) > 0.5  # 50% change
         for: 5m
         labels:
           severity: warning
@@ -38,11 +38,11 @@ groups:
         annotations:
           summary: "Abnormal backup size: {{ $labels.type }}"
           description: "The {{ $labels.type }} backup size has changed by more than 50% compared to yesterday."
-          runbook_url: "https://wiki.example.com/eden/runbooks/abnormal-backup-size"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/abnormal-backup-size"
 
       # Alert when backup disk usage is high
       - alert: BackupDiskUsageHigh
-        expr: eden_backup_disk_usage_percent > 80
+        expr: vertex_backup_disk_usage_percent > 80
         for: 30m
         labels:
           severity: warning
@@ -50,11 +50,11 @@ groups:
         annotations:
           summary: "Backup disk usage high: {{ $value }}%"
           description: "The backup disk usage is {{ $value }}%. Consider cleaning up old backups or increasing disk size."
-          runbook_url: "https://wiki.example.com/eden/runbooks/backup-disk-full"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/backup-disk-full"
 
       # Alert when backup disk usage is critical
       - alert: BackupDiskUsageCritical
-        expr: eden_backup_disk_usage_percent > 90
+        expr: vertex_backup_disk_usage_percent > 90
         for: 10m
         labels:
           severity: critical
@@ -62,11 +62,11 @@ groups:
         annotations:
           summary: "Backup disk usage critical: {{ $value }}%"
           description: "The backup disk usage is {{ $value }}%. Immediate action required to prevent backup failures."
-          runbook_url: "https://wiki.example.com/eden/runbooks/backup-disk-full"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/backup-disk-full"
 
       # Alert when backup verification fails
       - alert: BackupVerificationFailed
-        expr: eden_backup_verification_status == 0
+        expr: vertex_backup_verification_status == 0
         for: 5m
         labels:
           severity: critical
@@ -74,11 +74,11 @@ groups:
         annotations:
           summary: "Backup verification failed: {{ $labels.type }}"
           description: "The verification of {{ $labels.type }} backup has failed. The backup may be corrupted."
-          runbook_url: "https://wiki.example.com/eden/runbooks/backup-verification-failures"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/backup-verification-failures"
 
       # Alert when replication lag is high
       - alert: ReplicationLagHigh
-        expr: eden_replication_lag_seconds > 300  # 5 minutes
+        expr: vertex_replication_lag_seconds > 300  # 5 minutes
         for: 15m
         labels:
           severity: warning
@@ -86,11 +86,11 @@ groups:
         annotations:
           summary: "Replication lag high: {{ $labels.database }}"
           description: "The replication lag for {{ $labels.database }} is {{ $value }} seconds, which is above the threshold of 300 seconds."
-          runbook_url: "https://wiki.example.com/eden/runbooks/replication-lag"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/replication-lag"
 
       # Alert when replication lag is critical
       - alert: ReplicationLagCritical
-        expr: eden_replication_lag_seconds > 600  # 10 minutes
+        expr: vertex_replication_lag_seconds > 600  # 10 minutes
         for: 5m
         labels:
           severity: critical
@@ -98,7 +98,7 @@ groups:
         annotations:
           summary: "Replication lag critical: {{ $labels.database }}"
           description: "The replication lag for {{ $labels.database }} is {{ $value }} seconds, which is above the critical threshold of 600 seconds."
-          runbook_url: "https://wiki.example.com/eden/runbooks/replication-lag"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/replication-lag"
 
       # Alert when backup monitoring service is down
       - alert: BackupMonitoringDown
@@ -110,22 +110,22 @@ groups:
         annotations:
           summary: "Backup monitoring service is down"
           description: "The backup monitoring service has been down for more than 10 minutes. Backup status cannot be determined."
-          runbook_url: "https://wiki.example.com/eden/runbooks/monitoring-failures"
+          runbook_url: "https://wiki.example.com/vertex/runbooks/monitoring-failures"
 
-  - name: eden_backup_recording_rules
+  - name: vertex_backup_recording_rules
     rules:
       # Record the success rate of backup jobs over time
-      - record: eden_backup_success_rate_1d
-        expr: sum(rate(eden_backup_total{status="success"}[1d])) / sum(rate(eden_backup_total[1d]))
+      - record: vertex_backup_success_rate_1d
+        expr: sum(rate(vertex_backup_total{status="success"}[1d])) / sum(rate(vertex_backup_total[1d]))
 
       # Record the average backup size by type
-      - record: eden_backup_size_bytes_avg_by_type
-        expr: avg by (type) (eden_backup_size_bytes)
+      - record: vertex_backup_size_bytes_avg_by_type
+        expr: avg by (type) (vertex_backup_size_bytes)
 
       # Record the maximum backup age by type
-      - record: eden_backup_age_seconds_max_by_type
-        expr: max by (type) (eden_backup_age_seconds)
+      - record: vertex_backup_age_seconds_max_by_type
+        expr: max by (type) (vertex_backup_age_seconds)
 
       # Record the total backup storage used
-      - record: eden_backup_storage_used_bytes_total
-        expr: sum(eden_backup_size_bytes)
+      - record: vertex_backup_storage_used_bytes_total
+        expr: sum(vertex_backup_size_bytes)

@@ -1,4 +1,4 @@
-# Eden DevOps Suite
+# Vertex DevOps Suite
 
 ![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
@@ -9,15 +9,15 @@
 
 A revolutionary single-binary DevOps platform built with Go, designed to unify your development workflow through integrated microservices, advanced analytics, multi-cloud orchestration, and intelligent automation.
 
-## What is Eden?
+## What is Vertex?
 
-Eden creates a _perfect, pristine_ environment for developers and operations teams by combining secrets management, workflow automation, task orchestration, monitoring, analytics, and multi-cloud management into a single, powerful 19MB binary.
+Vertex creates a _perfect, pristine_ environment for developers and operations teams by combining secrets management, workflow automation, task orchestration, monitoring, analytics, and multi-cloud management into a single, powerful 19MB binary.
 
-**Current Status**: Production Ready - Complete Go implementation with all services fully functional. The Eden DevOps Suite is now production-ready with comprehensive testing, single-binary deployment, and automated operations.
+**Current Status**: Production Ready - Complete Go implementation with all services fully functional. The Vertex DevOps Suite is now production-ready with comprehensive testing, single-binary deployment, and automated operations.
 
 ## Revolutionary Single-Binary Architecture
 
-Unlike traditional DevOps stacks that require dozens of separate tools, Eden delivers everything in one binary:
+Unlike traditional DevOps stacks that require dozens of separate tools, Vertex delivers everything in one binary:
 
 ```bash
 # Traditional DevOps Stack
@@ -27,26 +27,26 @@ prometheus &             # 100MB+ memory
 grafana &                # 80MB+ memory
 # ... 10+ more services
 
-# Eden DevOps Suite
-./eden server            # 19MB binary, all services included
+# Vertex DevOps Suite
+./vertex server            # 19MB binary, all services included
 ```
 
 ### Core Services
 
-- **Eden Vault** (Port 8080) - Zero-knowledge secrets management with AES-256-GCM encryption
-- **Eden Flow** (Port 8081) - Visual workflow automation with event-driven architecture
-- **Eden Task** (Port 8082) - Distributed task orchestration with Redis queuing
-- **Eden Monitor** (Port 8083) - Real-time monitoring with AI-powered anomaly detection
-- **Eden Sync** (Port 8084) - Multi-cloud data synchronization and cost optimization
-- **Eden Insight** (Port 8085) - Privacy-first analytics with predictive intelligence
-- **Eden Hub** (Port 8086) - Service discovery and integration hub
-- **Eden CLI** - Comprehensive command-line interface for all operations
+- **Vertex Vault** (Port 8080) - Zero-knowledge secrets management with AES-256-GCM encryption
+- **Vertex Flow** (Port 8081) - Visual workflow automation with event-driven architecture
+- **Vertex Task** (Port 8082) - Distributed task orchestration with Redis queuing
+- **Vertex Monitor** (Port 8083) - Real-time monitoring with AI-powered anomaly detection
+- **Vertex Sync** (Port 8084) - Multi-cloud data synchronization and cost optimization
+- **Vertex Insight** (Port 8085) - Privacy-first analytics with predictive intelligence
+- **Vertex Hub** (Port 8086) - Service discovery and integration hub
+- **Vertex CLI** - Comprehensive command-line interface for all operations
 
 ## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│                     Eden Binary (19MB)                             │
+│                     Vertex Binary (19MB)                             │
 ├────────────────────────────────────────────────────────────────────┤
 │ API Gateway │ Vault │ Flow │ Task │ Monitor │ Sync │ Insight │ Hub │
 │   Port 8000 │ 8080  │ 8081 │ 8082 │  8083   │ 8084 │  8085   │8086 │
@@ -65,45 +65,45 @@ grafana &                # 80MB+ memory
 
 **Linux (x64)**
 ```bash
-curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-linux-amd64
-chmod +x eden
-sudo mv eden /usr/local/bin/
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-linux-amd64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
 ```
 
 **Linux (ARM64)**
 ```bash
-curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-linux-arm64
-chmod +x eden
-sudo mv eden /usr/local/bin/
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-linux-arm64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
 ```
 
 **macOS (Intel)**
 ```bash
-curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-darwin-amd64
-chmod +x eden
-sudo mv eden /usr/local/bin/
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-darwin-amd64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
 ```
 
 **macOS (Apple Silicon)**
 ```bash
-curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-darwin-arm64
-chmod +x eden
-sudo mv eden /usr/local/bin/
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-darwin-arm64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
 ```
 
 **Windows**
-Download the latest `eden-windows-amd64.exe` from the [releases page](https://github.com/ataiva-software/eden/releases/latest) and add to your PATH.
+Download the latest `vertex-windows-amd64.exe` from the [releases page](https://github.com/ataiva-software/vertex/releases/latest) and add to your PATH.
 
 ### Install with Go
 
 ```bash
-go install github.com/ataiva-software/eden/cmd/eden@latest
+go install github.com/ataiva-software/vertex/cmd/vertex@latest
 ```
 
 ### Verify Installation
 
 ```bash
-eden --version
+vertex --version
 ```
 
 ## Quick Start
@@ -116,32 +116,32 @@ eden --version
 ### 5-Minute Setup
 
 ```bash
-# 1. Download Eden (see Installation section above)
+# 1. Download Vertex (see Installation section above)
 
 # 2. Start infrastructure dependencies
 docker run -d --name postgres \
   -e POSTGRES_PASSWORD=secret \
-  -e POSTGRES_USER=eden \
-  -e POSTGRES_DB=eden \
+  -e POSTGRES_USER=vertex \
+  -e POSTGRES_DB=vertex \
   -p 5432:5432 postgres:15
 
 docker run -d --name redis \
   -p 6379:6379 redis:7
 
-# 3. Start all Eden services
-eden server
+# 3. Start all Vertex services
+vertex server
 
 # 4. Try the CLI
-eden status
-eden vault store my-secret "hello world"
-eden vault get my-secret
+vertex status
+vertex vault store my-secret "hello world"
+vertex vault get my-secret
 ```
 
 ### Alternative: Docker Compose
 
 ```bash
 # Download docker-compose.yml
-curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/eden/main/docker-compose.yml
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/vertex/main/docker-compose.yml
 
 # Start everything
 docker-compose up -d
@@ -152,7 +152,7 @@ docker-compose up -d
 ### 1. All Services Mode (Production)
 
 ```bash
-eden server
+vertex server
 # Runs all 8 services concurrently on ports 8000-8086
 # Shared resources for maximum efficiency
 ```
@@ -160,24 +160,24 @@ eden server
 ### 2. Single Service Mode (Development)
 
 ```bash
-eden service vault --port 8080
-eden service flow --port 8081
+vertex service vault --port 8080
+vertex service flow --port 8081
 # Run individual services for development/testing
 ```
 
 ### 3. CLI Mode (Operations)
 
 ```bash
-eden vault list
-eden flow run deploy-prod
-eden monitor metrics --live
+vertex vault list
+vertex flow run deploy-prod
+vertex monitor metrics --live
 # Direct CLI operations without running services
 ```
 
 ### 4. Container Mode (Cloud)
 
 ```bash
-docker run -p 8000-8086:8000-8086 eden:latest server
+docker run -p 8000-8086:8000-8086 vertex:latest server
 # Containerized deployment with health checks
 ```
 
@@ -187,8 +187,8 @@ docker run -p 8000-8086:8000-8086 eden:latest server
 
 ```bash
 # Clone repository
-git clone https://github.com/ataiva-software/eden.git
-cd eden
+git clone https://github.com/ataiva-software/vertex.git
+cd vertex
 
 # Install dependencies
 go mod tidy
@@ -197,15 +197,15 @@ go mod tidy
 make build
 
 # Run services
-./bin/eden server
+./bin/vertex server
 ```
 
 ### Project Structure
 
 ```
-eden/
+vertex/
 ├── cmd/
-│   └── eden/              # Single binary main
+│   └── vertex/              # Single binary main
 ├── internal/              # Service implementations
 │   ├── api-gateway/       # API Gateway service
 │   ├── vault/             # Secrets management
@@ -229,7 +229,7 @@ eden/
 ├── docs/                  # Documentation
 ├── scripts/               # Build and deployment scripts
 └── bin/                   # Built binaries
-    └── eden               # Single binary (19MB)
+    └── vertex               # Single binary (19MB)
 ```
 
 ### Technology Stack
@@ -276,16 +276,16 @@ make build
 make test
 
 # Run specific service for development
-./bin/eden service vault --port 8080
+./bin/vertex service vault --port 8080
 
 # Use CLI for testing
-./bin/eden vault store test-key "test-value"
-./bin/eden vault get test-key
+./bin/vertex vault store test-key "test-value"
+./bin/vertex vault get test-key
 ```
 
 ## Testing
 
-Eden follows Test-Driven Development (TDD) with comprehensive test coverage:
+Vertex follows Test-Driven Development (TDD) with comprehensive test coverage:
 
 ```bash
 # Run all tests
@@ -331,7 +331,7 @@ go test -bench=. ./...
 
 ## Multi-Cloud Support
 
-Eden natively supports multiple cloud providers:
+Vertex natively supports multiple cloud providers:
 
 - **AWS** - EC2, S3, RDS, Lambda, EKS
 - **Google Cloud** - GCE, Cloud Storage, Cloud SQL, GKE
@@ -343,7 +343,7 @@ Eden natively supports multiple cloud providers:
 
 ### Resource Usage
 
-| Metric | Traditional Stack | Eden Suite | Improvement |
+| Metric | Traditional Stack | Vertex Suite | Improvement |
 |--------|------------------|------------|-------------|
 | **Binary Size** | 147MB (9 binaries) | 19MB (1 binary) | **87% smaller** |
 | **Memory Usage** | 800MB average | 320MB average | **60% reduction** |
@@ -372,11 +372,11 @@ docker-compose -f docker-compose-single.yml up -d
 
 # Manual Docker run
 docker run -d \
-  --name eden \
+  --name vertex \
   -p 8000-8086:8000-8086 \
   -e DB_HOST=postgres \
   -e DB_PASSWORD=secret \
-  eden:latest server
+  vertex:latest server
 ```
 
 ### Kubernetes Deployment
@@ -386,7 +386,7 @@ docker run -d \
 kubectl apply -f kubernetes/
 
 # Or use Helm (when available)
-helm install eden ./charts/eden
+helm install vertex ./charts/vertex
 ```
 
 ## Documentation
@@ -422,8 +422,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone repository
-git clone https://github.com/ataiva-software/eden.git
-cd eden
+git clone https://github.com/ataiva-software/vertex.git
+cd vertex
 
 # Install dependencies
 go mod tidy
@@ -436,7 +436,7 @@ make build
 make test
 
 # Run services
-./bin/eden server
+./bin/vertex server
 ```
 
 ### Code Standards
@@ -453,7 +453,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/ataiva-software/eden/issues)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/ataiva-software/vertex/issues)
 - **Documentation**: Complete guides in the `docs/` directory
 - **Email Support**: [support@ataiva.com](mailto:support@ataiva.com)
 
@@ -484,7 +484,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Kubernetes** - Production-ready manifests and Helm charts
 - **CI/CD** - GitHub Actions for testing, security, and deployment
 
-## Why Eden?
+## Why Vertex?
 
 ### For Startups
 
@@ -506,6 +506,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Eden DevOps Suite** - Created by [Ataiva](https://ataiva.com)
+**Vertex DevOps Suite** - Created by [Ataiva](https://ataiva.com)
 
-_Ready to revolutionize your DevOps workflow? Download Eden and experience the future of unified DevOps platforms._
+_Ready to revolutionize your DevOps workflow? Download Vertex and experience the future of unified DevOps platforms._

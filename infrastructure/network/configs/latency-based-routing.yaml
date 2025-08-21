@@ -4,15 +4,15 @@
 # Global settings
 global:
   provider: aws-global-accelerator
-  name: eden-global-accelerator
+  name: vertex-global-accelerator
   enabled: true
   ip_address_type: IPV4
   flow_logs_enabled: true
-  flow_logs_s3_bucket: eden-flow-logs
+  flow_logs_s3_bucket: vertex-flow-logs
   flow_logs_s3_prefix: global-accelerator/
   tags:
     Environment: production
-    Service: eden
+    Service: vertex
     ManagedBy: terraform
 
 # Listener configurations
@@ -45,7 +45,7 @@ endpoint_groups:
     traffic_dial_percentage: 100
     endpoints:
       - name: api-gateway-us-east-1
-        endpoint_id: eden-api-alb-us-east-1
+        endpoint_id: vertex-api-alb-us-east-1
         endpoint_type: ALB
         weight: 100
         preserve_client_ip: true
@@ -53,7 +53,7 @@ endpoint_groups:
         health_check_path: /health
       
       - name: web-ui-us-east-1
-        endpoint_id: eden-web-alb-us-east-1
+        endpoint_id: vertex-web-alb-us-east-1
         endpoint_type: ALB
         weight: 100
         preserve_client_ip: true
@@ -70,7 +70,7 @@ endpoint_groups:
     traffic_dial_percentage: 100
     endpoints:
       - name: api-gateway-us-west-2
-        endpoint_id: eden-api-alb-us-west-2
+        endpoint_id: vertex-api-alb-us-west-2
         endpoint_type: ALB
         weight: 100
         preserve_client_ip: true
@@ -78,7 +78,7 @@ endpoint_groups:
         health_check_path: /health
       
       - name: web-ui-us-west-2
-        endpoint_id: eden-web-alb-us-west-2
+        endpoint_id: vertex-web-alb-us-west-2
         endpoint_type: ALB
         weight: 100
         preserve_client_ip: true
@@ -126,14 +126,14 @@ traffic_management:
 
 # DNS configuration for Global Accelerator
 dns:
-  domain: eden.example.com
+  domain: vertex.example.com
   records:
-    - name: api-global.eden.example.com
+    - name: api-global.vertex.example.com
       type: A
       alias: true
       ttl: 60
     
-    - name: web-global.eden.example.com
+    - name: web-global.vertex.example.com
       type: A
       alias: true
       ttl: 60

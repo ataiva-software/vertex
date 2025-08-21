@@ -3,7 +3,7 @@
 global:
   environment: production
   image:
-    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eden
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/vertex
     tag: latest
     pullPolicy: Always
   
@@ -18,7 +18,7 @@ global:
   
   # Database settings for AWS RDS
   database:
-    host: eden-postgres.${AWS_RDS_ENDPOINT}
+    host: vertex-postgres.${AWS_RDS_ENDPOINT}
     port: 5432
     user: postgres
     # Password should be provided via external secrets or parameter store
@@ -48,7 +48,7 @@ redis:
   enabled: false
   # External Redis configuration
   external:
-    host: eden-redis.${AWS_ELASTICACHE_ENDPOINT}
+    host: vertex-redis.${AWS_ELASTICACHE_ENDPOINT}
     port: 6379
 
 # Use AWS Managed Prometheus
@@ -160,7 +160,7 @@ webUi:
   enabled: true
   replicaCount: 2
   image:
-    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eden-web
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/vertex-web
     tag: latest
     pullPolicy: Always
   service:
@@ -183,9 +183,9 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
-    external-dns.alpha.kubernetes.io/hostname: eden.example.com
+    external-dns.alpha.kubernetes.io/hostname: vertex.example.com
   hosts:
-    - host: eden.example.com
+    - host: vertex.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -196,6 +196,6 @@ ingress:
           service: api-gateway
           port: 8080
   tls:
-    - secretName: eden-tls
+    - secretName: vertex-tls
       hosts:
-        - eden.example.com
+        - vertex.example.com

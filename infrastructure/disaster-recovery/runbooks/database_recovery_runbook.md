@@ -2,13 +2,13 @@
 
 ## Overview
 
-This runbook provides step-by-step procedures for recovering PostgreSQL and Redis databases in the Eden DevOps Suite. It covers various recovery scenarios including complete database recovery, point-in-time recovery, and handling of corrupted data.
+This runbook provides step-by-step procedures for recovering PostgreSQL and Redis databases in the Vertex DevOps Suite. It covers various recovery scenarios including complete database recovery, point-in-time recovery, and handling of corrupted data.
 
 ## Prerequisites
 
 - Access to backup storage location
-- Database administrator credentials
-- Access to the Eden DevOps Suite infrastructure
+- Database administrator crvertextials
+- Access to the Vertex DevOps Suite infrastructure
 - Encryption keys for backup decryption (if applicable)
 
 ## PostgreSQL Recovery Procedures
@@ -23,21 +23,21 @@ Use this procedure when a database is completely lost or corrupted and needs to 
 
    ```bash
    # List available backups for the database
-   find /var/backups/eden/postgres -name "eden_vault_*.sql.gz*" | sort -r | head -5
+   find /var/backups/vertex/postgres -name "vertex_vault_*.sql.gz*" | sort -r | head -5
    ```
 
 2. **Stop applications accessing the database**
 
    ```bash
    # Scale down applications to prevent data access during recovery
-   kubectl scale deployment vault-service --replicas=0 -n eden
+   kubectl scale deployment vault-service --replicas=0 -n vertex
    ```
 
 3. **Restore the database**
 
    ```bash
    # For a specific database
-   ./infrastructure/backup/scripts/postgres_restore.sh --db=eden_vault
+   ./infrastructure/backup/scripts/postgres_restore.sh --db=vertex_vault
    
    # For all databases
    ./infrastructure/backup/scripts/postgres_restore.sh
@@ -47,23 +47,23 @@ Use this procedure when a database is completely lost or corrupted and needs to 
 
    ```bash
    # Connect to the database and run integrity checks
-   PGPASSWORD=postgres psql -h postgres -U postgres -d eden_vault -c "SELECT count(*) FROM pg_catalog.pg_tables;"
+   PGPASSWORD=postgres psql -h postgres -U postgres -d vertex_vault -c "SELECT count(*) FROM pg_catalog.pg_tables;"
    
    # Check for specific tables
-   PGPASSWORD=postgres psql -h postgres -U postgres -d eden_vault -c "SELECT count(*) FROM secrets;"
+   PGPASSWORD=postgres psql -h postgres -U postgres -d vertex_vault -c "SELECT count(*) FROM secrets;"
    ```
 
 5. **Restart applications**
 
    ```bash
    # Scale up applications
-   kubectl scale deployment vault-service --replicas=3 -n eden
+   kubectl scale deployment vault-service --replicas=3 -n vertex
    ```
 
 6. **Monitor application logs for errors**
 
    ```bash
-   kubectl logs -f deployment/vault-service -n eden
+   kubectl logs -f deployment/vault-service -n vertex
    ```
 
 ### Scenario 2: Point-in-Time Recovery
@@ -80,33 +80,33 @@ Use this procedure when you need to recover a database to a specific point in ti
 
    ```bash
    # Scale down applications to prevent data access during recovery
-   kubectl scale deployment vault-service --replicas=0 -n eden
+   kubectl scale deployment vault-service --replicas=0 -n vertex
    ```
 
 3. **Perform point-in-time recovery**
 
    ```bash
-   ./infrastructure/backup/scripts/postgres_restore.sh --db=eden_vault --point-in-time="2025-06-05 14:30:00"
+   ./infrastructure/backup/scripts/postgres_restore.sh --db=vertex_vault --point-in-time="2025-06-05 14:30:00"
    ```
 
 4. **Verify database state at the recovered point**
 
    ```bash
    # Connect to the database and verify data
-   PGPASSWORD=postgres psql -h postgres -U postgres -d eden_vault -c "SELECT created_at, count(*) FROM audit_log GROUP BY created_at ORDER BY created_at DESC LIMIT 10;"
+   PGPASSWORD=postgres psql -h postgres -U postgres -d vertex_vault -c "SELECT created_at, count(*) FROM audit_log GROUP BY created_at ORDER BY created_at DESC LIMIT 10;"
    ```
 
 5. **Restart applications**
 
    ```bash
    # Scale up applications
-   kubectl scale deployment vault-service --replicas=3 -n eden
+   kubectl scale deployment vault-service --replicas=3 -n vertex
    ```
 
 6. **Monitor application logs for errors**
 
    ```bash
-   kubectl logs -f deployment/vault-service -n eden
+   kubectl logs -f deployment/vault-service -n vertex
    ```
 
 ### Scenario 3: Recovery to a Different Database
@@ -118,22 +118,22 @@ Use this procedure when you want to restore a database to a different name, such
 1. **Restore to a different database name**
 
    ```bash
-   ./infrastructure/backup/scripts/postgres_restore.sh --db=eden_vault --to-db=eden_vault_verify
+   ./infrastructure/backup/scripts/postgres_restore.sh --db=vertex_vault --to-db=vertex_vault_verify
    ```
 
 2. **Verify the restored database**
 
    ```bash
-   PGPASSWORD=postgres psql -h postgres -U postgres -d eden_vault_verify -c "SELECT count(*) FROM secrets;"
+   PGPASSWORD=postgres psql -h postgres -U postgres -d vertex_vault_verify -c "SELECT count(*) FROM secrets;"
    ```
 
 3. **Compare with the original database (if available)**
 
    ```bash
    PGPASSWORD=postgres psql -h postgres -U postgres -c "
-   SELECT 'original' as source, count(*) FROM eden_vault.secrets
+   SELECT 'original' as source, count(*) FROM vertex_vault.secrets
    UNION ALL
-   SELECT 'restored' as source, count(*) FROM eden_vault_verify.secrets;
+   SELECT 'restored' as source, count(*) FROM vertex_vault_verify.secrets;
    "
    ```
 
@@ -149,15 +149,15 @@ Use this procedure when Redis data is lost or corrupted and needs to be restored
 
    ```bash
    # List available RDB backups
-   find /var/backups/eden/redis -name "redis_rdb_*.rdb.gz*" | sort -r | head -5
+   find /var/backups/vertex/redis -name "redis_rdb_*.rdb.gz*" | sort -r | head -5
    ```
 
 2. **Stop applications accessing Redis**
 
    ```bash
    # Scale down applications to prevent data access during recovery
-   kubectl scale deployment api-gateway --replicas=0 -n eden
-   kubectl scale deployment task-service --replicas=0 -n eden
+   kubectl scale deployment api-gateway --replicas=0 -n vertex
+   kubectl scale deployment task-service --replicas=0 -n vertex
    # Scale down other services as needed
    ```
 
@@ -179,15 +179,15 @@ Use this procedure when Redis data is lost or corrupted and needs to be restored
 
    ```bash
    # Scale up applications
-   kubectl scale deployment api-gateway --replicas=3 -n eden
-   kubectl scale deployment task-service --replicas=3 -n eden
+   kubectl scale deployment api-gateway --replicas=3 -n vertex
+   kubectl scale deployment task-service --replicas=3 -n vertex
    # Scale up other services as needed
    ```
 
 6. **Monitor application logs for errors**
 
    ```bash
-   kubectl logs -f deployment/api-gateway -n eden
+   kubectl logs -f deployment/api-gateway -n vertex
    ```
 
 ### Scenario 2: AOF Recovery
@@ -200,15 +200,15 @@ Use this procedure when you need to recover Redis data with the highest level of
 
    ```bash
    # List available AOF backups
-   find /var/backups/eden/redis -name "redis_aof_*.aof.gz*" | sort -r | head -5
+   find /var/backups/vertex/redis -name "redis_aof_*.aof.gz*" | sort -r | head -5
    ```
 
 2. **Stop applications accessing Redis**
 
    ```bash
    # Scale down applications to prevent data access during recovery
-   kubectl scale deployment api-gateway --replicas=0 -n eden
-   kubectl scale deployment task-service --replicas=0 -n eden
+   kubectl scale deployment api-gateway --replicas=0 -n vertex
+   kubectl scale deployment task-service --replicas=0 -n vertex
    # Scale down other services as needed
    ```
 
@@ -230,15 +230,15 @@ Use this procedure when you need to recover Redis data with the highest level of
 
    ```bash
    # Scale up applications
-   kubectl scale deployment api-gateway --replicas=3 -n eden
-   kubectl scale deployment task-service --replicas=3 -n eden
+   kubectl scale deployment api-gateway --replicas=3 -n vertex
+   kubectl scale deployment task-service --replicas=3 -n vertex
    # Scale up other services as needed
    ```
 
 6. **Monitor application logs for errors**
 
    ```bash
-   kubectl logs -f deployment/api-gateway -n eden
+   kubectl logs -f deployment/api-gateway -n vertex
    ```
 
 ## Troubleshooting
@@ -250,7 +250,7 @@ Use this procedure when you need to recover Redis data with the highest level of
 **Solution:**
 1. Try an older backup file:
    ```bash
-   ./infrastructure/backup/scripts/postgres_restore.sh --db=eden_vault --backup-file=/var/backups/eden/postgres/eden_vault_20250605_010000.sql.gz
+   ./infrastructure/backup/scripts/postgres_restore.sh --db=vertex_vault --backup-file=/var/backups/vertex/postgres/vertex_vault_20250605_010000.sql.gz
    ```
 
 2. Verify backup integrity:
@@ -268,7 +268,7 @@ Use this procedure when you need to recover Redis data with the highest level of
 
 2. Clean up temporary files:
    ```bash
-   find /tmp -name "eden_*" -type d -mtime +1 -exec rm -rf {} \;
+   find /tmp -name "vertex_*" -type d -mtime +1 -exec rm -rf {} \;
    ```
 
 3. Expand disk if necessary:
@@ -282,17 +282,17 @@ Use this procedure when you need to recover Redis data with the highest level of
 **Solution:**
 1. Check database logs:
    ```bash
-   docker logs eden-postgres
+   docker logs vertex-postgres
    ```
 
 2. Verify database configuration:
    ```bash
-   docker exec eden-postgres cat /var/lib/postgresql/data/postgresql.conf | grep listen
+   docker exec vertex-postgres cat /var/lib/postgresql/data/postgresql.conf | grep listen
    ```
 
 3. Check for permission issues:
    ```bash
-   docker exec eden-postgres ls -la /var/lib/postgresql/data
+   docker exec vertex-postgres ls -la /var/lib/postgresql/data
    ```
 
 ## Post-Recovery Tasks
@@ -323,4 +323,4 @@ Use this procedure when you need to recover Redis data with the highest level of
 
 - [PostgreSQL Documentation on Backup and Restore](https://www.postgresql.org/docs/current/backup.html)
 - [Redis Documentation on Persistence](https://redis.io/topics/persistence)
-- [Eden DevOps Suite Disaster Recovery Plan](../disaster_recovery_plan.md)
+- [Vertex DevOps Suite Disaster Recovery Plan](../disaster_recovery_plan.md)

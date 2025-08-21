@@ -12,16 +12,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ataiva-software/eden/internal/api-gateway"
-	"github.com/ataiva-software/eden/internal/flow"
-	"github.com/ataiva-software/eden/internal/hub"
-	"github.com/ataiva-software/eden/internal/insight"
-	"github.com/ataiva-software/eden/internal/monitor"
-	syncservice "github.com/ataiva-software/eden/internal/sync"
-	"github.com/ataiva-software/eden/internal/task"
-	"github.com/ataiva-software/eden/internal/vault"
-	"github.com/ataiva-software/eden/pkg/core"
-	"github.com/ataiva-software/eden/pkg/database"
+	"github.com/ataiva-software/vertex/internal/api-gateway"
+	"github.com/ataiva-software/vertex/internal/flow"
+	"github.com/ataiva-software/vertex/internal/hub"
+	"github.com/ataiva-software/vertex/internal/insight"
+	"github.com/ataiva-software/vertex/internal/monitor"
+	syncservice "github.com/ataiva-software/vertex/internal/sync"
+	"github.com/ataiva-software/vertex/internal/task"
+	"github.com/ataiva-software/vertex/internal/vault"
+	"github.com/ataiva-software/vertex/pkg/core"
+	"github.com/ataiva-software/vertex/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
@@ -40,16 +40,16 @@ var (
 
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:   "eden",
-		Short: "Eden DevOps Suite - All-in-One Binary",
+		Use:   "vertex",
+		Short: "Vertex DevOps Suite - All-in-One Binary",
 		Long:  "A comprehensive DevOps platform with secrets management, workflow automation, and more.",
 	}
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&dbHost, "db-host", getEnv("DB_HOST", "localhost"), "Database host")
 	rootCmd.PersistentFlags().IntVar(&dbPort, "db-port", 5432, "Database port")
-	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", getEnv("DB_NAME", "eden"), "Database name")
-	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", getEnv("DB_USER", "eden"), "Database user")
+	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", getEnv("DB_NAME", "vertex"), "Database name")
+	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", getEnv("DB_USER", "vertex"), "Database user")
 	rootCmd.PersistentFlags().StringVar(&dbPassword, "db-password", getEnv("DB_PASSWORD", "secret"), "Database password")
 	rootCmd.PersistentFlags().StringVar(&dbSSLMode, "db-ssl-mode", getEnv("DB_SSL_MODE", "disable"), "Database SSL mode")
 	rootCmd.PersistentFlags().IntVar(&basePort, "base-port", 8000, "Base port for services")
@@ -75,8 +75,8 @@ func main() {
 func serverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "Run all Eden services",
-		Long:  "Start all Eden services in a single process",
+		Short: "Run all Vertex services",
+		Long:  "Start all Vertex services in a single process",
 		Run:   runAllServices,
 	}
 
@@ -90,7 +90,7 @@ func serviceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "service [service-name]",
 		Short: "Run a specific service",
-		Long:  "Run a single Eden service",
+		Long:  "Run a single Vertex service",
 		Args:  cobra.ExactArgs(1),
 		Run:   runSingleService,
 	}
@@ -101,7 +101,7 @@ func serviceCmd() *cobra.Command {
 }
 
 func runAllServices(cmd *cobra.Command, args []string) {
-	log.Println("🚀 Starting Eden DevOps Suite - All Services")
+	log.Println("🚀 Starting Vertex DevOps Suite - All Services")
 	
 	// Database configuration
 	dbConfig := &database.Config{
@@ -147,7 +147,7 @@ func runAllServices(cmd *cobra.Command, args []string) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("🛑 Shutting down Eden DevOps Suite...")
+	log.Println("🛑 Shutting down Vertex DevOps Suite...")
 	cancel()
 	
 	// Wait for all services to stop
@@ -173,7 +173,7 @@ func runSingleService(cmd *cobra.Command, args []string) {
 		port = getDefaultPort(serviceName)
 	}
 
-	log.Printf("🚀 Starting Eden %s service on port %d", strings.Title(serviceName), port)
+	log.Printf("🚀 Starting Vertex %s service on port %d", strings.Title(serviceName), port)
 
 	// Database configuration
 	dbConfig := &database.Config{
@@ -546,7 +546,7 @@ func statusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show system status",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Eden DevOps Suite Status")
+			fmt.Println("Vertex DevOps Suite Status")
 			fmt.Println("========================")
 			
 			services := []struct {

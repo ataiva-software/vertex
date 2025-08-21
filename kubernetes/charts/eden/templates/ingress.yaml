@@ -2,10 +2,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: eden-ingress
+  name: vertex-ingress
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

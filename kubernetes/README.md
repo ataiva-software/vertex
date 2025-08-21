@@ -1,11 +1,11 @@
-# Eden DevOps Suite - Kubernetes Deployment
+# Vertex DevOps Suite - Kubernetes Deployment
 
-This directory contains Kubernetes manifests and Helm charts for deploying the Eden DevOps Suite to Kubernetes clusters.
+This directory contains Kubernetes manifests and Helm charts for deploying the Vertex DevOps Suite to Kubernetes clusters.
 
 ## Directory Structure
 
 - `base/`: Contains base Kubernetes manifests for all services
-- `charts/`: Contains Helm charts for the Eden DevOps Suite
+- `charts/`: Contains Helm charts for the Vertex DevOps Suite
 - `environments/`: Contains environment-specific values files for different Kubernetes environments
 
 ## Prerequisites
@@ -17,7 +17,7 @@ This directory contains Kubernetes manifests and Helm charts for deploying the E
 
 ## Deployment Options
 
-The Eden DevOps Suite can be deployed using either:
+The Vertex DevOps Suite can be deployed using either:
 
 1. **Kustomize**: Using the base manifests in the `base/` directory
 2. **Helm**: Using the Helm chart in the `charts/` directory (recommended)
@@ -44,11 +44,11 @@ helm repo update
 
 ```bash
 # Create namespace
-kubectl create namespace eden
+kubectl create namespace vertex
 
 # Deploy using Helm
-helm upgrade --install eden ./charts/eden \
-  --namespace eden \
+helm upgrade --install vertex ./charts/vertex \
+  --namespace vertex \
   --values ./environments/values-local.yaml
 ```
 
@@ -79,13 +79,13 @@ export ACM_CERTIFICATE_ARN="your-acm-certificate-arn"
 
 ```bash
 # Create namespace
-kubectl create namespace eden
+kubectl create namespace vertex
 
 # Deploy using Helm with AWS EKS values
 envsubst < ./environments/values-aws-eks.yaml > ./environments/values-aws-eks-resolved.yaml
 
-helm upgrade --install eden ./charts/eden \
-  --namespace eden \
+helm upgrade --install vertex ./charts/vertex \
+  --namespace vertex \
   --values ./environments/values-aws-eks-resolved.yaml
 ```
 
@@ -112,13 +112,13 @@ export REDIS_HOST="your-redis-host"
 
 ```bash
 # Create namespace
-kubectl create namespace eden
+kubectl create namespace vertex
 
 # Deploy using Helm with GCP GKE values
 envsubst < ./environments/values-gcp-gke.yaml > ./environments/values-gcp-gke-resolved.yaml
 
-helm upgrade --install eden ./charts/eden \
-  --namespace eden \
+helm upgrade --install vertex ./charts/vertex \
+  --namespace vertex \
   --values ./environments/values-gcp-gke-resolved.yaml
 ```
 
@@ -144,29 +144,29 @@ export ENCRYPTION_KEY="your-encryption-key"
 
 ```bash
 # Create namespace
-kubectl create namespace eden
+kubectl create namespace vertex
 
 # Deploy using Helm with Azure AKS values
 envsubst < ./environments/values-azure-aks.yaml > ./environments/values-azure-aks-resolved.yaml
 
-helm upgrade --install eden ./charts/eden \
-  --namespace eden \
+helm upgrade --install vertex ./charts/vertex \
+  --namespace vertex \
   --values ./environments/values-azure-aks-resolved.yaml
 ```
 
 ## Accessing the Application
 
-After deployment, the Eden DevOps Suite can be accessed through:
+After deployment, the Vertex DevOps Suite can be accessed through:
 
 - **Local Development**: Port-forward to access the services
   ```bash
-  kubectl port-forward -n eden svc/web-ui 3000:80
-  kubectl port-forward -n eden svc/api-gateway 8080:8080
+  kubectl port-forward -n vertex svc/web-ui 3000:80
+  kubectl port-forward -n vertex svc/api-gateway 8080:8080
   ```
 
 - **Production Environments**: Access through the configured Ingress/Load Balancer
   ```
-  https://eden.example.com
+  https://vertex.example.com
   ```
 
 ## Monitoring and Logging
@@ -177,33 +177,33 @@ After deployment, the Eden DevOps Suite can be accessed through:
 
 ## Scaling
 
-The Eden DevOps Suite is configured with Horizontal Pod Autoscaling (HPA) for all services. The autoscaling is based on CPU and memory utilization.
+The Vertex DevOps Suite is configured with Horizontal Pod Autoscaling (HPA) for all services. The autoscaling is based on CPU and memory utilization.
 
 ## Troubleshooting
 
 1. **Check pod status**:
    ```bash
-   kubectl get pods -n eden
+   kubectl get pods -n vertex
    ```
 
 2. **Check pod logs**:
    ```bash
-   kubectl logs -n eden <pod-name>
+   kubectl logs -n vertex <pod-name>
    ```
 
 3. **Check service status**:
    ```bash
-   kubectl get svc -n eden
+   kubectl get svc -n vertex
    ```
 
 4. **Check ingress status**:
    ```bash
-   kubectl get ingress -n eden
+   kubectl get ingress -n vertex
    ```
 
 5. **Check HPA status**:
    ```bash
-   kubectl get hpa -n eden
+   kubectl get hpa -n vertex
    ```
 
 ## Maintenance
@@ -212,8 +212,8 @@ The Eden DevOps Suite is configured with Horizontal Pod Autoscaling (HPA) for al
 
 ```bash
 # Update the Helm chart
-helm upgrade eden ./charts/eden \
-  --namespace eden \
+helm upgrade vertex ./charts/vertex \
+  --namespace vertex \
   --values ./environments/values-<environment>.yaml
 ```
 
@@ -221,11 +221,11 @@ helm upgrade eden ./charts/eden \
 
 ```bash
 # Rollback to a previous release
-helm rollback eden <revision> -n eden
+helm rollback vertex <revision> -n vertex
 ```
 
 ### Uninstalling
 
 ```bash
 # Uninstall the Helm release
-helm uninstall eden -n eden
+helm uninstall vertex -n vertex

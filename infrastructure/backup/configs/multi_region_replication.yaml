@@ -1,4 +1,4 @@
-# Multi-Region Replication Configuration for Eden DevOps Suite
+# Multi-Region Replication Configuration for Vertex DevOps Suite
 # This configuration defines the setup for multi-region replication
 # to ensure high availability and disaster recovery capabilities
 
@@ -36,34 +36,34 @@ database_replication:
   postgres:
     replication_type: logical  # Options: logical, physical
     replication_slots:
-      - name: eden_vault_slot
-        database: eden_vault
+      - name: vertex_vault_slot
+        database: vertex_vault
         plugin: pglogical
-      - name: eden_flow_slot
-        database: eden_flow
+      - name: vertex_flow_slot
+        database: vertex_flow
         plugin: pglogical
-      - name: eden_task_slot
-        database: eden_task
+      - name: vertex_task_slot
+        database: vertex_task
         plugin: pglogical
-      - name: eden_hub_slot
-        database: eden_hub
+      - name: vertex_hub_slot
+        database: vertex_hub
         plugin: pglogical
-      - name: eden_sync_slot
-        database: eden_sync
+      - name: vertex_sync_slot
+        database: vertex_sync
         plugin: pglogical
-      - name: eden_insight_slot
-        database: eden_insight
+      - name: vertex_insight_slot
+        database: vertex_insight
         plugin: pglogical
     primary:
-      host: postgres.primary.eden.internal
+      host: postgres.primary.vertex.internal
       port: 5432
       user: replication_user
-      password_secret: /eden/secrets/postgres/replication_password
+      password_secret: /vertex/secrets/postgres/replication_password
     secondary:
-      host: postgres.secondary.eden.internal
+      host: postgres.secondary.vertex.internal
       port: 5432
       user: replication_user
-      password_secret: /eden/secrets/postgres/replication_password
+      password_secret: /vertex/secrets/postgres/replication_password
     monitoring:
       lag_threshold_seconds: 300
       alert_channels:
@@ -78,21 +78,21 @@ database_replication:
   redis:
     replication_type: redis-sentinel
     primary:
-      host: redis.primary.eden.internal
+      host: redis.primary.vertex.internal
       port: 6379
-      password_secret: /eden/secrets/redis/replication_password
+      password_secret: /vertex/secrets/redis/replication_password
     secondary:
-      host: redis.secondary.eden.internal
+      host: redis.secondary.vertex.internal
       port: 6379
-      password_secret: /eden/secrets/redis/replication_password
+      password_secret: /vertex/secrets/redis/replication_password
     sentinel:
       quorum: 2
       instances:
-        - host: sentinel-1.eden.internal
+        - host: sentinel-1.vertex.internal
           port: 26379
-        - host: sentinel-2.eden.internal
+        - host: sentinel-2.vertex.internal
           port: 26379
-        - host: sentinel-3.eden.internal
+        - host: sentinel-3.vertex.internal
           port: 26379
     monitoring:
       lag_threshold_seconds: 60
@@ -108,10 +108,10 @@ data_sync:
   # S3 bucket replication for backups
   s3_replication:
     enabled: true
-    source_bucket: eden-backups-primary
-    destination_bucket: eden-backups-secondary
-    replication_role: arn:aws:iam::123456789012:role/eden-s3-replication-role
-    kms_key_id: arn:aws:kms:us-west-2:123456789012:key/eden-backup-key
+    source_bucket: vertex-backups-primary
+    destination_bucket: vertex-backups-secondary
+    replication_role: arn:aws:iam::123456789012:role/vertex-s3-replication-role
+    kms_key_id: arn:aws:kms:us-west-2:123456789012:key/vertex-backup-key
     rules:
       - prefix: postgres/
         status: Enabled
@@ -124,25 +124,25 @@ data_sync:
   config_sync:
     enabled: true
     method: git
-    repository: git@github.com:ataivadev/eden-configs.git
+    repository: git@github.com:ataivadev/vertex-configs.git
     branch: main
     sync_interval_minutes: 15
     directories:
-      - /etc/eden/configs
-      - /opt/eden/config
+      - /etc/vertex/configs
+      - /opt/vertex/config
 
 # Network configuration
 network:
   vpn:
     enabled: true
     type: ipsec
-    primary_endpoint: vpn.primary.eden.internal
-    secondary_endpoint: vpn.secondary.eden.internal
-    shared_secret_secret: /eden/secrets/network/vpn_shared_secret
+    primary_endpoint: vpn.primary.vertex.internal
+    secondary_endpoint: vpn.secondary.vertex.internal
+    shared_secret_secret: /vertex/secrets/network/vpn_shared_secret
     
   dns:
-    primary_zone: primary.eden.internal
-    secondary_zone: secondary.eden.internal
+    primary_zone: primary.vertex.internal
+    secondary_zone: secondary.vertex.internal
     failover_policy: automatic
     ttl_seconds: 60
 
@@ -164,7 +164,7 @@ load_balancing:
   regional:
     provider: aws-alb
     primary:
-      name: eden-alb-primary
+      name: vertex-alb-primary
       subnets:
         - subnet-primary-1a
         - subnet-primary-1b
@@ -172,7 +172,7 @@ load_balancing:
       security_groups:
         - sg-primary-alb
     secondary:
-      name: eden-alb-secondary
+      name: vertex-alb-secondary
       subnets:
         - subnet-secondary-2a
         - subnet-secondary-2b
@@ -199,10 +199,10 @@ monitoring:
           - devops@example.com
           - oncall@example.com
       slack:
-        webhook_url_secret: /eden/secrets/alerts/slack_webhook_url
-        channel: "#eden-alerts"
+        webhook_url_secret: /vertex/secrets/alerts/slack_webhook_url
+        channel: "#vertex-alerts"
       pagerduty:
-        integration_key_secret: /eden/secrets/alerts/pagerduty_key
+        integration_key_secret: /vertex/secrets/alerts/pagerduty_key
         service_id: PXXXXX
 
 # Failover configuration
@@ -222,7 +222,7 @@ failover:
     authorized_roles:
       - DevOpsAdmin
       - EmergencyResponder
-    procedure_document: "https://wiki.example.com/eden/disaster-recovery/failover-procedure"
+    procedure_document: "https://wiki.example.com/vertex/disaster-recovery/failover-procedure"
     checklist:
       - verify_replication_status
       - notify_stakeholders
@@ -240,6 +240,6 @@ recovery:
     - vault-service
     - hub-service
   procedures:
-    region_failure: "https://wiki.example.com/eden/disaster-recovery/region-failure"
-    database_corruption: "https://wiki.example.com/eden/disaster-recovery/database-corruption"
-    service_failure: "https://wiki.example.com/eden/disaster-recovery/service-failure"
+    region_failure: "https://wiki.example.com/vertex/disaster-recovery/region-failure"
+    database_corruption: "https://wiki.example.com/vertex/disaster-recovery/database-corruption"
+    service_failure: "https://wiki.example.com/vertex/disaster-recovery/service-failure"

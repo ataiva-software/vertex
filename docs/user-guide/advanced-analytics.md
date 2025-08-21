@@ -1,6 +1,6 @@
 # Advanced Analytics Guide
 
-Eden's Advanced Analytics Engine provides AI-powered insights, machine learning-based anomaly detection, and predictive analytics for your DevOps operations.
+Vertex's Advanced Analytics Engine provides AI-powered insights, machine learning-based anomaly detection, and predictive analytics for your DevOps operations.
 
 ## Overview
 
@@ -39,16 +39,16 @@ println("Recommendations: ${analysis.recommendations}")
 
 ```bash
 # Analyze performance trends
-eden analytics trends --timerange 24h
+vertex analytics trends --timerange 24h
 
 # Detect anomalies
-eden analytics anomalies --threshold 0.95
+vertex analytics anomalies --threshold 0.95
 
 # Generate predictions
-eden analytics predict --horizon 24h --resource cpu,memory
+vertex analytics predict --horizon 24h --resource cpu,memory
 
 # View real-time insights
-eden analytics insights --live
+vertex analytics insights --live
 ```
 
 ## Performance Trend Analysis
@@ -83,7 +83,7 @@ if (cpuResponseCorr > 0.7) {
 
 ### Multi-Algorithm Approach
 
-Eden uses three complementary anomaly detection algorithms:
+Vertex uses three complementary anomaly detection algorithms:
 
 1. **Statistical Anomaly Detection**
    - Z-score based detection using 3-sigma rule
@@ -127,7 +127,7 @@ anomalies.forEach { anomaly ->
 
 ### Resource Usage Forecasting
 
-Eden can predict future resource usage using time series analysis:
+Vertex can predict future resource usage using time series analysis:
 
 ```go
 val prediction = analytics.predictResourceUsage(24.hours)
@@ -201,7 +201,7 @@ println("  AUC: ${evaluation.rocCurve.auc}")
 
 ### Live Insights
 
-Eden provides continuous analytics with real-time insights:
+Vertex provides continuous analytics with real-time insights:
 
 ```go
 analytics.getRealtimeAnalytics().collect { realtimeData ->
@@ -325,16 +325,16 @@ analytics:
 
 ```bash
 # Check analytics service health
-eden analytics health
+vertex analytics health
 
 # View processing metrics
-eden analytics metrics --component processor
+vertex analytics metrics --component processor
 
 # Check model performance
-eden analytics models --status
+vertex analytics models --status
 
 # View resource usage
-eden analytics resources
+vertex analytics resources
 ```
 
 ## API Reference

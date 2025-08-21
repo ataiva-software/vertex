@@ -3,7 +3,7 @@
 global:
   environment: production
   image:
-    repository: gcr.io/${GCP_PROJECT_ID}/eden
+    repository: gcr.io/${GCP_PROJECT_ID}/vertex
     tag: latest
     pullPolicy: Always
   
@@ -18,7 +18,7 @@ global:
   
   # Database settings for Cloud SQL
   database:
-    host: /cloudsql/${GCP_PROJECT_ID}:${GCP_REGION}:eden-postgres
+    host: /cloudsql/${GCP_PROJECT_ID}:${GCP_REGION}:vertex-postgres
     port: 5432
     user: postgres
     # Password should be provided via Secret Manager
@@ -160,7 +160,7 @@ webUi:
   enabled: true
   replicaCount: 2
   image:
-    repository: gcr.io/${GCP_PROJECT_ID}/eden-web
+    repository: gcr.io/${GCP_PROJECT_ID}/vertex-web
     tag: latest
     pullPolicy: Always
   service:
@@ -178,11 +178,11 @@ ingress:
   className: gce
   annotations:
     kubernetes.io/ingress.class: gce
-    kubernetes.io/ingress.global-static-ip-name: eden-ip
-    networking.gke.io/managed-certificates: eden-cert
-    networking.gke.io/v1beta1.FrontendConfig: eden-frontend-config
+    kubernetes.io/ingress.global-static-ip-name: vertex-ip
+    networking.gke.io/managed-certificates: vertex-cert
+    networking.gke.io/v1beta1.FrontendConfig: vertex-frontend-config
   hosts:
-    - host: eden.example.com
+    - host: vertex.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -193,6 +193,6 @@ ingress:
           service: api-gateway
           port: 8080
   tls:
-    - secretName: eden-tls
+    - secretName: vertex-tls
       hosts:
-        - eden.example.com
+        - vertex.example.com

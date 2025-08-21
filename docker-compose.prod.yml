@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   api-gateway:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-api-gateway
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-api-gateway
     build:
       context: .
       dockerfile: infrastructure/docker/api-gateway/Dockerfile
@@ -26,7 +26,7 @@ services:
       - insight-service
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -35,8 +35,8 @@ services:
       start_period: 40s
 
   vault-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-vault-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-vault-service
     build:
       context: .
       dockerfile: infrastructure/docker/vault/Dockerfile
@@ -44,7 +44,7 @@ services:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_vault
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_vault
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -54,7 +54,7 @@ services:
       - redis
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
@@ -63,8 +63,8 @@ services:
       start_period: 40s
 
   flow-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-flow-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-flow-service
     build:
       context: .
       dockerfile: infrastructure/docker/flow/Dockerfile
@@ -72,7 +72,7 @@ services:
       - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_flow
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_flow
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -84,7 +84,7 @@ services:
       - vault-service
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
@@ -93,8 +93,8 @@ services:
       start_period: 40s
 
   task-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-task-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-task-service
     build:
       context: .
       dockerfile: infrastructure/docker/task/Dockerfile
@@ -102,7 +102,7 @@ services:
       - "8083:8083"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_task
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_task
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -112,7 +112,7 @@ services:
       - redis
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
       interval: 30s
@@ -121,8 +121,8 @@ services:
       start_period: 40s
 
   hub-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-hub-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-hub-service
     build:
       context: .
       dockerfile: infrastructure/docker/hub/Dockerfile
@@ -130,7 +130,7 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_hub
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_hub
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -140,7 +140,7 @@ services:
       - redis
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -149,8 +149,8 @@ services:
       start_period: 40s
 
   sync-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-sync-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-sync-service
     build:
       context: .
       dockerfile: infrastructure/docker/sync/Dockerfile
@@ -158,7 +158,7 @@ services:
       - "8084:8084"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_sync
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_sync
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -168,7 +168,7 @@ services:
       - redis
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
       interval: 30s
@@ -177,8 +177,8 @@ services:
       start_period: 40s
 
   insight-service:
-    image: ataivadev/eden:${EDEN_VERSION:-latest}
-    container_name: eden-insight-service
+    image: ataivadev/vertex:${EDEN_VERSION:-latest}
+    container_name: vertex-insight-service
     build:
       context: .
       dockerfile: infrastructure/docker/insight/Dockerfile
@@ -186,7 +186,7 @@ services:
       - "8085:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=production
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eden_insight
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/vertex_insight
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - REDIS_HOST=redis
@@ -196,7 +196,7 @@ services:
       - redis
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
       interval: 30s
@@ -206,19 +206,19 @@ services:
 
   postgres:
     image: postgres:14
-    container_name: eden-postgres
+    container_name: vertex-postgres
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_MULTIPLE_DATABASES=eden_vault,eden_flow,eden_task,eden_hub,eden_sync,eden_insight
+      - POSTGRES_MULTIPLE_DATABASES=vertex_vault,vertex_flow,vertex_task,vertex_hub,vertex_sync,vertex_insight
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./infrastructure/docker/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -227,14 +227,14 @@ services:
 
   redis:
     image: redis:7
-    container_name: eden-redis
+    container_name: vertex-redis
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     restart: always
     networks:
-      - eden-network
+      - vertex-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -243,7 +243,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.42.0
-    container_name: eden-prometheus
+    container_name: vertex-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -251,11 +251,11 @@ services:
       - prometheus-data:/prometheus
     restart: always
     networks:
-      - eden-network
+      - vertex-network
 
   grafana:
     image: grafana/grafana:9.4.7
-    container_name: eden-grafana
+    container_name: vertex-grafana
     ports:
       - "3000:3000"
     environment:
@@ -268,7 +268,7 @@ services:
       - prometheus
     restart: always
     networks:
-      - eden-network
+      - vertex-network
 
 volumes:
   postgres-data:
@@ -277,5 +277,5 @@ volumes:
   grafana-data:
 
 networks:
-  eden-network:
+  vertex-network:
     driver: bridge

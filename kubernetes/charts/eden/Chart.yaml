@@ -1,12 +1,12 @@
 apiVersion: v2
-name: eden
-description: A Helm chart for Eden DevOps Suite
+name: vertex
+description: A Helm chart for Vertex DevOps Suite
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
 maintainers:
-  - name: Eden DevOps Team
-    email: devops@eden.example.com
+  - name: Vertex DevOps Team
+    email: devops@vertex.example.com
 dependencies:
   - name: postgresql
     version: ~12.1.5

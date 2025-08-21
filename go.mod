@@ -1,4 +1,4 @@
-module github.com/ataiva-software/eden
+module github.com/ataiva-software/vertex
 
 go 1.23.0
 

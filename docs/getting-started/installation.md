@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Before installing Eden DevOps Suite, ensure you have the following:
+Before installing Vertex DevOps Suite, ensure you have the following:
 
 - **Java 17 or higher** - Required for running services
 - **Docker and Docker Compose** - For containerized deployment
@@ -13,8 +13,8 @@ Before installing Eden DevOps Suite, ensure you have the following:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ataiva-software/eden.git
-cd eden
+git clone https://github.com/ataiva-software/vertex.git
+cd vertex
 ```
 
 ### 2. Start Development Environment
@@ -45,7 +45,7 @@ docker-compose ps
 curl http://localhost:8080/health
 
 # Test CLI (after building)
-./clients/cli/build/bin/linuxX64/releaseExecutable/eden --help
+./clients/cli/build/bin/linuxX64/releaseExecutable/vertex --help
 ```
 
 ## Service Endpoints
@@ -54,7 +54,7 @@ After successful installation, the following services will be available:
 
 - **API Gateway**: http://localhost:8080
 - **Web UI**: http://localhost:3000 *(planned)*
-- **Database**: localhost:5432 (eden/dev_password)
+- **Database**: localhost:5432 (vertex/dev_password)
 - **Redis**: localhost:6379
 
 ## Platform-Specific Instructions
@@ -123,4 +123,4 @@ java -version
 
 - Check the [Development Guide](development.md) for detailed setup
 - Review [Project Status](../development/project-status.md) for current limitations
-- Open an issue on [GitHub](https://github.com/your-org/eden/issues)
+- Open an issue on [GitHub](https://github.com/your-org/vertex/issues)

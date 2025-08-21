@@ -8,11 +8,11 @@ global:
   evaluation_interval: 15s
   scrape_timeout: 10s
   external_labels:
-    monitor: eden-production
+    monitor: vertex-production
   retention_days: 15
   tags:
     Environment: production
-    Service: eden
+    Service: vertex
     ManagedBy: terraform
 
 # Region definitions
@@ -41,25 +41,25 @@ prometheus:
     evaluation_interval: 15s
     scrape_timeout: 10s
     external_labels:
-      monitor: eden-production
+      monitor: vertex-production
   
   # Remote write configuration for cross-region data aggregation
   remote_write:
-    - url: https://prometheus-central.eden.example.com/api/v1/write
+    - url: https://prometheus-central.vertex.example.com/api/v1/write
       name: central-prometheus
       remote_timeout: 30s
       write_relabel_configs:
         - source_labels: [__name__]
-          regex: up|node_.*|kube_.*|container_.*|istio_.*|eden_.*
+          regex: up|node_.*|kube_.*|container_.*|istio_.*|vertex_.*
           action: keep
   
   # Remote read configuration for cross-region data querying
   remote_read:
-    - url: https://prometheus-central.eden.example.com/api/v1/read
+    - url: https://prometheus-central.vertex.example.com/api/v1/read
       name: central-prometheus
       read_recent: true
       required_matchers:
-        monitor: eden-production
+        monitor: vertex-production
   
   # Scrape configurations
   scrape_configs:
@@ -140,14 +140,14 @@ prometheus:
         - target_label: region
           replacement: ${REGION}
     
-    # Eden services
-    - job_name: eden-services
+    # Vertex services
+    - job_name: vertex-services
       kubernetes_sd_configs:
         - role: endpoints
       relabel_configs:
         - source_labels: [__meta_kubernetes_namespace]
           action: keep
-          regex: eden
+          regex: vertex
         - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
           action: keep
           regex: true
@@ -180,8 +180,8 @@ prometheus:
           - '{job=~".+"}'
       static_configs:
         - targets:
-          - prometheus.us-east-1.eden.example.com:9090
-          - prometheus.us-west-2.eden.example.com:9090
+          - prometheus.us-east-1.vertex.example.com:9090
+          - prometheus.us-west-2.vertex.example.com:9090
           labels:
             monitor: federated
 
@@ -190,8 +190,8 @@ alertmanager:
   # Global Alertmanager configuration
   global:
     resolve_timeout: 5m
-    smtp_smarthost: smtp.eden.example.com:587
-    smtp_from: alertmanager@eden.example.com
+    smtp_smarthost: smtp.vertex.example.com:587
+    smtp_from: alertmanager@vertex.example.com
     smtp_auth_username: alertmanager
     smtp_auth_password: ${SMTP_PASSWORD}
     smtp_require_tls: true
@@ -208,25 +208,25 @@ alertmanager:
     group_wait: 30s
     group_interval: 5m
     repeat_interval: 4h
-    receiver: 'team-eden'
+    receiver: 'team-vertex'
     routes:
       - match:
           severity: critical
-        receiver: 'team-eden-pagerduty'
+        receiver: 'team-vertex-pagerduty'
         continue: true
       - match:
           severity: warning
-        receiver: 'team-eden-slack'
+        receiver: 'team-vertex-slack'
         continue: true
       - match_re:
           service: ^(api-gateway|vault-service)$
-        receiver: 'team-eden-security'
+        receiver: 'team-vertex-security'
       - match_re:
           service: ^(hub-service|flow-service|task-service)$
-        receiver: 'team-eden-core'
+        receiver: 'team-vertex-core'
       - match_re:
           service: ^(monitor-service|sync-service|insight-service)$
-        receiver: 'team-eden-data'
+        receiver: 'team-vertex-data'
   
   # Inhibition rules
   inhibit_rules:
@@ -243,12 +243,12 @@ alertmanager:
   
   # Receivers for alert notifications
   receivers:
-    - name: 'team-eden'
+    - name: 'team-vertex'
       email_configs:
-        - to: 'team@eden.example.com'
+        - to: 'team@vertex.example.com'
           send_resolved: true
       slack_configs:
-        - channel: '#eden-alerts'
+        - channel: '#vertex-alerts'
           send_resolved: true
           title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
           text: >-
@@ -260,7 +260,7 @@ alertmanager:
               *Service:* {{ .Labels.service }}
             {{ end }}
     
-    - name: 'team-eden-pagerduty'
+    - name: 'team-vertex-pagerduty'
       pagerduty_configs:
         - service_key: ${PAGERDUTY_SERVICE_KEY}
           send_resolved: true
@@ -273,9 +273,9 @@ alertmanager:
             num_firing: '{{ .Alerts.Firing | len }}'
             num_resolved: '{{ .Alerts.Resolved | len }}'
     
-    - name: 'team-eden-slack'
+    - name: 'team-vertex-slack'
       slack_configs:
-        - channel: '#eden-alerts'
+        - channel: '#vertex-alerts'
           send_resolved: true
           title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
           text: >-
@@ -287,9 +287,9 @@ alertmanager:
               *Service:* {{ .Labels.service }}
             {{ end }}
     
-    - name: 'team-eden-security'
+    - name: 'team-vertex-security'
       slack_configs:
-        - channel: '#eden-security'
+        - channel: '#vertex-security'
           send_resolved: true
           title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
           text: >-
@@ -301,12 +301,12 @@ alertmanager:
               *Service:* {{ .Labels.service }}
             {{ end }}
       email_configs:
-        - to: 'security@eden.example.com'
+        - to: 'security@vertex.example.com'
           send_resolved: true
     
-    - name: 'team-eden-core'
+    - name: 'team-vertex-core'
       slack_configs:
-        - channel: '#eden-core'
+        - channel: '#vertex-core'
           send_resolved: true
           title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
           text: >-
@@ -318,12 +318,12 @@ alertmanager:
               *Service:* {{ .Labels.service }}
             {{ end }}
       email_configs:
-        - to: 'core@eden.example.com'
+        - to: 'core@vertex.example.com'
           send_resolved: true
     
-    - name: 'team-eden-data'
+    - name: 'team-vertex-data'
       slack_configs:
-        - channel: '#eden-data'
+        - channel: '#vertex-data'
           send_resolved: true
           title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
           text: >-
@@ -335,7 +335,7 @@ alertmanager:
               *Service:* {{ .Labels.service }}
             {{ end }}
       email_configs:
-        - to: 'data@eden.example.com'
+        - to: 'data@vertex.example.com'
           send_resolved: true
 
 # Alert rules
@@ -345,7 +345,7 @@ alert_rules:
     - name: CrossRegionAvailability
       rules:
         - alert: CrossRegionServiceDown
-          expr: sum by(service) (up{job="eden-services"}) < 2
+          expr: sum by(service) (up{job="vertex-services"}) < 2
           for: 5m
           labels:
             severity: critical
@@ -354,7 +354,7 @@ alert_rules:
             description: "Service {{ $labels.service }} is down in at least one region"
         
         - alert: AllRegionsServiceDown
-          expr: sum by(service) (up{job="eden-services"}) == 0
+          expr: sum by(service) (up{job="vertex-services"}) == 0
           for: 1m
           labels:
             severity: critical
@@ -374,7 +374,7 @@ alert_rules:
     - name: CrossRegionLatency
       rules:
         - alert: CrossRegionHighLatency
-          expr: histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m]))) > 1
+          expr: histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="vertex-services"}[5m]))) > 1
           for: 10m
           labels:
             severity: warning
@@ -385,11 +385,11 @@ alert_rules:
         - alert: CrossRegionLatencyImbalance
           expr: |
             max by(service) (
-              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m])))
+              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="vertex-services"}[5m])))
             ) 
             / 
             min by(service) (
-              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="eden-services"}[5m])))
+              histogram_quantile(0.95, sum by(le, service, region) (rate(http_request_duration_seconds_bucket{job="vertex-services"}[5m])))
             ) > 3
           for: 15m
           labels:
@@ -401,7 +401,7 @@ alert_rules:
     - name: CrossRegionErrors
       rules:
         - alert: CrossRegionHighErrorRate
-          expr: sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) / sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m])) > 0.05
+          expr: sum by(service, region) (rate(http_requests_total{job="vertex-services",status_code=~"5.."}[5m])) / sum by(service, region) (rate(http_requests_total{job="vertex-services"}[5m])) > 0.05
           for: 5m
           labels:
             severity: warning
@@ -412,15 +412,15 @@ alert_rules:
         - alert: CrossRegionErrorRateImbalance
           expr: |
             max by(service) (
-              sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) 
+              sum by(service, region) (rate(http_requests_total{job="vertex-services",status_code=~"5.."}[5m])) 
               / 
-              sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m]))
+              sum by(service, region) (rate(http_requests_total{job="vertex-services"}[5m]))
             ) 
             / 
             min by(service) (
-              sum by(service, region) (rate(http_requests_total{job="eden-services",status_code=~"5.."}[5m])) 
+              sum by(service, region) (rate(http_requests_total{job="vertex-services",status_code=~"5.."}[5m])) 
               / 
-              sum by(service, region) (rate(http_requests_total{job="eden-services"}[5m]))
+              sum by(service, region) (rate(http_requests_total{job="vertex-services"}[5m]))
             ) > 3
           for: 15m
           labels:
@@ -501,21 +501,21 @@ grafana:
   datasources:
     - name: prometheus-us-east-1
       type: prometheus
-      url: http://prometheus.us-east-1.eden.example.com:9090
+      url: http://prometheus.us-east-1.vertex.example.com:9090
       access: proxy
       is_default: true
       editable: false
     
     - name: prometheus-us-west-2
       type: prometheus
-      url: http://prometheus.us-west-2.eden.example.com:9090
+      url: http://prometheus.us-west-2.vertex.example.com:9090
       access: proxy
       is_default: false
       editable: false
     
     - name: prometheus-central
       type: prometheus
-      url: https://prometheus-central.eden.example.com
+      url: https://prometheus-central.vertex.example.com
       access: proxy
       is_default: false
       editable: false
@@ -533,35 +533,35 @@ grafana:
           default: "all"
         - name: service
           type: query
-          query: "label_values(up{job=\"eden-services\"}, service)"
+          query: "label_values(up{job=\"vertex-services\"}, service)"
           default: "all"
       panels:
         - title: "Service Availability"
           type: heatmap
           datasource: prometheus-central
           targets:
-            - expr: "up{job=\"eden-services\"}"
+            - expr: "up{job=\"vertex-services\"}"
               legend: "{{service}} - {{region}}"
         
         - title: "Request Rate by Region"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\"}[5m]))"
+            - expr: "sum by(region) (rate(http_requests_total{job=\"vertex-services\"}[5m]))"
               legend: "{{region}}"
         
         - title: "Error Rate by Region"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"eden-services\"}[5m]))"
+            - expr: "sum by(region) (rate(http_requests_total{job=\"vertex-services\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"vertex-services\"}[5m]))"
               legend: "{{region}}"
         
         - title: "Latency by Region (95th Percentile)"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"eden-services\"}[5m])))"
+            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"vertex-services\"}[5m])))"
               legend: "{{region}}"
     
     - name: database-replication
@@ -613,40 +613,40 @@ grafana:
           default: "all"
         - name: service
           type: query
-          query: "label_values(up{job=\"eden-services\"}, service)"
+          query: "label_values(up{job=\"vertex-services\"}, service)"
           default: "api-gateway"
       panels:
         - title: "Request Rate"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\"}[5m]))"
+            - expr: "sum by(region) (rate(http_requests_total{job=\"vertex-services\",service=\"$service\"}[5m]))"
               legend: "{{region}}"
         
         - title: "Error Rate"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"eden-services\",service=\"$service\"}[5m]))"
+            - expr: "sum by(region) (rate(http_requests_total{job=\"vertex-services\",service=\"$service\",status_code=~\"5..\"}[5m])) / sum by(region) (rate(http_requests_total{job=\"vertex-services\",service=\"$service\"}[5m]))"
               legend: "{{region}}"
         
         - title: "Latency (95th Percentile)"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"eden-services\",service=\"$service\"}[5m])))"
+            - expr: "histogram_quantile(0.95, sum by(le, region) (rate(http_request_duration_seconds_bucket{job=\"vertex-services\",service=\"$service\"}[5m])))"
               legend: "{{region}}"
         
         - title: "CPU Usage"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (rate(container_cpu_usage_seconds_total{namespace=\"eden\",container=\"$service\"}[5m]))"
+            - expr: "sum by(region) (rate(container_cpu_usage_seconds_total{namespace=\"vertex\",container=\"$service\"}[5m]))"
               legend: "{{region}}"
         
         - title: "Memory Usage"
           type: graph
           datasource: prometheus-central
           targets:
-            - expr: "sum by(region) (container_memory_usage_bytes{namespace=\"eden\",container=\"$service\"})"
+            - expr: "sum by(region) (container_memory_usage_bytes{namespace=\"vertex\",container=\"$service\"})"
               legend: "{{region}}"

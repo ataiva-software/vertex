@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: eden-config
-  namespace: eden
+  name: vertex-config
+  namespace: vertex
 data:
   APP_ENV: "production"
   LOG_LEVEL: "info"
@@ -16,4 +16,4 @@ data:
   SYNC_SERVICE_URL: "http://sync-service:8080"
   INSIGHT_SERVICE_URL: "http://insight-service:8080"
   MONITOR_SERVICE_URL: "http://monitor-service:8080"
-  CORS_ORIGINS: "https://eden.example.com"
+  CORS_ORIGINS: "https://vertex.example.com"

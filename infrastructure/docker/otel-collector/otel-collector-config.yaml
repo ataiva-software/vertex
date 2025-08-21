@@ -31,7 +31,7 @@ processors:
         value: ${ENVIRONMENT:production}
         action: upsert
       - key: service.namespace
-        value: eden
+        value: vertex
         action: upsert
 
   # Add service name to logs that don't have it
@@ -64,7 +64,7 @@ processors:
 exporters:
   prometheus:
     endpoint: 0.0.0.0:8889
-    namespace: eden
+    namespace: vertex
     send_timestamps: true
     metric_expiration: 180m
     resource_to_telemetry_conversion:
@@ -77,7 +77,7 @@ exporters:
 
   elasticsearch:
     endpoints: ["http://elasticsearch:9200"]
-    index: eden-logs
+    index: vertex-logs
     mapping:
       mode: ecs
     retry_on_failure:

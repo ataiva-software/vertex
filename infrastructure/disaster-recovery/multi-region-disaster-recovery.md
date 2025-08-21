@@ -11,7 +11,7 @@
 
 ## Introduction
 
-This document outlines the disaster recovery procedures for the Eden DevOps Suite in a multi-region deployment. It provides detailed steps for recovering from various disaster scenarios, ensuring business continuity and minimal data loss.
+This document outlines the disaster recovery procedures for the Vertex DevOps Suite in a multi-region deployment. It provides detailed steps for recovering from various disaster scenarios, ensuring business continuity and minimal data loss.
 
 ### Purpose
 
@@ -23,7 +23,7 @@ The purpose of this document is to:
 
 ### Scope
 
-This document covers disaster recovery procedures for the Eden DevOps Suite deployed across multiple AWS regions (us-east-1 and us-west-2). It includes:
+This document covers disaster recovery procedures for the Vertex DevOps Suite deployed across multiple AWS regions (us-east-1 and us-west-2). It includes:
 
 - Database recovery (PostgreSQL with bi-directional replication)
 - Cache recovery (Redis with active-active CRDT replication)
@@ -116,11 +116,11 @@ This procedure is automatically executed by the automated failover system when a
    ```bash
    # Check primary region health
    kubectl --context eks-us-east-1 get nodes
-   kubectl --context eks-us-east-1 -n eden get pods
+   kubectl --context eks-us-east-1 -n vertex get pods
    
    # Check secondary region health
    kubectl --context eks-us-west-2 get nodes
-   kubectl --context eks-us-west-2 -n eden get pods
+   kubectl --context eks-us-west-2 -n vertex get pods
    ```
 
 2. **Update DNS for Global Load Balancing**
@@ -138,21 +138,21 @@ This procedure is automatically executed by the automated failover system when a
 4. **Promote Database in Healthy Region**
    ```bash
    # For PostgreSQL
-   kubectl --context eks-us-west-2 -n eden exec -it deploy/postgres-operator -- patronictl switchover --force
+   kubectl --context eks-us-west-2 -n vertex exec -it deploy/postgres-operator -- patronictl switchover --force
    
    # For Redis
-   kubectl --context eks-us-west-2 -n eden exec -it statefulset/redis-sentinel -c sentinel -- redis-cli -p 26379 sentinel failover eden-master
+   kubectl --context eks-us-west-2 -n vertex exec -it statefulset/redis-sentinel -c sentinel -- redis-cli -p 26379 sentinel failover vertex-master
    ```
 
 5. **Scale Up Services in Healthy Region**
    ```bash
-   kubectl --context eks-us-west-2 -n eden scale deployment --replicas=3 --all
+   kubectl --context eks-us-west-2 -n vertex scale deployment --replicas=3 --all
    ```
 
 6. **Verify Service Health**
    ```bash
-   kubectl --context eks-us-west-2 -n eden get pods
-   kubectl --context eks-us-west-2 -n eden get endpoints
+   kubectl --context eks-us-west-2 -n vertex get pods
+   kubectl --context eks-us-west-2 -n vertex get endpoints
    ```
 
 7. **Notify Stakeholders**
@@ -166,29 +166,29 @@ This procedure is automatically executed by the automated failover system when a
 #### Prerequisites
 - Access to Kubernetes clusters in both regions
 - Access to database backups
-- Database administrator credentials
+- Database administrator crvertextials
 
 #### Steps
 
 1. **Identify Corruption Scope**
    ```bash
    # Check PostgreSQL logs for corruption indicators
-   kubectl --context eks-us-east-1 -n eden logs deploy/postgres -c postgres | grep -i corrupt
+   kubectl --context eks-us-east-1 -n vertex logs deploy/postgres -c postgres | grep -i corrupt
    
    # Check table consistency
-   kubectl --context eks-us-east-1 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_database;"
+   kubectl --context eks-us-east-1 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_database;"
    ```
 
 2. **Isolate Corrupted Database**
    ```bash
    # Stop applications from accessing the corrupted database
-   kubectl --context eks-us-east-1 -n eden scale deployment --replicas=0 --all
+   kubectl --context eks-us-east-1 -n vertex scale deployment --replicas=0 --all
    ```
 
 3. **Assess Replication Status**
    ```bash
    # Check if corruption has replicated to secondary region
-   kubectl --context eks-us-west-2 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_replication;"
+   kubectl --context eks-us-west-2 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_replication;"
    ```
 
 4. **Recovery Options**
@@ -209,7 +209,7 @@ This procedure is automatically executed by the automated failover system when a
 5. **Verify Data Integrity**
    ```bash
    # Run integrity checks
-   kubectl --context eks-us-east-1 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "ANALYZE VERBOSE;"
+   kubectl --context eks-us-east-1 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "ANALYZE VERBOSE;"
    
    # Check for missing data
    ./infrastructure/database/scripts/verify-data-integrity.sh
@@ -224,7 +224,7 @@ This procedure is automatically executed by the automated failover system when a
 7. **Resume Services**
    ```bash
    # Scale services back up
-   kubectl --context eks-us-east-1 -n eden scale deployment --replicas=2 --all
+   kubectl --context eks-us-east-1 -n vertex scale deployment --replicas=2 --all
    ```
 
 ### Procedure 3: Resolving Network Partition
@@ -254,10 +254,10 @@ This procedure is automatically executed by the automated failover system when a
 3. **Isolate Non-Authoritative Region**
    ```bash
    # Scale down write services in non-authoritative region
-   kubectl --context eks-us-west-2 -n eden scale deployment task-service flow-service hub-service --replicas=0
+   kubectl --context eks-us-west-2 -n vertex scale deployment task-service flow-service hub-service --replicas=0
    
    # Set databases to read-only mode
-   kubectl --context eks-us-west-2 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = on; SELECT pg_reload_conf();"
+   kubectl --context eks-us-west-2 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = on; SELECT pg_reload_conf();"
    ```
 
 4. **Restore Network Connectivity**
@@ -276,10 +276,10 @@ This procedure is automatically executed by the automated failover system when a
 6. **Resume Normal Operations**
    ```bash
    # Set databases back to read-write mode
-   kubectl --context eks-us-west-2 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = off; SELECT pg_reload_conf();"
+   kubectl --context eks-us-west-2 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = off; SELECT pg_reload_conf();"
    
    # Scale services back up
-   kubectl --context eks-us-west-2 -n eden scale deployment --replicas=2 --all
+   kubectl --context eks-us-west-2 -n vertex scale deployment --replicas=2 --all
    
    # Restore normal traffic routing
    ./infrastructure/network/scripts/update-route53-weights.sh us-east-1 80 us-west-2 20
@@ -309,7 +309,7 @@ This procedure is automatically executed by the automated failover system when a
 3. **Determine Authoritative Data**
    ```bash
    # Analyze conflict logs
-   kubectl --context eks-us-east-1 -n eden exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM replication_conflicts ORDER BY created_at DESC LIMIT 100;"
+   kubectl --context eks-us-east-1 -n vertex exec -it deploy/postgres -c postgres -- psql -U postgres -c "SELECT * FROM replication_conflicts ORDER BY created_at DESC LIMIT 100;"
    
    # Determine which records to keep based on business rules
    ./infrastructure/database/scripts/analyze-conflicts.sh
@@ -339,7 +339,7 @@ This procedure is automatically executed by the automated failover system when a
 7. **Document Reconciliation**
    ```bash
    # Generate reconciliation report
-   ./infrastructure/database/scripts/generate-reconciliation-report.sh > /var/log/eden/reconciliation-$(date +%Y%m%d-%H%M%S).log
+   ./infrastructure/database/scripts/generate-reconciliation-report.sh > /var/log/vertex/reconciliation-$(date +%Y%m%d-%H%M%S).log
    ```
 
 ### Procedure 5: Recovery from Complete Multi-Region Outage
@@ -348,7 +348,7 @@ This procedure is automatically executed by the automated failover system when a
 - Access to AWS Management Console
 - Access to backup storage (S3)
 - Access to a third region or recovery environment
-- Database administrator credentials
+- Database administrator crvertextials
 
 #### Steps
 
@@ -501,28 +501,28 @@ For each test:
 
 #### Initial Notification Template
 ```
-Subject: [ALERT] Eden Service Disruption
+Subject: [ALERT] Vertex Service Disruption
 
-Dear Eden Customer,
+Dear Vertex Customer,
 
-We are currently experiencing a service disruption affecting the Eden DevOps Suite. Our team is actively working to resolve the issue and restore service as quickly as possible.
+We are currently experiencing a service disruption affecting the Vertex DevOps Suite. Our team is actively working to resolve the issue and restore service as quickly as possible.
 
 Current Status: [DESCRIPTION OF ISSUE]
 Affected Services: [LIST OF AFFECTED SERVICES]
 Estimated Resolution Time: [ESTIMATE IF AVAILABLE]
 
-We will provide updates every 30 minutes on our status page at https://status.eden.example.com.
+We will provide updates every 30 minutes on our status page at https://status.vertex.example.com.
 
 We apologize for any inconvenience this may cause and appreciate your patience as we work to resolve this issue.
 
-The Eden Team
+The Vertex Team
 ```
 
 #### Status Update Template
 ```
-Subject: [UPDATE] Eden Service Disruption
+Subject: [UPDATE] Vertex Service Disruption
 
-Dear Eden Customer,
+Dear Vertex Customer,
 
 Here is the latest update on the current service disruption:
 
@@ -533,20 +533,20 @@ Estimated Resolution Time: [UPDATED ESTIMATE]
 
 Our team continues to work diligently to resolve this issue. The next update will be provided in 30 minutes.
 
-For real-time updates, please visit our status page at https://status.eden.example.com.
+For real-time updates, please visit our status page at https://status.vertex.example.com.
 
 We apologize for the inconvenience and thank you for your continued patience.
 
-The Eden Team
+The Vertex Team
 ```
 
 #### Resolution Template
 ```
-Subject: [RESOLVED] Eden Service Disruption
+Subject: [RESOLVED] Vertex Service Disruption
 
-Dear Eden Customer,
+Dear Vertex Customer,
 
-We are pleased to inform you that the service disruption affecting the Eden DevOps Suite has been resolved. All services are now operating normally.
+We are pleased to inform you that the service disruption affecting the Vertex DevOps Suite has been resolved. All services are now operating normally.
 
 Resolution Time: [DATE AND TIME]
 Root Cause: [BRIEF DESCRIPTION OF ROOT CAUSE]
@@ -556,9 +556,9 @@ A detailed post-incident report will be provided within 3 business days.
 
 We sincerely apologize for any inconvenience this disruption may have caused. We appreciate your patience and understanding during this time.
 
-If you continue to experience any issues, please contact our support team at support@eden.example.com.
+If you continue to experience any issues, please contact our support team at support@vertex.example.com.
 
-The Eden Team
+The Vertex Team
 ```
 
 ## Appendices
@@ -569,12 +569,12 @@ The Eden Team
 
 | Role | Name | Email | Phone | Backup Contact |
 |------|------|-------|-------|---------------|
-| DR Coordinator | Jane Smith | j.smith@eden.example.com | +1-555-123-4567 | John Doe |
-| Database Administrator | Michael Brown | m.brown@eden.example.com | +1-555-234-5678 | Lisa Davis |
-| Network Administrator | Robert Johnson | r.johnson@eden.example.com | +1-555-345-6789 | Sarah Williams |
-| Cloud Infrastructure Lead | David Wilson | d.wilson@eden.example.com | +1-555-456-7890 | Emily Taylor |
-| Security Officer | Jennifer Lee | j.lee@eden.example.com | +1-555-567-8901 | Thomas Clark |
-| Communications Lead | Patricia Moore | p.moore@eden.example.com | +1-555-678-9012 | Kevin Anderson |
+| DR Coordinator | Jane Smith | j.smith@vertex.example.com | +1-555-123-4567 | John Doe |
+| Database Administrator | Michael Brown | m.brown@vertex.example.com | +1-555-234-5678 | Lisa Davis |
+| Network Administrator | Robert Johnson | r.johnson@vertex.example.com | +1-555-345-6789 | Sarah Williams |
+| Cloud Infrastructure Lead | David Wilson | d.wilson@vertex.example.com | +1-555-456-7890 | Emily Taylor |
+| Security Officer | Jennifer Lee | j.lee@vertex.example.com | +1-555-567-8901 | Thomas Clark |
+| Communications Lead | Patricia Moore | p.moore@vertex.example.com | +1-555-678-9012 | Kevin Anderson |
 
 #### External Contacts
 
@@ -598,10 +598,10 @@ The Eden Team
 
 | Data Type | Primary Storage | Secondary Storage | Retention Period |
 |-----------|----------------|-------------------|------------------|
-| PostgreSQL Backups | s3://eden-backups-us-east-1/postgres/ | s3://eden-backups-us-west-2/postgres/ | 30 days |
-| Redis Backups | s3://eden-backups-us-east-1/redis/ | s3://eden-backups-us-west-2/redis/ | 14 days |
-| Configuration Backups | s3://eden-backups-us-east-1/configs/ | s3://eden-backups-us-west-2/configs/ | 90 days |
-| Application Logs | s3://eden-logs-us-east-1/ | s3://eden-logs-us-west-2/ | 90 days |
+| PostgreSQL Backups | s3://vertex-backups-us-east-1/postgres/ | s3://vertex-backups-us-west-2/postgres/ | 30 days |
+| Redis Backups | s3://vertex-backups-us-east-1/redis/ | s3://vertex-backups-us-west-2/redis/ | 14 days |
+| Configuration Backups | s3://vertex-backups-us-east-1/configs/ | s3://vertex-backups-us-west-2/configs/ | 90 days |
+| Application Logs | s3://vertex-logs-us-east-1/ | s3://vertex-logs-us-west-2/ | 90 days |
 
 ### Appendix C: Recovery Checklists
 

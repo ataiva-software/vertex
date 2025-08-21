@@ -1,21 +1,21 @@
 {{- if .Values.vaultService.enabled }}
 # Service
 {{- $serviceContext := dict "root" . "serviceName" "vault-service" "serviceConfig" .Values.vaultService }}
-{{- include "eden.service" $serviceContext }}
+{{- include "vertex.service" $serviceContext }}
 ---
 # Deployment
-{{- $deploymentContext := dict "root" . "serviceName" "vault-service" "serviceConfig" .Values.vaultService "dbName" "eden_vault" "extraEnv" (list (dict "name" "ENCRYPTION_KEY" "key" "ENCRYPTION_KEY")) }}
-{{- include "eden.deployment" $deploymentContext }}
+{{- $deploymentContext := dict "root" . "serviceName" "vault-service" "serviceConfig" .Values.vaultService "dbName" "vertex_vault" "extraEnv" (list (dict "name" "ENCRYPTION_KEY" "key" "ENCRYPTION_KEY")) }}
+{{- include "vertex.deployment" $deploymentContext }}
 ---
 # HorizontalPodAutoscaler
 {{- $hpaContext := dict "root" . "serviceName" "vault-service" "serviceConfig" .Values.vaultService }}
-{{- include "eden.hpa" $hpaContext }}
+{{- include "vertex.hpa" $hpaContext }}
 ---
 # NetworkPolicy
 {{- $networkContext := dict "root" . "serviceName" "vault-service" "extraEgress" nil }}
-{{- include "eden.networkpolicy" $networkContext }}
+{{- include "vertex.networkpolicy" $networkContext }}
 ---
 # PodDisruptionBudget
 {{- $pdbContext := dict "root" . "serviceName" "vault-service" }}
-{{- include "eden.pdb" $pdbContext }}
+{{- include "vertex.pdb" $pdbContext }}
 {{- end }}

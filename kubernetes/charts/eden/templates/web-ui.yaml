@@ -7,7 +7,7 @@ metadata:
   labels:
     app: web-ui
     tier: frontend
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.webUi.service.type }}
   ports:
@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: web-ui
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.webUi.replicaCount }}
   selector:
@@ -40,7 +40,7 @@ spec:
       labels:
         app: web-ui
         tier: frontend
-        {{- include "eden.labels" . | nindent 8 }}
+        {{- include "vertex.labels" . | nindent 8 }}
     spec:
       containers:
       - name: web-ui
@@ -80,7 +80,7 @@ metadata:
   name: web-ui-hpa
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -110,7 +110,7 @@ metadata:
   name: web-ui-network-policy
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -143,7 +143,7 @@ metadata:
   name: web-ui-pdb
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eden.labels" . | nindent 4 }}
+    {{- include "vertex.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.global.pdb.minAvailable }}
   selector:

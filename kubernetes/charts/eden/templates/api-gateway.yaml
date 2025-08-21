@@ -7,7 +7,7 @@ metadata:
   labels:
     app: api-gateway
     tier: backend
-    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/part-of: vertex-devops-suite
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
@@ -26,7 +26,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: api-gateway
-    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/part-of: vertex-devops-suite
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
@@ -44,7 +44,7 @@ spec:
       labels:
         app: api-gateway
         tier: backend
-        app.kubernetes.io/part-of: eden-devops-suite
+        app.kubernetes.io/part-of: vertex-devops-suite
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
@@ -59,38 +59,38 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: {{ .Values.global.environment | quote }}
         - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@{{ .Values.global.database.host }}:{{ .Values.global.database.port }}/eden_dev"
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@{{ .Values.global.database.host }}:{{ .Values.global.database.port }}/vertex_dev"
         - name: REDIS_URL
           value: "redis://{{ .Values.global.redis.host }}:{{ .Values.global.redis.port }}"
         - name: LOG_LEVEL
           valueFrom:
             configMapKeyRef:
-              name: eden-config
+              name: vertex-config
               key: LOG_LEVEL
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: JWT_SECRET
         - name: ENCRYPTION_KEY
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: ENCRYPTION_KEY
         - name: CORS_ORIGINS
           valueFrom:
             configMapKeyRef:
-              name: eden-config
+              name: vertex-config
               key: CORS_ORIGINS
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_PASSWORD
         resources:
           {{- toYaml .Values.global.resources | nindent 10 }}
@@ -118,7 +118,7 @@ metadata:
   name: api-gateway-hpa
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/part-of: vertex-devops-suite
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
@@ -150,7 +150,7 @@ metadata:
   name: api-gateway-network-policy
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/part-of: vertex-devops-suite
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
@@ -199,7 +199,7 @@ metadata:
   name: api-gateway-pdb
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/part-of: eden-devops-suite
+    app.kubernetes.io/part-of: vertex-devops-suite
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:

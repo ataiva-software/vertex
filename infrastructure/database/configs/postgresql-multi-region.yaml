@@ -4,7 +4,7 @@
 # Global settings
 global:
   replication_user: replication_user
-  replication_password_secret: /eden/secrets/postgres/replication_password
+  replication_password_secret: /vertex/secrets/postgres/replication_password
   max_replication_lag_seconds: 300
   monitoring_interval_seconds: 60
   conflict_resolution: last_write_wins
@@ -15,10 +15,10 @@ regions:
     role: active
     provider: aws
     instance:
-      host: postgres.us-east-1.eden.internal
+      host: postgres.us-east-1.vertex.internal
       port: 5432
       admin_user: postgres
-      admin_password_secret: /eden/secrets/postgres/admin_password
+      admin_password_secret: /vertex/secrets/postgres/admin_password
       version: "14.5"
       parameters:
         max_connections: 500
@@ -42,27 +42,27 @@ regions:
         max_wal_senders: 20
         track_commit_timestamp: on
     databases:
-      - name: eden_vault
+      - name: vertex_vault
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_flow
+      - name: vertex_flow
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_task
+      - name: vertex_task
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_hub
+      - name: vertex_hub
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_sync
+      - name: vertex_sync
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_insight
+      - name: vertex_insight
         extensions:
           - pglogical
           - pg_stat_statements
@@ -71,10 +71,10 @@ regions:
     role: active
     provider: aws
     instance:
-      host: postgres.us-west-2.eden.internal
+      host: postgres.us-west-2.vertex.internal
       port: 5432
       admin_user: postgres
-      admin_password_secret: /eden/secrets/postgres/admin_password
+      admin_password_secret: /vertex/secrets/postgres/admin_password
       version: "14.5"
       parameters:
         max_connections: 500
@@ -98,27 +98,27 @@ regions:
         max_wal_senders: 20
         track_commit_timestamp: on
     databases:
-      - name: eden_vault
+      - name: vertex_vault
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_flow
+      - name: vertex_flow
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_task
+      - name: vertex_task
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_hub
+      - name: vertex_hub
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_sync
+      - name: vertex_sync
         extensions:
           - pglogical
           - pg_stat_statements
-      - name: eden_insight
+      - name: vertex_insight
         extensions:
           - pglogical
           - pg_stat_statements
@@ -127,8 +127,8 @@ regions:
 replication:
   provider: pglogical
   node_groups:
-    - name: eden_vault_group
-      database: eden_vault
+    - name: vertex_vault_group
+      database: vertex_vault
       tables:
         - vault_secrets
         - vault_keys
@@ -141,8 +141,8 @@ replication:
           resolution: last_write_wins
           tracking_column: last_updated_at
     
-    - name: eden_flow_group
-      database: eden_flow
+    - name: vertex_flow_group
+      database: vertex_flow
       tables:
         - flow_definitions
         - flow_instances
@@ -155,8 +155,8 @@ replication:
           resolution: last_write_wins
           tracking_column: last_updated_at
     
-    - name: eden_task_group
-      database: eden_task
+    - name: vertex_task_group
+      database: vertex_task
       tables:
         - tasks
         - task_executions
@@ -169,8 +169,8 @@ replication:
           resolution: last_write_wins
           tracking_column: last_updated_at
     
-    - name: eden_hub_group
-      database: eden_hub
+    - name: vertex_hub_group
+      database: vertex_hub
       tables:
         - hub_connections
         - hub_events
@@ -183,8 +183,8 @@ replication:
           resolution: last_write_wins
           tracking_column: last_updated_at
     
-    - name: eden_sync_group
-      database: eden_sync
+    - name: vertex_sync_group
+      database: vertex_sync
       tables:
         - sync_jobs
         - sync_sources
@@ -197,8 +197,8 @@ replication:
           resolution: last_write_wins
           tracking_column: last_updated_at
     
-    - name: eden_insight_group
-      database: eden_insight
+    - name: vertex_insight_group
+      database: vertex_insight
       tables:
         - analytics_queries
         - query_executions
@@ -221,22 +221,22 @@ topology:
   - source_region: us-east-1
     target_region: us-west-2
     node_groups:
-      - eden_vault_group
-      - eden_flow_group
-      - eden_task_group
-      - eden_hub_group
-      - eden_sync_group
-      - eden_insight_group
+      - vertex_vault_group
+      - vertex_flow_group
+      - vertex_task_group
+      - vertex_hub_group
+      - vertex_sync_group
+      - vertex_insight_group
   
   - source_region: us-west-2
     target_region: us-east-1
     node_groups:
-      - eden_vault_group
-      - eden_flow_group
-      - eden_task_group
-      - eden_hub_group
-      - eden_sync_group
-      - eden_insight_group
+      - vertex_vault_group
+      - vertex_flow_group
+      - vertex_task_group
+      - vertex_hub_group
+      - vertex_sync_group
+      - vertex_insight_group
 
 # Monitoring and alerting
 monitoring:
@@ -253,10 +253,10 @@ monitoring:
             - devops@example.com
             - dba@example.com
       - slack:
-          channel: "#eden-db-alerts"
-          webhook_secret: /eden/secrets/alerts/slack_webhook
+          channel: "#vertex-db-alerts"
+          webhook_secret: /vertex/secrets/alerts/slack_webhook
       - pagerduty:
-          service_key_secret: /eden/secrets/alerts/pagerduty_key
+          service_key_secret: /vertex/secrets/alerts/pagerduty_key
   dashboards:
     grafana:
       folder: "PostgreSQL Multi-Region"

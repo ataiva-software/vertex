@@ -1,8 +1,8 @@
-# Eden DevOps Suite - Database Implementation Summary
+# Vertex DevOps Suite - Database Implementation Summary
 
 ## Implementation Complete
 
-The Eden DevOps Suite database schema and infrastructure implementation is now **COMPLETE** and ready for Phase 1b business logic development.
+The Vertex DevOps Suite database schema and infrastructure implementation is now **COMPLETE** and ready for Phase 1b business logic development.
 
 ## Implementation Overview
 
@@ -21,8 +21,8 @@ The Eden DevOps Suite database schema and infrastructure implementation is now *
 - **Advanced Queries**: Search, filtering, statistics, and analytics support
 
 ### Service Layer
-- **EdenDatabaseService**: Comprehensive service interface
-- **EdenDatabaseServiceImpl**: Complete implementation with transaction support
+- **VertexDatabaseService**: Comprehensive service interface
+- **VertexDatabaseServiceImpl**: Complete implementation with transaction support
 - **Factory Pattern**: Easy service instantiation and configuration
 - **Bulk Operations**: Efficient batch processing capabilities
 
@@ -55,21 +55,21 @@ The Eden DevOps Suite database schema and infrastructure implementation is now *
 
 ## Key Features Implemented
 
-### 1. Secrets Management (Eden Vault)
+### 1. Secrets Management (Vertex Vault)
 - **Encrypted Storage**: Application-level encryption with key rotation
 - **Versioning**: Multiple versions of secrets with history
 - **Access Logging**: Detailed audit trail for all secret operations
 - **Type Support**: Generic, database, API tokens, certificates
 - **Search**: Full-text search across secret names and descriptions
 
-### 2. Workflow Management (Eden Flow)
+### 2. Workflow Management (Vertex Flow)
 - **YAML Definitions**: Stored as JSONB for flexible querying
 - **Execution Tracking**: Complete execution history with step details
 - **Status Management**: Pending, running, completed, failed states
 - **Error Handling**: Detailed error messages and recovery options
 - **Performance Metrics**: Duration tracking and success rates
 
-### 3. Task Management (Eden Task)
+### 3. Task Management (Vertex Task)
 - **Scheduling**: Cron-based scheduling with priority queuing
 - **Execution Queue**: Priority-based task execution
 - **Progress Tracking**: Real-time progress updates
@@ -88,12 +88,12 @@ The Eden DevOps Suite database schema and infrastructure implementation is now *
 ```kotlin
 // Create database service with migrations
 val config = DatabaseConfig(
-    url = "jdbc:postgresql://localhost:5432/eden_dev",
-    username = "eden",
+    url = "jdbc:postgresql://localhost:5432/vertex_dev",
+    username = "vertex",
     password = "dev_password"
 )
 
-val factory = EdenDatabaseServiceFactoryImpl()
+val factory = VertexDatabaseServiceFactoryImpl()
 val databaseService = factory.createWithMigration(config)
 ```
 
@@ -232,16 +232,16 @@ println("Tasks: ${searchResult.tasks.size}")
 ## Next Steps
 
 ### Phase 1b Implementation
-1. **Eden Vault Service**: Implement business logic using SecretRepository
-2. **Eden Flow Service**: Implement workflow engine using WorkflowRepository
-3. **Eden Task Service**: Implement task scheduler using TaskRepository
+1. **Vertex Vault Service**: Implement business logic using SecretRepository
+2. **Vertex Flow Service**: Implement workflow engine using WorkflowRepository
+3. **Vertex Task Service**: Implement task scheduler using TaskRepository
 4. **API Gateway**: Integrate with database service for authentication
 
 ### Service Integration
 ```kotlin
 // Example service integration
 class VaultService(
-    private val databaseService: EdenDatabaseService,
+    private val databaseService: VertexDatabaseService,
     private val encryptionService: EncryptionService
 ) {
     suspend fun storeSecret(request: StoreSecretRequest): SecretResponse {
@@ -292,4 +292,4 @@ class VaultService(
 **Test Coverage**: Comprehensive integration tests  
 **Documentation**: Complete with examples  
 
-The Eden DevOps Suite database implementation provides a solid foundation for building the core business services. All repository patterns, service interfaces, and testing infrastructure are in place to support rapid development of the Eden Vault, Eden Flow, and Eden Task services.
+The Vertex DevOps Suite database implementation provides a solid foundation for building the core business services. All repository patterns, service interfaces, and testing infrastructure are in place to support rapid development of the Vertex Vault, Vertex Flow, and Vertex Task services.

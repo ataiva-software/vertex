@@ -1,4 +1,4 @@
-# Eden DevOps Suite Disaster Recovery Plan
+# Vertex DevOps Suite Disaster Recovery Plan
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -14,12 +14,12 @@
 
 ## Introduction
 
-This Disaster Recovery Plan (DRP) outlines the procedures, responsibilities, and resources required to recover the Eden DevOps Suite in the event of a disaster or significant service disruption. The plan is designed to minimize downtime and data loss, ensuring business continuity for critical operations.
+This Disaster Recovery Plan (DRP) outlines the procedures, responsibilities, and resources required to recover the Vertex DevOps Suite in the event of a disaster or significant service disruption. The plan is designed to minimize downtime and data loss, ensuring business continuity for critical operations.
 
 ### Purpose
 
 The purpose of this document is to:
-- Define the scope and objectives of disaster recovery for the Eden DevOps Suite
+- Define the scope and objectives of disaster recovery for the Vertex DevOps Suite
 - Establish clear roles and responsibilities during a disaster recovery event
 - Document detailed recovery procedures for various disaster scenarios
 - Provide guidelines for testing and maintaining the disaster recovery capabilities
@@ -36,7 +36,7 @@ This document should be reviewed and updated quarterly or after any significant 
 
 ### Systems Covered
 
-The disaster recovery plan covers the following components of the Eden DevOps Suite:
+The disaster recovery plan covers the following components of the Vertex DevOps Suite:
 
 1. **Infrastructure**
    - Kubernetes clusters
@@ -48,7 +48,7 @@ The disaster recovery plan covers the following components of the Eden DevOps Su
    - PostgreSQL databases
    - Redis data stores
    - Configuration files
-   - Secrets and credentials
+   - Secrets and crvertextials
 
 3. **Services**
    - API Gateway
@@ -65,7 +65,7 @@ The disaster recovery plan covers the following components of the Eden DevOps Su
 
 This plan does not cover:
 - End-user devices
-- Third-party services not directly managed by the Eden DevOps team
+- Third-party services not directly managed by the Vertex DevOps team
 - Development and testing environments (unless specifically designated as critical)
 
 ## Recovery Objectives

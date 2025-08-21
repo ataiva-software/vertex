@@ -4,7 +4,7 @@
 # Global settings
 global:
   provider: aws-route53
-  domain: eden.example.com
+  domain: vertex.example.com
   ttl_seconds: 60
   health_check:
     protocol: https
@@ -27,50 +27,50 @@ regions:
     weight: 100
     endpoints:
       api:
-        hostname: api.us-east-1.eden.example.com
+        hostname: api.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-api-alb-us-east-1
-        alb_dns_name: eden-api-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-api-alb-us-east-1
+        alb_dns_name: vertex-api-alb-us-east-1.elb.us-east-1.amazonaws.com
       web:
-        hostname: web.us-east-1.eden.example.com
+        hostname: web.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-web-alb-us-east-1
-        alb_dns_name: eden-web-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-web-alb-us-east-1
+        alb_dns_name: vertex-web-alb-us-east-1.elb.us-east-1.amazonaws.com
       vault:
-        hostname: vault.us-east-1.eden.example.com
+        hostname: vault.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-vault-alb-us-east-1
-        alb_dns_name: eden-vault-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-vault-alb-us-east-1
+        alb_dns_name: vertex-vault-alb-us-east-1.elb.us-east-1.amazonaws.com
       hub:
-        hostname: hub.us-east-1.eden.example.com
+        hostname: hub.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-hub-alb-us-east-1
-        alb_dns_name: eden-hub-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-hub-alb-us-east-1
+        alb_dns_name: vertex-hub-alb-us-east-1.elb.us-east-1.amazonaws.com
       flow:
-        hostname: flow.us-east-1.eden.example.com
+        hostname: flow.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-flow-alb-us-east-1
-        alb_dns_name: eden-flow-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-flow-alb-us-east-1
+        alb_dns_name: vertex-flow-alb-us-east-1.elb.us-east-1.amazonaws.com
       task:
-        hostname: task.us-east-1.eden.example.com
+        hostname: task.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-task-alb-us-east-1
-        alb_dns_name: eden-task-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-task-alb-us-east-1
+        alb_dns_name: vertex-task-alb-us-east-1.elb.us-east-1.amazonaws.com
       monitor:
-        hostname: monitor.us-east-1.eden.example.com
+        hostname: monitor.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-monitor-alb-us-east-1
-        alb_dns_name: eden-monitor-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-monitor-alb-us-east-1
+        alb_dns_name: vertex-monitor-alb-us-east-1.elb.us-east-1.amazonaws.com
       sync:
-        hostname: sync.us-east-1.eden.example.com
+        hostname: sync.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-sync-alb-us-east-1
-        alb_dns_name: eden-sync-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-sync-alb-us-east-1
+        alb_dns_name: vertex-sync-alb-us-east-1.elb.us-east-1.amazonaws.com
       insight:
-        hostname: insight.us-east-1.eden.example.com
+        hostname: insight.us-east-1.vertex.example.com
         health_check_path: /health
-        alb_name: eden-insight-alb-us-east-1
-        alb_dns_name: eden-insight-alb-us-east-1.elb.us-east-1.amazonaws.com
+        alb_name: vertex-insight-alb-us-east-1
+        alb_dns_name: vertex-insight-alb-us-east-1.elb.us-east-1.amazonaws.com
 
   - name: us-west-2
     provider: aws
@@ -78,54 +78,54 @@ regions:
     weight: 100
     endpoints:
       api:
-        hostname: api.us-west-2.eden.example.com
+        hostname: api.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-api-alb-us-west-2
-        alb_dns_name: eden-api-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-api-alb-us-west-2
+        alb_dns_name: vertex-api-alb-us-west-2.elb.us-west-2.amazonaws.com
       web:
-        hostname: web.us-west-2.eden.example.com
+        hostname: web.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-web-alb-us-west-2
-        alb_dns_name: eden-web-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-web-alb-us-west-2
+        alb_dns_name: vertex-web-alb-us-west-2.elb.us-west-2.amazonaws.com
       vault:
-        hostname: vault.us-west-2.eden.example.com
+        hostname: vault.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-vault-alb-us-west-2
-        alb_dns_name: eden-vault-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-vault-alb-us-west-2
+        alb_dns_name: vertex-vault-alb-us-west-2.elb.us-west-2.amazonaws.com
       hub:
-        hostname: hub.us-west-2.eden.example.com
+        hostname: hub.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-hub-alb-us-west-2
-        alb_dns_name: eden-hub-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-hub-alb-us-west-2
+        alb_dns_name: vertex-hub-alb-us-west-2.elb.us-west-2.amazonaws.com
       flow:
-        hostname: flow.us-west-2.eden.example.com
+        hostname: flow.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-flow-alb-us-west-2
-        alb_dns_name: eden-flow-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-flow-alb-us-west-2
+        alb_dns_name: vertex-flow-alb-us-west-2.elb.us-west-2.amazonaws.com
       task:
-        hostname: task.us-west-2.eden.example.com
+        hostname: task.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-task-alb-us-west-2
-        alb_dns_name: eden-task-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-task-alb-us-west-2
+        alb_dns_name: vertex-task-alb-us-west-2.elb.us-west-2.amazonaws.com
       monitor:
-        hostname: monitor.us-west-2.eden.example.com
+        hostname: monitor.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-monitor-alb-us-west-2
-        alb_dns_name: eden-monitor-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-monitor-alb-us-west-2
+        alb_dns_name: vertex-monitor-alb-us-west-2.elb.us-west-2.amazonaws.com
       sync:
-        hostname: sync.us-west-2.eden.example.com
+        hostname: sync.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-sync-alb-us-west-2
-        alb_dns_name: eden-sync-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-sync-alb-us-west-2
+        alb_dns_name: vertex-sync-alb-us-west-2.elb.us-west-2.amazonaws.com
       insight:
-        hostname: insight.us-west-2.eden.example.com
+        hostname: insight.us-west-2.vertex.example.com
         health_check_path: /health
-        alb_name: eden-insight-alb-us-west-2
-        alb_dns_name: eden-insight-alb-us-west-2.elb.us-west-2.amazonaws.com
+        alb_name: vertex-insight-alb-us-west-2
+        alb_dns_name: vertex-insight-alb-us-west-2.elb.us-west-2.amazonaws.com
 
 # DNS record definitions
 dns_records:
-  - name: api.eden.example.com
+  - name: api.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -136,7 +136,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: web.eden.example.com
+  - name: web.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -147,7 +147,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: vault.eden.example.com
+  - name: vault.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -158,7 +158,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: hub.eden.example.com
+  - name: hub.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -169,7 +169,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: flow.eden.example.com
+  - name: flow.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -180,7 +180,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: task.eden.example.com
+  - name: task.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -191,7 +191,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: monitor.eden.example.com
+  - name: monitor.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -202,7 +202,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: sync.eden.example.com
+  - name: sync.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -213,7 +213,7 @@ dns_records:
     health_checks: true
     failover: true
   
-  - name: insight.eden.example.com
+  - name: insight.vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -225,7 +225,7 @@ dns_records:
     failover: true
   
   # Main domain record
-  - name: eden.example.com
+  - name: vertex.example.com
     type: global
     routing_policy: latency
     endpoints:
@@ -330,10 +330,10 @@ monitoring:
             - devops@example.com
             - network@example.com
       - slack:
-          channel: "#eden-network-alerts"
-          webhook_secret: /eden/secrets/alerts/slack_webhook
+          channel: "#vertex-network-alerts"
+          webhook_secret: /vertex/secrets/alerts/slack_webhook
       - pagerduty:
-          service_key_secret: /eden/secrets/alerts/pagerduty_key
+          service_key_secret: /vertex/secrets/alerts/pagerduty_key
   
   dashboards:
     grafana:

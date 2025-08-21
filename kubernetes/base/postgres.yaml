@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: eden
+  namespace: vertex
   labels:
     app: postgres
     tier: database
@@ -17,7 +17,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
-  namespace: eden
+  namespace: vertex
 spec:
   accessModes:
     - ReadWriteOnce
@@ -30,7 +30,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: eden
+  namespace: vertex
 spec:
   serviceName: "postgres"
   replicas: 1
@@ -54,15 +54,15 @@ spec:
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_PASSWORD
         - name: POSTGRES_DB
-          value: "eden_dev"
+          value: "vertex_dev"
         - name: POSTGRES_INITDB_ARGS
           value: "--encoding=UTF-8"
         - name: PGDATA
@@ -111,7 +111,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-init-scripts
-  namespace: eden
+  namespace: vertex
 data:
   init-multiple-dbs.sh: |
     #!/bin/bash

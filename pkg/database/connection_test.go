@@ -13,8 +13,8 @@ func TestDatabaseConfig(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 			SSLMode:  "disable",
 		}
@@ -26,8 +26,8 @@ func TestDatabaseConfig(t *testing.T) {
 	t.Run("should fail validation with missing host", func(t *testing.T) {
 		config := &Config{
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 		}
 
@@ -40,8 +40,8 @@ func TestDatabaseConfig(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     0,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 		}
 
@@ -54,14 +54,14 @@ func TestDatabaseConfig(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 			SSLMode:  "disable",
 		}
 
 		dsn := config.DSN()
-		expected := "host=localhost user=eden password=secret dbname=eden_test port=5432 sslmode=disable"
+		expected := "host=localhost user=vertex password=secret dbname=vertex_test port=5432 sslmode=disable"
 		assert.Equal(t, expected, dsn)
 	})
 
@@ -69,8 +69,8 @@ func TestDatabaseConfig(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 		}
 
@@ -84,8 +84,8 @@ func TestConnectionPool(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 			SSLMode:  "disable",
 		}
@@ -102,8 +102,8 @@ func TestConnectionPool(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 			SSLMode:  "disable",
 		}
@@ -124,8 +124,8 @@ func TestHealthCheck(t *testing.T) {
 		config := &Config{
 			Host:     "localhost",
 			Port:     5432,
-			Database: "eden_test",
-			Username: "eden",
+			Database: "vertex_test",
+			Username: "vertex",
 			Password: "secret",
 			SSLMode:  "disable",
 		}

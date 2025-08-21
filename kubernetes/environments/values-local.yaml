@@ -3,7 +3,7 @@
 global:
   environment: development
   image:
-    repository: ataivadev/eden
+    repository: ataivadev/vertex
     tag: latest
     pullPolicy: IfNotPresent
   
@@ -38,7 +38,7 @@ postgresql:
   auth:
     username: postgres
     password: postgres
-    database: eden_dev
+    database: vertex_dev
   primary:
     persistence:
       size: 1Gi

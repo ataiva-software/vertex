@@ -1,6 +1,6 @@
-# Eden DevOps Suite Observability Guide
+# Vertex DevOps Suite Observability Guide
 
-This guide provides comprehensive information on the monitoring and observability features implemented in the Eden DevOps Suite.
+This guide provides comprehensive information on the monitoring and observability features implemented in the Vertex DevOps Suite.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This guide provides comprehensive information on the monitoring and observabilit
 
 ## Overview
 
-The Eden DevOps Suite implements a comprehensive observability solution based on the three pillars of observability:
+The Vertex DevOps Suite implements a comprehensive observability solution based on the three pillars of observability:
 
 1. **Metrics**: Quantitative measurements of system behavior over time
 2. **Logs**: Detailed records of events that occurred in the system
@@ -172,7 +172,7 @@ Logs can be viewed in Kibana:
 
 1. Access Kibana at `http://localhost:5601`
 2. Navigate to "Discover"
-3. Select the "eden-logs-*" index pattern
+3. Select the "vertex-logs-*" index pattern
 4. Configure the time range and search parameters
 
 ### Correlation with Traces
@@ -378,7 +378,7 @@ Audit logs can be viewed in Kibana:
 
 1. Access Kibana at `http://localhost:5601`
 2. Navigate to "Discover"
-3. Select the "eden-logs-*" index pattern
+3. Select the "vertex-logs-*" index pattern
 4. Filter by `type: audit`
 
 ## Dashboards
@@ -396,7 +396,7 @@ The following Grafana dashboards are available:
 ### Accessing Dashboards
 
 1. Access Grafana at `http://localhost:3000`
-2. Log in with the default credentials (admin/admin)
+2. Log in with the default crvertextials (admin/admin)
 3. Navigate to the "Dashboards" section
 4. Select a dashboard from the list
 
@@ -429,4 +429,4 @@ If you encounter issues with the observability stack, please:
 
 1. Check the logs of the relevant components
 2. Consult the documentation of the specific tool
-3. Contact the Eden DevOps team for assistance
+3. Contact the Vertex DevOps team for assistance

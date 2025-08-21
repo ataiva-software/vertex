@@ -1,6 +1,6 @@
 # Multi-Cloud Orchestration Guide
 
-Eden's Multi-Cloud Orchestration system provides unified management across AWS, GCP, Azure, Kubernetes, and Docker environments with intelligent cost optimization and automated migration capabilities.
+Vertex's Multi-Cloud Orchestration system provides unified management across AWS, GCP, Azure, Kubernetes, and Docker environments with intelligent cost optimization and automated migration capabilities.
 
 ## Overview
 
@@ -43,22 +43,22 @@ orchestrator := &MultiCloudOrchestrator{
 
 ```bash
 # Check multi-cloud status
-eden cloud status
+vertex cloud status
 
 # Deploy to AWS
-eden cloud deploy --provider aws --region us-east-1 --config deployment.yaml
+vertex cloud deploy --provider aws --region us-east-1 --config deployment.yaml
 
 # Deploy to GCP
-eden cloud deploy --provider gcp --region us-central1 --config deployment.yaml
+vertex cloud deploy --provider gcp --region us-central1 --config deployment.yaml
 
 # Deploy to Azure
-eden cloud deploy --provider azure --region eastus --config deployment.yaml
+vertex cloud deploy --provider azure --region eastus --config deployment.yaml
 
 # Cross-cloud cost analysis
-eden cloud costs --compare --providers aws,gcp,azure
+vertex cloud costs --compare --providers aws,gcp,azure
 
 # Migrate resources
-eden cloud migrate --from aws --to gcp --resource-type vm
+vertex cloud migrate --from aws --to gcp --resource-type vm
 ```
 
 ## Configuration
@@ -70,13 +70,13 @@ eden cloud migrate --from aws --to gcp --resource-type vm
 providers:
   aws:
     region: us-east-1
-    credentials: ~/.aws/credentials
+    crvertextials: ~/.aws/crvertextials
     profile: default
   
   gcp:
     project: my-project
     region: us-central1
-    credentials: ~/.gcp/service-account.json
+    crvertextials: ~/.gcp/service-account.json
   
   azure:
     subscription: my-subscription
@@ -111,13 +111,13 @@ export AZURE_RESOURCE_GROUP=my-rg
 
 ```bash
 # Generate cost report
-eden cloud costs --report --output costs.json
+vertex cloud costs --report --output costs.json
 
 # Compare costs across providers
-eden cloud costs --compare --timeframe 30d
+vertex cloud costs --compare --timeframe 30d
 
 # Get optimization recommendations
-eden cloud optimize --recommendations
+vertex cloud optimize --recommendations
 ```
 
 ### Cost Optimization Example
@@ -146,13 +146,13 @@ for _, rec := range recommendations {
 
 ```bash
 # Create migration plan
-eden cloud migrate plan --from aws --to gcp --resources vm,storage
+vertex cloud migrate plan --from aws --to gcp --resources vm,storage
 
 # Execute migration
-eden cloud migrate execute --plan migration-plan.json
+vertex cloud migrate execute --plan migration-plan.json
 
 # Monitor migration status
-eden cloud migrate status --migration-id 12345
+vertex cloud migrate status --migration-id 12345
 ```
 
 ### Migration Example
@@ -184,13 +184,13 @@ fmt.Printf("Status: %s\n", result.Status)
 
 ```bash
 # Check health across all providers
-eden cloud health
+vertex cloud health
 
 # Monitor specific provider
-eden cloud health --provider aws
+vertex cloud health --provider aws
 
 # Get detailed health report
-eden cloud health --detailed --output health-report.json
+vertex cloud health --detailed --output health-report.json
 ```
 
 ### Health Check Example
@@ -229,7 +229,7 @@ failover:
 
 ```bash
 # Configure cross-cloud load balancing
-eden cloud loadbalancer create --name multi-cloud-lb \
+vertex cloud loadbalancer create --name multi-cloud-lb \
   --providers aws,gcp \
   --algorithm round-robin
 ```
@@ -238,11 +238,11 @@ eden cloud loadbalancer create --name multi-cloud-lb \
 
 ```bash
 # Set up disaster recovery
-eden cloud dr setup --primary aws --backup gcp \
+vertex cloud dr setup --primary aws --backup gcp \
   --replication-interval 1h
 
 # Test disaster recovery
-eden cloud dr test --scenario primary-failure
+vertex cloud dr test --scenario primary-failure
 ```
 
 ## Best Practices
@@ -277,22 +277,22 @@ eden cloud dr test --scenario primary-failure
 
 **Authentication Failures**
 ```bash
-# Verify credentials
-eden cloud auth verify --provider aws
-eden cloud auth verify --provider gcp
-eden cloud auth verify --provider azure
+# Verify crvertextials
+vertex cloud auth verify --provider aws
+vertex cloud auth verify --provider gcp
+vertex cloud auth verify --provider azure
 ```
 
 **Network Connectivity**
 ```bash
 # Test connectivity
-eden cloud network test --provider aws --region us-east-1
+vertex cloud network test --provider aws --region us-east-1
 ```
 
 **Resource Limits**
 ```bash
 # Check quotas and limits
-eden cloud limits --provider gcp --service compute
+vertex cloud limits --provider gcp --service compute
 ```
 
 ### Support

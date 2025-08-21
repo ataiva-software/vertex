@@ -2,7 +2,7 @@
 global:
   environment: production
   image:
-    repository: ataivadev/eden
+    repository: ataivadev/vertex
     tag: latest
     pullPolicy: Always
   
@@ -48,7 +48,7 @@ postgresql:
   auth:
     username: postgres
     password: postgres
-    database: eden_dev
+    database: vertex_dev
   primary:
     persistence:
       size: 10Gi
@@ -67,7 +67,7 @@ postgresql:
       EOSQL
       }
       
-      for db in eden_vault eden_flow eden_task eden_hub eden_sync eden_insight eden_monitor; do
+      for db in vertex_vault vertex_flow vertex_task vertex_hub vertex_sync vertex_insight vertex_monitor; do
         create_database $db
       done
       echo "Multiple databases created"
@@ -219,7 +219,7 @@ webUi:
   enabled: true
   replicaCount: 2
   image:
-    repository: ataivadev/eden-web
+    repository: ataivadev/vertex-web
     tag: latest
     pullPolicy: Always
   service:
@@ -248,7 +248,7 @@ ingress:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
-    - host: eden.example.com
+    - host: vertex.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -259,6 +259,6 @@ ingress:
           service: api-gateway
           port: 8080
   tls:
-    - secretName: eden-tls
+    - secretName: vertex-tls
       hosts:
-        - eden.example.com
+        - vertex.example.com

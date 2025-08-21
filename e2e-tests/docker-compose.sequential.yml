@@ -6,16 +6,16 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: eden_test
-      POSTGRES_USER: eden_test
-      POSTGRES_PASSWORD: eden_test_password
+      POSTGRES_DB: vertex_test
+      POSTGRES_USER: vertex_test
+      POSTGRES_PASSWORD: vertex_test_password
     ports:
       - "5433:5432"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
       - ../infrastructure/database/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eden_test -d eden_test"]
+      test: ["CMD-SHELL", "pg_isready -U vertex_test -d vertex_test"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,7 +42,7 @@ services:
       args:
         SERVICE_NAME: api-gateway
     environment:
-      - DATABASE_URL=postgresql://eden_test:eden_test_password@postgres:5432/eden_test
+      - DATABASE_URL=postgresql://vertex_test:vertex_test_password@postgres:5432/vertex_test
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=test_jwt_secret_key_for_testing_only
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
@@ -67,4 +67,4 @@ volumes:
 
 networks:
   default:
-    name: eden_test_network
+    name: vertex_test_network

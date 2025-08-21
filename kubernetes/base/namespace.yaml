@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: eden
+  name: vertex
   labels:
-    name: eden
-    part-of: eden-devops-suite
+    name: vertex
+    part-of: vertex-devops-suite

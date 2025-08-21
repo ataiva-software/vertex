@@ -10,7 +10,7 @@ filebeat.autodiscover:
       templates:
         - condition:
             contains:
-              docker.container.image: eden
+              docker.container.image: vertex
           config:
             - type: container
               paths:

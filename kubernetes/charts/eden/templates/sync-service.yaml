@@ -1,21 +1,21 @@
 {{- if .Values.syncService.enabled }}
 # Service
 {{- $serviceContext := dict "root" . "serviceName" "sync-service" "serviceConfig" .Values.syncService }}
-{{- include "eden.service" $serviceContext }}
+{{- include "vertex.service" $serviceContext }}
 ---
 # Deployment
-{{- $deploymentContext := dict "root" . "serviceName" "sync-service" "serviceConfig" .Values.syncService "dbName" "eden_sync" "extraEnv" nil }}
-{{- include "eden.deployment" $deploymentContext }}
+{{- $deploymentContext := dict "root" . "serviceName" "sync-service" "serviceConfig" .Values.syncService "dbName" "vertex_sync" "extraEnv" nil }}
+{{- include "vertex.deployment" $deploymentContext }}
 ---
 # HorizontalPodAutoscaler
 {{- $hpaContext := dict "root" . "serviceName" "sync-service" "serviceConfig" .Values.syncService }}
-{{- include "eden.hpa" $hpaContext }}
+{{- include "vertex.hpa" $hpaContext }}
 ---
 # NetworkPolicy
 {{- $networkContext := dict "root" . "serviceName" "sync-service" "extraEgress" nil }}
-{{- include "eden.networkpolicy" $networkContext }}
+{{- include "vertex.networkpolicy" $networkContext }}
 ---
 # PodDisruptionBudget
 {{- $pdbContext := dict "root" . "serviceName" "sync-service" }}
-{{- include "eden.pdb" $pdbContext }}
+{{- include "vertex.pdb" $pdbContext }}
 {{- end }}

@@ -1,6 +1,6 @@
-# Eden DevOps Suite - Comprehensive Regression Testing Framework
+# Vertex DevOps Suite - Comprehensive Regression Testing Framework
 
-This directory contains the comprehensive production-ready regression testing framework for the Eden DevOps Suite, designed to validate all critical functionality, performance, and security aspects to prevent regressions and ensure production readiness. This implementation replaces all previously mocked test scenarios with real, production-grade tests.
+This directory contains the comprehensive production-ready regression testing framework for the Vertex DevOps Suite, designed to validate all critical functionality, performance, and security aspects to prevent regressions and ensure production readiness. This implementation replaces all previously mocked test scenarios with real, production-grade tests.
 
 ## Overview
 
@@ -16,7 +16,7 @@ The production-ready regression testing framework provides:
 
 ```
 integration-tests/
-├── src/test/kotlin/com/ataiva/eden/integration/
+├── src/test/kotlin/com/ataiva/vertex/integration/
 │   ├── CrossServiceRegressionTest.kt          # Cross-service integration tests
 │   ├── PerformanceRegressionTest.kt           # Performance validation tests
 │   ├── SecurityRegressionTest.kt              # Security control tests
@@ -35,7 +35,7 @@ integration-tests/
 
 - JDK 17 or higher
 - Docker and Docker Compose
-- All Eden services built and ready to run
+- All Vertex services built and ready to run
 - PostgreSQL and Redis (can be started via Docker)
 
 ### Running All Regression Tests
@@ -60,9 +60,9 @@ integration-tests/
 
 ### 1. Cross-Service Integration Tests
 
-**File:** [`CrossServiceRegressionTest.kt`](src/test/kotlin/com/ataiva/eden/integration/CrossServiceRegressionTest.kt)
+**File:** [`CrossServiceRegressionTest.kt`](src/test/kotlin/com/ataiva/vertex/integration/CrossServiceRegressionTest.kt)
 
-**Purpose:** Validate that all Eden services work together correctly and prevent integration regressions.
+**Purpose:** Validate that all Vertex services work together correctly and prevent integration regressions.
 
 **Test Scenarios:**
 - **Vault → Flow Integration** - Secret retrieval in workflows
@@ -82,7 +82,7 @@ integration-tests/
 
 ### 2. Performance Regression Tests
 
-**File:** [`PerformanceRegressionTest.kt`](src/test/kotlin/com/ataiva/eden/integration/PerformanceRegressionTest.kt)
+**File:** [`PerformanceRegressionTest.kt`](src/test/kotlin/com/ataiva/vertex/integration/PerformanceRegressionTest.kt)
 
 **Purpose:** Ensure the platform maintains performance standards and prevent performance regressions.
 
@@ -106,7 +106,7 @@ integration-tests/
 
 ### 3. Security Regression Tests
 
-**File:** [`SecurityRegressionTest.kt`](src/test/kotlin/com/ataiva/eden/integration/SecurityRegressionTest.kt)
+**File:** [`SecurityRegressionTest.kt`](src/test/kotlin/com/ataiva/vertex/integration/SecurityRegressionTest.kt)
 
 **Purpose:** Validate all security controls remain intact and prevent security regressions.
 
@@ -132,7 +132,7 @@ integration-tests/
 
 #### Hub Service Tests
 
-**File:** [`hub/HubServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/eden/integration/hub/HubServiceIntegrationTest.kt)
+**File:** [`hub/HubServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/vertex/integration/hub/HubServiceIntegrationTest.kt)
 
 **Purpose:** Validate the Hub Service's integration capabilities, webhook management, notification system, and event processing.
 
@@ -151,7 +151,7 @@ integration-tests/
 
 #### Insight Service Tests
 
-**File:** [`insight/InsightServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/eden/integration/insight/InsightServiceIntegrationTest.kt)
+**File:** [`insight/InsightServiceIntegrationTest.kt`](src/test/kotlin/com/ataiva/vertex/integration/insight/InsightServiceIntegrationTest.kt)
 
 **Purpose:** Validate the Insight Service's analytics capabilities, reporting, dashboard management, and KPI tracking.
 
@@ -171,7 +171,7 @@ integration-tests/
 
 ### 5. Comprehensive Test Suite
 
-**File:** [`RegressionTestSuite.kt`](src/test/kotlin/com/ataiva/eden/integration/RegressionTestSuite.kt)
+**File:** [`RegressionTestSuite.kt`](src/test/kotlin/com/ataiva/vertex/integration/RegressionTestSuite.kt)
 
 **Purpose:** Orchestrate all regression tests and provide comprehensive validation.
 
@@ -223,7 +223,7 @@ private val requestsPerUser = 10         // Requests per user
 ### Security Test Configuration
 
 ```kotlin
-// Test user credentials and roles
+// Test user crvertextials and roles
 private val testUserId = "security-test-user"
 private val adminUserId = "admin-user"
 private val readOnlyUserId = "readonly-user"
@@ -370,13 +370,13 @@ top -p $(pgrep -f "gradle|java")
 **Database Connection Issues**
 ```bash
 # Check database containers
-docker logs eden-postgres-test
+docker logs vertex-postgres-test
 
 # Verify database connectivity
-psql -h localhost -U eden_user -d eden_test
+psql -h localhost -U vertex_user -d vertex_test
 
 # Reset test database
-docker restart eden-postgres-test
+docker restart vertex-postgres-test
 ```
 
 ### Debug Mode
@@ -398,10 +398,10 @@ Tests automatically clean up created data, but manual cleanup may be needed:
 
 ```bash
 # Clean up test databases
-docker exec eden-postgres-test psql -U eden_user -d eden_test -c "TRUNCATE TABLE secrets, tasks, workflows CASCADE;"
+docker exec vertex-postgres-test psql -U vertex_user -d vertex_test -c "TRUNCATE TABLE secrets, tasks, workflows CASCADE;"
 
 # Reset Redis cache
-docker exec eden-redis-test redis-cli FLUSHALL
+docker exec vertex-redis-test redis-cli FLUSHALL
 
 # Clean up test files
 rm -rf test-reports/* logs/*
@@ -465,7 +465,7 @@ The end-to-end testing suite provides comprehensive coverage:
 
 ## Success Criteria
 
-The production-ready regression testing framework validates that the Eden DevOps Suite:
+The production-ready regression testing framework validates that the Vertex DevOps Suite:
 
 **Functionality** - All services and integrations work correctly with real implementations
 **Performance** - Meets or exceeds performance benchmarks with consistent results
@@ -486,4 +486,4 @@ For questions or issues with the regression testing framework:
 
 ---
 
-**The Eden DevOps Suite regression testing framework ensures production readiness through comprehensive validation of all critical system aspects.**
+**The Vertex DevOps Suite regression testing framework ensures production readiness through comprehensive validation of all critical system aspects.**

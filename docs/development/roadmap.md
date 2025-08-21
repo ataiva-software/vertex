@@ -1,8 +1,8 @@
-# Eden Development Roadmap
+# Vertex Development Roadmap
 
 ## Current Status
 
-Eden is **production-ready** with all core services implemented and fully functional. The platform provides a complete DevOps solution through a single 19MB binary.
+Vertex is **production-ready** with all core services implemented and fully functional. The platform provides a complete DevOps solution through a single 19MB binary.
 
 ## Completed Features
 
@@ -92,7 +92,7 @@ Eden is **production-ready** with all core services implemented and fully functi
 
 ## Contributing
 
-Eden welcomes contributions from the community. Key areas for contribution include:
+Vertex welcomes contributions from the community. Key areas for contribution include:
 
 ### Core Development
 - **Service Enhancements** - Improve existing services
@@ -120,7 +120,7 @@ Eden welcomes contributions from the community. Key areas for contribution inclu
 
 ## Getting Involved
 
-To contribute to Eden development:
+To contribute to Vertex development:
 
 1. **Review the codebase** - Understand the architecture and implementation
 2. **Check open issues** - Find areas where you can contribute

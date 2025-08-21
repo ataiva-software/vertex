@@ -41,7 +41,7 @@ metrics_generator:
   registry:
     external_labels:
       source: tempo
-      cluster: eden
+      cluster: vertex
   storage:
     path: /tmp/tempo/generator/wal
     remote_write:

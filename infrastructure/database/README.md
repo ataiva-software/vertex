@@ -1,15 +1,15 @@
-# Eden DevOps Suite - Database Schema Implementation
+# Vertex DevOps Suite - Database Schema Implementation
 
-This directory contains the complete database schema implementation for the Eden DevOps Suite, designed to support the core business logic for Phase 1b development.
+This directory contains the complete database schema implementation for the Vertex DevOps Suite, designed to support the core business logic for Phase 1b development.
 
 ## Overview
 
 The database schema implements a comprehensive data model supporting:
 
 - **User Management**: Authentication, sessions, and user profiles
-- **Secrets Management**: Encrypted storage with audit trails (Eden Vault)
-- **Workflow Management**: YAML-based workflow definitions and executions (Eden Flow)
-- **Task Management**: Scheduled and on-demand task execution (Eden Task)
+- **Secrets Management**: Encrypted storage with audit trails (Vertex Vault)
+- **Workflow Management**: YAML-based workflow definitions and executions (Vertex Flow)
+- **Task Management**: Scheduled and on-demand task execution (Vertex Task)
 - **System Monitoring**: Events, audit logs, and system health tracking
 - **Multi-tenancy**: Organization-based resource isolation (future-ready)
 
@@ -24,20 +24,20 @@ user_sessions         -- Active user sessions and tokens
 organizations         -- Multi-tenant organization support
 ```
 
-#### Secrets Management (Eden Vault)
+#### Secrets Management (Vertex Vault)
 ```sql
 secrets               -- Encrypted secrets with versioning
 secret_access_logs    -- Detailed access audit trail
 ```
 
-#### Workflow Management (Eden Flow)
+#### Workflow Management (Vertex Flow)
 ```sql
 workflows             -- YAML workflow definitions
 workflow_executions   -- Workflow execution instances
 workflow_steps        -- Individual step execution tracking
 ```
 
-#### Task Management (Eden Task)
+#### Task Management (Vertex Task)
 ```sql
 tasks                 -- Task definitions with scheduling
 task_executions       -- Task execution queue and history
@@ -86,8 +86,8 @@ infrastructure/database/
 
 ### Environment Variables
 ```bash
-DATABASE_URL=jdbc:postgresql://localhost:5432/eden_dev
-DATABASE_USERNAME=eden
+DATABASE_URL=jdbc:postgresql://localhost:5432/vertex_dev
+DATABASE_USERNAME=vertex
 DATABASE_PASSWORD=dev_password
 DATABASE_MAX_POOL_SIZE=10
 DATABASE_MIN_IDLE=2
@@ -188,18 +188,18 @@ idx_tasks_search       -- Search tasks by name and description
 ## Testing Support
 
 ### Test Data Builders
-Located in `shared/testing/src/commonMain/kotlin/com/ataiva/eden/testing/builders/`:
+Located in `shared/testing/src/commonMain/kotlin/com/ataiva/vertex/testing/builders/`:
 - `SecretTestDataBuilder.kt` - Creates test secrets and access logs
 - `WorkflowTestDataBuilder.kt` - Creates test workflows and executions
 - `TaskTestDataBuilder.kt` - Creates test tasks and executions
 
 ### Test Fixtures
-Located in `shared/testing/src/commonMain/kotlin/com/ataiva/eden/testing/fixtures/`:
+Located in `shared/testing/src/commonMain/kotlin/com/ataiva/vertex/testing/fixtures/`:
 - `DatabaseTestFixtures.kt` - Comprehensive test data sets
 - `TestFixtures.kt` - Extended with new schema entities
 
 ### Integration Tests
-Located in `integration-tests/src/test/kotlin/com/ataiva/eden/integration/database/`:
+Located in `integration-tests/src/test/kotlin/com/ataiva/vertex/integration/database/`:
 - `NewSchemaIntegrationTest.kt` - Comprehensive schema validation tests
 
 ## Development Workflow
@@ -315,8 +315,8 @@ ORDER BY idx_tup_read DESC;
 
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Flyway Migration Guide](https://flywaydb.org/documentation/)
-- [Eden Architecture Implementation Plan](../../docs/architecture/implementation-plan.md)
-- [Database Integration Tests](../../integration-tests/src/test/kotlin/com/ataiva/eden/integration/database/)
+- [Vertex Architecture Implementation Plan](../../docs/architecture/implementation-plan.md)
+- [Database Integration Tests](../../integration-tests/src/test/kotlin/com/ataiva/vertex/integration/database/)
 
 ---
 

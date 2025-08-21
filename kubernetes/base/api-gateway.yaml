@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: api-gateway
-  namespace: eden
+  namespace: vertex
   labels:
     app: api-gateway
     tier: backend
@@ -18,7 +18,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
-  namespace: eden
+  namespace: vertex
   labels:
     app: api-gateway
 spec:
@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: ataivadev/eden:latest
+        image: ataivadev/vertex:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -48,38 +48,38 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: "production"
         - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/eden_dev"
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/vertex_dev"
         - name: REDIS_URL
           value: "redis://redis:6379"
         - name: LOG_LEVEL
           valueFrom:
             configMapKeyRef:
-              name: eden-config
+              name: vertex-config
               key: LOG_LEVEL
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: JWT_SECRET
         - name: ENCRYPTION_KEY
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: ENCRYPTION_KEY
         - name: CORS_ORIGINS
           valueFrom:
             configMapKeyRef:
-              name: eden-config
+              name: vertex-config
               key: CORS_ORIGINS
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: eden-secrets
+              name: vertex-secrets
               key: POSTGRES_PASSWORD
         resources:
           requests:
@@ -109,7 +109,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: api-gateway-hpa
-  namespace: eden
+  namespace: vertex
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -135,7 +135,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: api-gateway-network-policy
-  namespace: eden
+  namespace: vertex
 spec:
   podSelector:
     matchLabels:
@@ -147,7 +147,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: eden
+          name: vertex
     ports:
     - protocol: TCP
       port: 8080

@@ -3,7 +3,7 @@
 global:
   environment: production
   image:
-    repository: ${ACR_NAME}.azurecr.io/eden
+    repository: ${ACR_NAME}.azurecr.io/vertex
     tag: latest
     pullPolicy: Always
   
@@ -18,9 +18,9 @@ global:
   
   # Database settings for Azure Database for PostgreSQL
   database:
-    host: eden-postgres.postgres.database.azure.com
+    host: vertex-postgres.postgres.database.azure.com
     port: 5432
-    user: postgres@eden-postgres
+    user: postgres@vertex-postgres
     # Password should be provided via Azure Key Vault
     password: ${DB_PASSWORD}
     sslMode: require
@@ -48,7 +48,7 @@ redis:
   enabled: false
   # External Redis configuration
   external:
-    host: eden-redis.redis.cache.windows.net
+    host: vertex-redis.redis.cache.windows.net
     port: 6380
     ssl: true
 
@@ -161,7 +161,7 @@ webUi:
   enabled: true
   replicaCount: 2
   image:
-    repository: ${ACR_NAME}.azurecr.io/eden-web
+    repository: ${ACR_NAME}.azurecr.io/vertex-web
     tag: latest
     pullPolicy: Always
   service:
@@ -186,7 +186,7 @@ ingress:
     appgw.ingress.kubernetes.io/use-private-ip: "false"
     appgw.ingress.kubernetes.io/cookie-based-affinity: "true"
   hosts:
-    - host: eden.example.com
+    - host: vertex.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -197,6 +197,6 @@ ingress:
           service: api-gateway
           port: 8080
   tls:
-    - secretName: eden-tls
+    - secretName: vertex-tls
       hosts:
-        - eden.example.com
+        - vertex.example.com

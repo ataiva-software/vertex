@@ -1,7 +1,7 @@
-# Eden Documentation
+# Vertex Documentation
 
 ## Getting Started
-- [Installation](getting-started/installation.md) - How to install and set up Eden
+- [Installation](getting-started/installation.md) - How to install and set up Vertex
 - [Quick Start](getting-started/quick-start.md) - Get up and running in 5 minutes
 - [Development](getting-started/development.md) - Development environment setup
 
@@ -22,4 +22,4 @@
 - [Roadmap](development/roadmap.md) - Future development plans
 
 ## Monitoring
-- [Monitoring Guide](monitoring/monitoring.md) - How to monitor Eden services
+- [Monitoring Guide](monitoring/monitoring.md) - How to monitor Vertex services

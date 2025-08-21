@@ -1,8 +1,8 @@
-# Eden DevOps Suite - End-to-End Testing Suite
+# Vertex DevOps Suite - End-to-End Testing Suite
 
 ## Overview
 
-The End-to-End Testing Suite is a comprehensive, production-ready component of the Eden DevOps Suite that validates the complete system behavior across all services and components. This implementation replaces the previous mock-based testing approach with real, production-grade tests that ensure the reliability, performance, and security of the entire platform.
+The End-to-End Testing Suite is a comprehensive, production-ready component of the Vertex DevOps Suite that validates the complete system behavior across all services and components. This implementation replaces the previous mock-based testing approach with real, production-grade tests that ensure the reliability, performance, and security of the entire platform.
 
 ## Architecture
 
@@ -98,7 +98,7 @@ Test fixtures provide reusable setup and teardown logic:
 
 - **Data Setup**: Creation of test data
 - **Service Initialization**: Starting and configuring services
-- **Authentication**: Setting up test users and credentials
+- **Authentication**: Setting up test users and crvertextials
 - **Resource Allocation**: Allocating necessary resources
 - **Cleanup**: Proper cleanup after tests
 
@@ -552,7 +552,7 @@ test.concurrent.users=50
 test.requests.per.user=10
 test.response.time.threshold=200
 test.performance.duration.seconds=300
-test.database.url=jdbc:postgresql://localhost:5432/eden_test
+test.database.url=jdbc:postgresql://localhost:5432/vertex_test
 test.database.username=test_user
 test.database.password=test_password
 ```
@@ -595,7 +595,7 @@ class HtmlReportGenerator {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Eden DevOps Suite - Regression Test Report</title>
+                <title>Vertex DevOps Suite - Regression Test Report</title>
                 <style>
                     /* CSS styles */
                 </style>
@@ -728,4 +728,4 @@ The suite follows these security testing best practices:
 
 ## Conclusion
 
-The End-to-End Testing Suite provides a comprehensive, production-ready solution for validating the Eden DevOps Suite. It replaces all previously mocked tests with real, production-grade tests that ensure the reliability, performance, and security of the entire platform.
+The End-to-End Testing Suite provides a comprehensive, production-ready solution for validating the Vertex DevOps Suite. It replaces all previously mocked tests with real, production-grade tests that ensure the reliability, performance, and security of the entire platform.

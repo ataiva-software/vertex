@@ -1,7 +1,7 @@
 apiVersion: 1
 
 providers:
-  - name: 'Eden DevOps Suite'
+  - name: 'Vertex DevOps Suite'
     orgId: 1
     folder: ''
     type: file

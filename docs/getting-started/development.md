@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide helps you set up a development environment for Eden and understand the codebase structure.
+This guide helps you set up a development environment for Vertex and understand the codebase structure.
 
 ## Prerequisites
 
@@ -21,8 +21,8 @@ This guide helps you set up a development environment for Eden and understand th
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/ataiva-software/eden.git
-cd eden
+git clone https://github.com/ataiva-software/vertex.git
+cd vertex
 ```
 
 ### 2. Start Dependencies
@@ -39,29 +39,29 @@ docker-compose up -d
 go mod tidy
 ```
 
-### 4. Build Eden
+### 4. Build Vertex
 
 ```bash
 # Build single binary
 make build
 ```
 
-### 5. Run Eden
+### 5. Run Vertex
 
 ```bash
 # Start all services
-./bin/eden server
+./bin/vertex server
 
 # Or run specific service
-./bin/eden service vault --port 8080
+./bin/vertex service vault --port 8080
 ```
 
 ## Project Structure
 
 ```
-eden/
+vertex/
 ├── cmd/
-│   └── eden/                 # Main application entry point
+│   └── vertex/                 # Main application entry point
 ├── internal/                 # Internal service implementations
 │   ├── api-gateway/          # API Gateway service
 │   ├── vault/                # Vault service
@@ -139,7 +139,7 @@ Build the single binary:
 make build
 
 # Build for specific platform
-GOOS=linux GOARCH=amd64 go build -o bin/eden-linux ./cmd/eden/
+GOOS=linux GOARCH=amd64 go build -o bin/vertex-linux ./cmd/vertex/
 
 # Build Docker image
 make docker-build
@@ -153,8 +153,8 @@ make docker-build
 # Database configuration
 export DB_HOST=localhost
 export DB_PORT=5432
-export DB_NAME=eden
-export DB_USER=eden
+export DB_NAME=vertex
+export DB_USER=vertex
 export DB_PASSWORD=secret
 
 # Redis configuration
@@ -174,8 +174,8 @@ Create `config/local.yaml` for local development:
 database:
   host: localhost
   port: 5432
-  name: eden
-  user: eden
+  name: vertex
+  user: vertex
   password: secret
 
 redis:
@@ -218,11 +218,11 @@ Create `.vscode/launch.json` for debugging:
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Eden Server",
+      "name": "Launch Vertex Server",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/cmd/eden",
+      "program": "${workspaceFolder}/cmd/vertex",
       "args": ["server"],
       "env": {
         "DB_HOST": "localhost",
@@ -264,7 +264,7 @@ make lint
 
 ```bash
 # Run specific service
-go run cmd/eden/main.go service vault
+go run cmd/vertex/main.go service vault
 
 # Test with verbose output
 go test -v ./internal/vault/...
@@ -296,7 +296,7 @@ touch pkg/database/migrations/001_create_users.sql
 Use the database package for consistent access:
 
 ```go
-import "github.com/ataiva-software/eden/pkg/database"
+import "github.com/ataiva-software/vertex/pkg/database"
 
 // Get database connection
 db, err := database.Connect(config.Database)
@@ -369,20 +369,20 @@ go test -tags=integration ./...
 
 ```bash
 # Run with debug logging
-LOG_LEVEL=debug ./bin/eden server
+LOG_LEVEL=debug ./bin/vertex server
 
 # Run specific service with debugging
-./bin/eden service vault --port 8080 --debug
+./bin/vertex service vault --port 8080 --debug
 ```
 
 ### Docker Debugging
 
 ```bash
 # View service logs
-docker-compose logs -f eden
+docker-compose logs -f vertex
 
 # Access container shell
-docker-compose exec eden sh
+docker-compose exec vertex sh
 ```
 
 ## Contributing

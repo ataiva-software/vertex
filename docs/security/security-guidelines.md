@@ -1,6 +1,6 @@
-# Eden DevOps Suite Security Guidelines
+# Vertex DevOps Suite Security Guidelines
 
-This document provides comprehensive security guidelines and best practices for the Eden DevOps Suite. It covers various aspects of security including authentication, authorization, data protection, network security, and more.
+This document provides comprehensive security guidelines and best practices for the Vertex DevOps Suite. It covers various aspects of security including authentication, authorization, data protection, network security, and more.
 
 ## Table of Contents
 
@@ -19,15 +19,15 @@ This document provides comprehensive security guidelines and best practices for 
 
 ## Introduction
 
-The Eden DevOps Suite is designed with security as a core principle. This document outlines the security measures implemented in the system and provides guidelines for maintaining a secure environment.
+The Vertex DevOps Suite is designed with security as a core principle. This document outlines the security measures implemented in the system and provides guidelines for maintaining a secure environment.
 
 ## Secrets Management
 
-Eden uses HashiCorp Vault or AWS Secrets Manager for secure secrets management.
+Vertex uses HashiCorp Vault or AWS Secrets Manager for secure secrets management.
 
 ### HashiCorp Vault Integration
 
-The Eden Vault Service integrates with HashiCorp Vault to provide:
+The Vertex Vault Service integrates with HashiCorp Vault to provide:
 
 - Secure storage of sensitive information
 - Dynamic secrets generation
@@ -42,12 +42,12 @@ Configuration:
 SECRETS_MANAGER_TYPE=HASHICORP_VAULT
 VAULT_URL=https://vault.example.com:8200
 VAULT_TOKEN=vault-token
-VAULT_NAMESPACE=eden
+VAULT_NAMESPACE=vertex
 ```
 
 ### AWS Secrets Manager Integration
 
-Alternatively, Eden can use AWS Secrets Manager for:
+Alternatively, Vertex can use AWS Secrets Manager for:
 
 - Centralized secrets management
 - Automatic rotation
@@ -62,7 +62,7 @@ SECRETS_MANAGER_TYPE=AWS_SECRETS_MANAGER
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY=aws-access-key
 AWS_SECRET_KEY=aws-secret-key
-AWS_SECRETS_PREFIX=eden/
+AWS_SECRETS_PREFIX=vertex/
 ```
 
 ### Best Practices
@@ -75,7 +75,7 @@ AWS_SECRETS_PREFIX=eden/
 
 ## Container Security
 
-Eden implements container security scanning using Trivy to detect vulnerabilities in container images.
+Vertex implements container security scanning using Trivy to detect vulnerabilities in container images.
 
 ### Scanning Process
 
@@ -95,7 +95,7 @@ Eden implements container security scanning using Trivy to detect vulnerabilitie
 
 ## Network Security
 
-Eden implements network security policies to control traffic between services.
+Vertex implements network security policies to control traffic between services.
 
 ### Kubernetes Network Policies
 
@@ -142,7 +142,7 @@ spec:
 
 ## Dependency Management
 
-Eden uses OWASP dependency scanning to detect vulnerable dependencies.
+Vertex uses OWASP dependency scanning to detect vulnerable dependencies.
 
 ### Scanning Process
 
@@ -161,7 +161,7 @@ Eden uses OWASP dependency scanning to detect vulnerable dependencies.
 
 ## Role-Based Access Control
 
-Eden implements a comprehensive RBAC system to control access to resources.
+Vertex implements a comprehensive RBAC system to control access to resources.
 
 ### RBAC Components
 
@@ -196,7 +196,7 @@ Examples:
 
 ## API Security
 
-Eden implements various API security measures to protect endpoints.
+Vertex implements various API security measures to protect endpoints.
 
 ### Security Headers
 
@@ -216,7 +216,7 @@ CORS is configured to:
 - Allow only specific origins
 - Control allowed methods
 - Restrict allowed headers
-- Manage credentials
+- Manage crvertextials
 
 ### Best Practices
 
@@ -228,7 +228,7 @@ CORS is configured to:
 
 ## Rate Limiting and DDoS Protection
 
-Eden implements rate limiting to protect against abuse and DDoS attacks.
+Vertex implements rate limiting to protect against abuse and DDoS attacks.
 
 ### Rate Limiting Strategy
 
@@ -254,7 +254,7 @@ Eden implements rate limiting to protect against abuse and DDoS attacks.
 
 ## Security Logging and Monitoring
 
-Eden implements comprehensive security logging and monitoring.
+Vertex implements comprehensive security logging and monitoring.
 
 ### Security Events
 
@@ -283,7 +283,7 @@ The following security events are logged:
 
 ## Secure Communication
 
-Eden implements mTLS for secure service-to-service communication.
+Vertex implements mTLS for secure service-to-service communication.
 
 ### mTLS Implementation
 
@@ -323,7 +323,7 @@ Eden implements mTLS for secure service-to-service communication.
 
 ### Compliance Standards
 
-Eden is designed to help meet compliance requirements for:
+Vertex is designed to help meet compliance requirements for:
 
 - SOC 2
 - ISO 27001

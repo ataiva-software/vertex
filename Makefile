@@ -25,14 +25,14 @@ help:
 build: deps
 	@echo "Building Eden single binary..."
 	@mkdir -p bin
-	go build -o bin/eden ./cmd/eden/
+	go build -o bin/vertex ./cmd/vertex/
 	@echo "✅ Eden single binary built successfully!"
 	@echo ""
 	@echo "Usage:"
-	@echo "  ./bin/eden server           # Run all services"
-	@echo "  ./bin/eden service vault    # Run specific service"
-	@echo "  ./bin/eden status           # Check service status"
-	@echo "  ./bin/eden vault list       # CLI commands"
+	@echo "  ./bin/vertex server           # Run all services"
+	@echo "  ./bin/vertex service vault    # Run specific service"
+	@echo "  ./bin/vertex status           # Check service status"
+	@echo "  ./bin/vertex vault list       # CLI commands"
 
 build-all: build
 	@echo "All services built successfully"
@@ -55,39 +55,39 @@ test-short:
 # Development targets
 run-all: build
 	@echo "Starting all Eden services..."
-	./bin/eden server
+	./bin/vertex server
 
 run-vault: build
 	@echo "Starting Vault service..."
-	./bin/eden service vault
+	./bin/vertex service vault
 
 run-api-gateway: build
 	@echo "Starting API Gateway..."
-	./bin/eden service api-gateway
+	./bin/vertex service api-gateway
 
 run-flow: build
 	@echo "Starting Flow service..."
-	./bin/eden service flow
+	./bin/vertex service flow
 
 run-task: build
 	@echo "Starting Task service..."
-	./bin/eden service task
+	./bin/vertex service task
 
 run-monitor: build
 	@echo "Starting Monitor service..."
-	./bin/eden service monitor
+	./bin/vertex service monitor
 
 run-sync: build
 	@echo "Starting Sync service..."
-	./bin/eden service sync
+	./bin/vertex service sync
 
 run-insight: build
 	@echo "Starting Insight service..."
-	./bin/eden service insight
+	./bin/vertex service insight
 
 run-hub: build
 	@echo "Starting Hub service..."
-	./bin/eden service hub
+	./bin/vertex service hub
 
 deps:
 	@echo "Downloading dependencies..."

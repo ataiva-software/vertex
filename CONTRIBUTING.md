@@ -1,6 +1,6 @@
-# Contributing to Eden DevOps Suite
+# Contributing to Vertex DevOps Suite
 
-Thank you for your interest in contributing to Eden! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to Vertex! This document provides guidelines and information for contributors.
 
 ## Getting Started
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to Eden! This document provides guid
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/ataiva-software/eden.git
-   cd eden
+   git clone https://github.com/ataiva-software/vertex.git
+   cd vertex
    ```
 
 2. **Set up the development environment**
@@ -106,7 +106,7 @@ test(flow): add unit tests for workflow execution
 ### Project Structure
 
 ```
-eden/
+vertex/
 ├── shared/                    # Shared libraries (core, auth, crypto, etc.)
 ├── services/                  # Microservices (vault, flow, task, etc.)
 ├── clients/                   # Client applications (web, cli, mobile)
@@ -223,7 +223,7 @@ class SecretServiceTest {
 
 ### Security Best Practices
 
-- Never commit secrets or credentials
+- Never commit secrets or crvertextials
 - Use environment variables for configuration
 - Implement proper input validation
 - Follow the principle of least privilege
@@ -262,7 +262,7 @@ What you expected to happen.
 **Environment**
 - OS: [e.g. macOS, Linux, Windows]
 - Java version: [e.g. 17]
-- Eden version: [e.g. 1.0.0]
+- Vertex version: [e.g. 1.0.0]
 
 **Additional context**
 Any other context about the problem.
@@ -351,8 +351,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - **Getting Started**: [Installation](docs/getting-started/installation.md) and [Quick Start](docs/getting-started/quick-start.md)
 - **Development**: [Development Guide](docs/getting-started/development.md)
 - **Project Status**: [Current Implementation Status](docs/development/project-status.md)
-- **Issues**: Search existing [GitHub Issues](https://github.com/your-org/eden/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/your-org/eden/discussions)
+- **Issues**: Search existing [GitHub Issues](https://github.com/your-org/vertex/issues)
+- **Discussions**: Join [GitHub Discussions](https://github.com/your-org/vertex/discussions)
 
 ### Recognition
 
@@ -363,8 +363,8 @@ Contributors will be recognized in:
 
 ## License
 
-By contributing to Eden, you agree that your contributions will be licensed under the MIT License.
+By contributing to Vertex, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-Thank you for contributing to Eden DevOps Suite! 🌱
+Thank you for contributing to Vertex DevOps Suite! 🌱

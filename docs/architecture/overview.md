@@ -1,12 +1,12 @@
-# Eden Architecture Overview
+# Vertex Architecture Overview
 
-Eden is built as a single-binary application with a microservices architecture, providing a unified DevOps platform through integrated services.
+Vertex is built as a single-binary application with a microservices architecture, providing a unified DevOps platform through integrated services.
 
 ## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Eden Binary (19MB)                          │
+│                     Vertex Binary (19MB)                          │
 ├─────────────────────────────────────────────────────────────────┤
 │ API Gateway │ Vault │ Flow │ Task │ Monitor │ Sync │ Insight │ Hub │
 │   Port 8000 │ 8080  │ 8081 │ 8082 │  8083   │ 8084 │  8085   │8086 │
@@ -194,4 +194,4 @@ Eden is built as a single-binary application with a microservices architecture, 
 - **Input Validation**: Prevent injection attacks
 - **CORS Configuration**: Cross-origin request security
 
-This architecture provides a robust, scalable, and secure foundation for the Eden DevOps platform while maintaining simplicity through the single-binary deployment model.
+This architecture provides a robust, scalable, and secure foundation for the Vertex DevOps platform while maintaining simplicity through the single-binary deployment model.

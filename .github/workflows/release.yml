@@ -22,8 +22,8 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_PASSWORD: secret
-          POSTGRES_USER: eden
-          POSTGRES_DB: eden
+          POSTGRES_USER: vertex
+          POSTGRES_DB: vertex
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -68,8 +68,8 @@ jobs:
       env:
         DB_HOST: localhost
         DB_PORT: 5432
-        DB_NAME: eden
-        DB_USER: eden
+        DB_NAME: vertex
+        DB_USER: vertex
         DB_PASSWORD: secret
         REDIS_HOST: localhost
         REDIS_PORT: 6379
@@ -86,16 +86,16 @@ jobs:
     - name: Build binaries
       run: |
         # Build for multiple platforms
-        GOOS=linux GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o eden-linux-amd64 ./cmd/eden/
-        GOOS=linux GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o eden-linux-arm64 ./cmd/eden/
-        GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o eden-darwin-amd64 ./cmd/eden/
-        GOOS=darwin GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o eden-darwin-arm64 ./cmd/eden/
-        GOOS=windows GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o eden-windows-amd64.exe ./cmd/eden/
+        GOOS=linux GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o vertex-linux-amd64 ./cmd/vertex/
+        GOOS=linux GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o vertex-linux-arm64 ./cmd/vertex/
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o vertex-darwin-amd64 ./cmd/vertex/
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o vertex-darwin-arm64 ./cmd/vertex/
+        GOOS=windows GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o vertex-windows-amd64.exe ./cmd/vertex/
     
     - name: Create release notes
       run: |
         cat > release-notes.md << 'EOF'
-        # Eden DevOps Suite ${{ steps.version.outputs.version }}
+        # Vertex DevOps Suite ${{ steps.version.outputs.version }}
         
         ## Features
         - **8 Integrated Services** - Complete DevOps platform in a single binary
@@ -122,69 +122,69 @@ jobs:
         
         **Linux (x64)**
         ```bash
-        curl -L -o eden https://github.com/ataiva-software/eden/releases/download/${{ steps.version.outputs.version }}/eden-linux-amd64
-        chmod +x eden
-        sudo mv eden /usr/local/bin/
+        curl -L -o vertex https://github.com/ataiva-software/vertex/releases/download/${{ steps.version.outputs.version }}/vertex-linux-amd64
+        chmod +x vertex
+        sudo mv vertex /usr/local/bin/
         ```
         
         **Linux (ARM64)**
         ```bash
-        curl -L -o eden https://github.com/ataiva-software/eden/releases/download/${{ steps.version.outputs.version }}/eden-linux-arm64
-        chmod +x eden
-        sudo mv eden /usr/local/bin/
+        curl -L -o vertex https://github.com/ataiva-software/vertex/releases/download/${{ steps.version.outputs.version }}/vertex-linux-arm64
+        chmod +x vertex
+        sudo mv vertex /usr/local/bin/
         ```
         
         **macOS (Intel)**
         ```bash
-        curl -L -o eden https://github.com/ataiva-software/eden/releases/download/${{ steps.version.outputs.version }}/eden-darwin-amd64
-        chmod +x eden
-        sudo mv eden /usr/local/bin/
+        curl -L -o vertex https://github.com/ataiva-software/vertex/releases/download/${{ steps.version.outputs.version }}/vertex-darwin-amd64
+        chmod +x vertex
+        sudo mv vertex /usr/local/bin/
         ```
         
         **macOS (Apple Silicon)**
         ```bash
-        curl -L -o eden https://github.com/ataiva-software/eden/releases/download/${{ steps.version.outputs.version }}/eden-darwin-arm64
-        chmod +x eden
-        sudo mv eden /usr/local/bin/
+        curl -L -o vertex https://github.com/ataiva-software/vertex/releases/download/${{ steps.version.outputs.version }}/vertex-darwin-arm64
+        chmod +x vertex
+        sudo mv vertex /usr/local/bin/
         ```
         
         **Windows**
-        Download `eden-windows-amd64.exe` and add to your PATH.
+        Download `vertex-windows-amd64.exe` and add to your PATH.
         
         ### Install with Go
         ```bash
-        go install github.com/ataiva-software/eden/cmd/eden@${{ steps.version.outputs.version }}
+        go install github.com/ataiva-software/vertex/cmd/vertex@${{ steps.version.outputs.version }}
         ```
         
         ## Quick Start
         
         ```bash
         # Start dependencies (PostgreSQL + Redis)
-        docker run -d --name postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=eden -e POSTGRES_DB=eden -p 5432:5432 postgres:15
+        docker run -d --name postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=vertex -e POSTGRES_DB=vertex -p 5432:5432 postgres:15
         docker run -d --name redis -p 6379:6379 redis:7
         
-        # Start all Eden services
-        eden server
+        # Start all Vertex services
+        vertex server
         
-        # Use Eden CLI
-        eden vault store my-secret "hello world"
-        eden vault get my-secret
-        eden status
+        # Use Vertex CLI
+        vertex vault store my-secret "hello world"
+        vertex vault get my-secret
+        vertex status
         ```
         
         ## Docker Deployment
         
         ```bash
         # Using Docker Compose
-        curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/eden/${{ steps.version.outputs.version }}/docker-compose.yml
+        curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/vertex/${{ steps.version.outputs.version }}/docker-compose.yml
         docker-compose up -d
         ```
         
         ## Documentation
-        - [Quick Start Guide](https://github.com/ataiva-software/eden/blob/main/docs/getting-started/quick-start.md)
-        - [CLI Reference](https://github.com/ataiva-software/eden/blob/main/docs/user-guide/cli-reference.md)
-        - [Architecture Overview](https://github.com/ataiva-software/eden/blob/main/docs/architecture/overview.md)
-        - [Security Guide](https://github.com/ataiva-software/eden/blob/main/docs/security/security-guide.md)
+        - [Quick Start Guide](https://github.com/ataiva-software/vertex/blob/main/docs/getting-started/quick-start.md)
+        - [CLI Reference](https://github.com/ataiva-software/vertex/blob/main/docs/user-guide/cli-reference.md)
+        - [Architecture Overview](https://github.com/ataiva-software/vertex/blob/main/docs/architecture/overview.md)
+        - [Security Guide](https://github.com/ataiva-software/vertex/blob/main/docs/security/security-guide.md)
         EOF
     
     - name: Create or update tag
@@ -199,13 +199,13 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.version.outputs.version }}
-        name: Eden DevOps Suite ${{ steps.version.outputs.version }}
+        name: Vertex DevOps Suite ${{ steps.version.outputs.version }}
         body_path: release-notes.md
         files: |
-          eden-linux-amd64
-          eden-linux-arm64
-          eden-darwin-amd64
-          eden-darwin-arm64
-          eden-windows-amd64.exe
+          vertex-linux-amd64
+          vertex-linux-arm64
+          vertex-darwin-amd64
+          vertex-darwin-arm64
+          vertex-windows-amd64.exe
         draft: false
         prerelease: false

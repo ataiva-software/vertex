@@ -4,17 +4,17 @@ services:
   # Database
   postgres:
     image: postgres:15-alpine
-    container_name: eden-postgres
+    container_name: vertex-postgres
     environment:
-      POSTGRES_DB: eden
-      POSTGRES_USER: eden
+      POSTGRES_DB: vertex
+      POSTGRES_USER: vertex
       POSTGRES_PASSWORD: secret
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eden -d eden"]
+      test: ["CMD-SHELL", "pg_isready -U vertex -d vertex"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
   # Redis for caching and events
   redis:
     image: redis:7-alpine
-    container_name: eden-redis
+    container_name: vertex-redis
     ports:
       - "6379:6379"
     volumes:
@@ -38,11 +38,11 @@ services:
     build:
       context: .
       dockerfile: deployments/docker/Dockerfile.vault
-    container_name: eden-vault
+    container_name: vertex-vault
     environment:
       DB_HOST: postgres
-      DB_NAME: eden
-      DB_USER: eden
+      DB_NAME: vertex
+      DB_USER: vertex
       DB_PASSWORD: secret
       DB_SSL_MODE: disable
       MASTER_PASSWORD: super-secret-master-password
@@ -67,4 +67,4 @@ volumes:
 
 networks:
   default:
-    name: eden-network
+    name: vertex-network

@@ -20,7 +20,7 @@ resources:
   - monitoring.yaml
 
 commonLabels:
-  app.kubernetes.io/part-of: eden-devops-suite
+  app.kubernetes.io/part-of: vertex-devops-suite
   app.kubernetes.io/managed-by: kustomize
 
-namespace: eden
+namespace: vertex

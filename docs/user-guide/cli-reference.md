@@ -1,6 +1,6 @@
 # CLI Reference
 
-The Eden CLI (`eden`) is the primary command-line interface for interacting with all Eden DevOps Suite components.
+The Vertex CLI (`vertex`) is the primary command-line interface for interacting with all Vertex DevOps Suite components.
 
 ## Installation
 
@@ -8,8 +8,8 @@ The Eden CLI (`eden`) is the primary command-line interface for interacting with
 
 ```bash
 # Clone the repository
-git clone https://github.com/ataiva-software/eden.git
-cd eden
+git clone https://github.com/ataiva-software/vertex.git
+cd vertex
 
 # Build CLI for your platform
 ./gradlew :clients:cli:linkReleaseExecutableLinuxX64    # Linux
@@ -17,22 +17,22 @@ cd eden
 ./gradlew :clients:cli:linkReleaseExecutableMingwX64    # Windows
 
 # Add to PATH (Linux/macOS example)
-sudo ln -s $(pwd)/clients/cli/build/bin/linuxX64/releaseExecutable/eden /usr/local/bin/eden
+sudo ln -s $(pwd)/clients/cli/build/bin/linuxX64/releaseExecutable/vertex /usr/local/bin/vertex
 ```
 
 ### Verify Installation
 
 ```bash
-eden --help
-eden --version
+vertex --help
+vertex --version
 ```
 
 ## Global Options
 
-All Eden commands support these global options:
+All Vertex commands support these global options:
 
 ```bash
-eden [global-options] <command> [command-options]
+vertex [global-options] <command> [command-options]
 ```
 
 ### Global Options
@@ -44,30 +44,30 @@ eden [global-options] <command> [command-options]
 ### Examples
 ```bash
 # Verbose output
-eden --verbose auth login
+vertex --verbose auth login
 
 # Custom configuration
-eden --config ~/.eden/custom.yml vault list
+vertex --config ~/.vertex/custom.yml vault list
 
 # Different profile
-eden --profile production monitor status
+vertex --profile production monitor status
 
 # Custom API URL
-eden --api-url https://eden.company.com auth login
+vertex --api-url https://vertex.company.com auth login
 ```
 
 ## Authentication Commands
 
-### `eden auth`
+### `vertex auth`
 
 Manage authentication and user sessions.
 
-#### `eden auth login`
+#### `vertex auth login`
 
-Login to Eden platform.
+Login to Vertex platform.
 
 ```bash
-eden auth login [options]
+vertex auth login [options]
 ```
 
 **Options:**
@@ -77,29 +77,29 @@ eden auth login [options]
 **Examples:**
 ```bash
 # Interactive login (recommended)
-eden auth login
+vertex auth login
 
 # Login with email (will prompt for password)
-eden auth login --email user@company.com
+vertex auth login --email user@company.com
 
 # Non-interactive login (not recommended for security)
-eden auth login --email user@company.com --password mypassword
+vertex auth login --email user@company.com --password mypassword
 ```
 
-#### `eden auth logout`
+#### `vertex auth logout`
 
-Logout from Eden platform.
+Logout from Vertex platform.
 
 ```bash
-eden auth logout
+vertex auth logout
 ```
 
-#### `eden auth whoami`
+#### `vertex auth whoami`
 
 Display current user information.
 
 ```bash
-eden auth whoami
+vertex auth whoami
 ```
 
 **Output:**
@@ -112,18 +112,18 @@ Session Expires: 2030-12-31 23:59:59 UTC
 
 ## Secrets Management Commands
 
-### `eden vault`
+### `vertex vault`
 
 Manage secrets with zero-knowledge encryption.
 
 > **Note**: Vault commands are currently in development. Most functionality returns "to be implemented" messages.
 
-#### `eden vault set`
+#### `vertex vault set`
 
 Store a secret.
 
 ```bash
-eden vault set <key> <value> [options]
+vertex vault set <key> <value> [options]
 ```
 
 **Options:**
@@ -134,21 +134,21 @@ eden vault set <key> <value> [options]
 **Examples:**
 ```bash
 # Store a simple secret
-eden vault set DATABASE_URL "postgresql://user:pass@host:5432/db"
+vertex vault set DATABASE_URL "postgresql://user:pass@host:5432/db"
 
 # Store with metadata
-eden vault set API_KEY "sk-1234567890" \
+vertex vault set API_KEY "sk-1234567890" \
   --description "Production API key" \
   --tags "production,api" \
   --ttl "90d"
 ```
 
-#### `eden vault get`
+#### `vertex vault get`
 
 Retrieve a secret.
 
 ```bash
-eden vault get <key> [options]
+vertex vault get <key> [options]
 ```
 
 **Options:**
@@ -158,21 +158,21 @@ eden vault get <key> [options]
 **Examples:**
 ```bash
 # Get secret value
-eden vault get DATABASE_URL
+vertex vault get DATABASE_URL
 
 # Get with metadata
-eden vault get API_KEY --show-metadata
+vertex vault get API_KEY --show-metadata
 
 # Export format
-eden vault get DATABASE_URL --format env
+vertex vault get DATABASE_URL --format env
 ```
 
-#### `eden vault list`
+#### `vertex vault list`
 
 List available secrets.
 
 ```bash
-eden vault list [options]
+vertex vault list [options]
 ```
 
 **Options:**
@@ -182,21 +182,21 @@ eden vault list [options]
 **Examples:**
 ```bash
 # List all secrets
-eden vault list
+vertex vault list
 
 # Filter by tags
-eden vault list --tags production
+vertex vault list --tags production
 
 # JSON output
-eden vault list --format json
+vertex vault list --format json
 ```
 
-#### `eden vault delete`
+#### `vertex vault delete`
 
 Delete a secret.
 
 ```bash
-eden vault delete <key> [options]
+vertex vault delete <key> [options]
 ```
 
 **Options:**
@@ -205,26 +205,26 @@ eden vault delete <key> [options]
 **Examples:**
 ```bash
 # Delete with confirmation
-eden vault delete OLD_API_KEY
+vertex vault delete OLD_API_KEY
 
 # Force delete
-eden vault delete OLD_API_KEY --force
+vertex vault delete OLD_API_KEY --force
 ```
 
 ## Workflow Commands
 
-### `eden flow`
+### `vertex flow`
 
 Manage workflow automation.
 
 > **Note**: Flow commands are currently in development.
 
-#### `eden flow create`
+#### `vertex flow create`
 
 Create a new workflow.
 
 ```bash
-eden flow create <name> [options]
+vertex flow create <name> [options]
 ```
 
 **Options:**
@@ -234,18 +234,18 @@ eden flow create <name> [options]
 **Examples:**
 ```bash
 # Create from template
-eden flow create deployment --template ci-cd
+vertex flow create deployment --template ci-cd
 
 # Create from file
-eden flow create custom-workflow --file ./workflow.yml
+vertex flow create custom-workflow --file ./workflow.yml
 ```
 
-#### `eden flow run`
+#### `vertex flow run`
 
 Execute a workflow.
 
 ```bash
-eden flow run <workflow> [options]
+vertex flow run <workflow> [options]
 ```
 
 **Options:**
@@ -256,46 +256,46 @@ eden flow run <workflow> [options]
 **Examples:**
 ```bash
 # Run workflow
-eden flow run deployment --env staging
+vertex flow run deployment --env staging
 
 # Run with parameters
-eden flow run deployment --env production --params version=1.2.3
+vertex flow run deployment --env production --params version=1.2.3
 
 # Run and wait
-eden flow run deployment --wait
+vertex flow run deployment --wait
 ```
 
-#### `eden flow status`
+#### `vertex flow status`
 
 Check workflow status.
 
 ```bash
-eden flow status [workflow-id]
+vertex flow status [workflow-id]
 ```
 
 **Examples:**
 ```bash
 # List all workflow runs
-eden flow status
+vertex flow status
 
 # Check specific workflow
-eden flow status wf-12345
+vertex flow status wf-12345
 ```
 
 ## Task Orchestration Commands
 
-### `eden task`
+### `vertex task`
 
 Manage distributed task execution.
 
 > **Note**: Task commands are currently in development.
 
-#### `eden task submit`
+#### `vertex task submit`
 
 Submit a task for execution.
 
 ```bash
-eden task submit <task-file> [options]
+vertex task submit <task-file> [options]
 ```
 
 **Options:**
@@ -306,29 +306,29 @@ eden task submit <task-file> [options]
 **Examples:**
 ```bash
 # Submit task
-eden task submit build-job.yaml
+vertex task submit build-job.yaml
 
 # High priority task
-eden task submit urgent-task.yaml --priority high
+vertex task submit urgent-task.yaml --priority high
 
 # Scheduled task
-eden task submit backup.yaml --schedule "0 2 * * *"
+vertex task submit backup.yaml --schedule "0 2 * * *"
 ```
 
-#### `eden task status`
+#### `vertex task status`
 
 Check task status.
 
 ```bash
-eden task status [task-id]
+vertex task status [task-id]
 ```
 
-#### `eden task logs`
+#### `vertex task logs`
 
 View task execution logs.
 
 ```bash
-eden task logs <task-id> [options]
+vertex task logs <task-id> [options]
 ```
 
 **Options:**
@@ -337,18 +337,18 @@ eden task logs <task-id> [options]
 
 ## Monitoring Commands
 
-### `eden monitor`
+### `vertex monitor`
 
 Manage monitoring and alerting.
 
 > **Note**: Monitor commands are currently in development.
 
-#### `eden monitor create`
+#### `vertex monitor create`
 
 Create a monitoring check.
 
 ```bash
-eden monitor create [options]
+vertex monitor create [options]
 ```
 
 **Options:**
@@ -359,34 +359,34 @@ eden monitor create [options]
 **Examples:**
 ```bash
 # Create uptime check
-eden monitor create --url https://api.example.com --interval 1m
+vertex monitor create --url https://api.example.com --interval 1m
 
 # Custom timeout
-eden monitor create --url https://slow-api.com --timeout 30s
+vertex monitor create --url https://slow-api.com --timeout 30s
 ```
 
-#### `eden monitor status`
+#### `vertex monitor status`
 
 View monitoring status.
 
 ```bash
-eden monitor status [check-id]
+vertex monitor status [check-id]
 ```
 
 ## Multi-Cloud Commands
 
-### `eden sync`
+### `vertex sync`
 
 Manage multi-cloud resources and costs.
 
 > **Note**: Sync commands are currently in development.
 
-#### `eden sync costs`
+#### `vertex sync costs`
 
 View cloud costs.
 
 ```bash
-eden sync costs [options]
+vertex sync costs [options]
 ```
 
 **Options:**
@@ -396,21 +396,21 @@ eden sync costs [options]
 **Examples:**
 ```bash
 # All providers, current month
-eden sync costs
+vertex sync costs
 
 # Specific provider
-eden sync costs --provider aws
+vertex sync costs --provider aws
 
 # Last month
-eden sync costs --period last-month
+vertex sync costs --period last-month
 ```
 
-#### `eden sync optimize`
+#### `vertex sync optimize`
 
 Get optimization recommendations.
 
 ```bash
-eden sync optimize [options]
+vertex sync optimize [options]
 ```
 
 **Options:**
@@ -419,18 +419,18 @@ eden sync optimize [options]
 
 ## Analytics Commands
 
-### `eden insight`
+### `vertex insight`
 
 Manage analytics and insights.
 
 > **Note**: Insight commands are currently in development.
 
-#### `eden insight dashboard`
+#### `vertex insight dashboard`
 
 Manage dashboards.
 
 ```bash
-eden insight dashboard [options]
+vertex insight dashboard [options]
 ```
 
 **Options:**
@@ -438,12 +438,12 @@ eden insight dashboard [options]
 - `--create` - Create new dashboard
 - `--list` - List dashboards
 
-#### `eden insight metrics`
+#### `vertex insight metrics`
 
 View and export metrics.
 
 ```bash
-eden insight metrics [options]
+vertex insight metrics [options]
 ```
 
 **Options:**
@@ -452,18 +452,18 @@ eden insight metrics [options]
 
 ## Service Discovery Commands
 
-### `eden hub`
+### `vertex hub`
 
 Manage service discovery and configuration.
 
 > **Note**: Hub commands are currently in development.
 
-#### `eden hub register`
+#### `vertex hub register`
 
 Register a service.
 
 ```bash
-eden hub register [options]
+vertex hub register [options]
 ```
 
 **Options:**
@@ -471,12 +471,12 @@ eden hub register [options]
 - `--port <port>` - Service port
 - `--health <url>` - Health check URL
 
-#### `eden hub discover`
+#### `vertex hub discover`
 
 Discover services.
 
 ```bash
-eden hub discover [options]
+vertex hub discover [options]
 ```
 
 **Options:**
@@ -484,39 +484,39 @@ eden hub discover [options]
 
 ## Configuration Commands
 
-### `eden config`
+### `vertex config`
 
 Manage CLI configuration.
 
 > **Note**: Config commands are currently in development.
 
-#### `eden config set`
+#### `vertex config set`
 
 Set configuration value.
 
 ```bash
-eden config set <key> <value>
+vertex config set <key> <value>
 ```
 
-#### `eden config get`
+#### `vertex config get`
 
 Get configuration value.
 
 ```bash
-eden config get <key>
+vertex config get <key>
 ```
 
-#### `eden config list`
+#### `vertex config list`
 
 List all configuration.
 
 ```bash
-eden config list
+vertex config list
 ```
 
 ## Configuration File
 
-The Eden CLI uses a configuration file located at `~/.eden/config.yml`:
+The Vertex CLI uses a configuration file located at `~/.vertex/config.yml`:
 
 ```yaml
 # Default configuration
@@ -527,7 +527,7 @@ default:
 
 # Production configuration
 production:
-  api_url: "https://eden.company.com"
+  api_url: "https://vertex.company.com"
   timeout: "60s"
   format: "json"
 
@@ -550,7 +550,7 @@ The CLI respects these environment variables:
 
 ## Exit Codes
 
-The Eden CLI uses standard exit codes:
+The Vertex CLI uses standard exit codes:
 
 - `0` - Success
 - `1` - General error
@@ -565,33 +565,33 @@ The Eden CLI uses standard exit codes:
 
 ```bash
 # 1. Login
-eden auth login --email developer@company.com
+vertex auth login --email developer@company.com
 
 # 2. Store secrets
-eden vault set DATABASE_URL "postgresql://localhost/myapp"
-eden vault set API_KEY "sk-1234567890"
+vertex vault set DATABASE_URL "postgresql://localhost/myapp"
+vertex vault set API_KEY "sk-1234567890"
 
 # 3. Create and run workflow
-eden flow create deployment --template ci-cd
-eden flow run deployment --env staging --wait
+vertex flow create deployment --template ci-cd
+vertex flow run deployment --env staging --wait
 
 # 4. Monitor the application
-eden monitor create --url https://staging.myapp.com
+vertex monitor create --url https://staging.myapp.com
 
 # 5. Check costs
-eden sync costs --this-month
+vertex sync costs --this-month
 ```
 
 ### Batch Operations
 
 ```bash
 # Store multiple secrets
-eden vault set DB_HOST "localhost"
-eden vault set DB_PORT "5432"
-eden vault set DB_NAME "myapp"
+vertex vault set DB_HOST "localhost"
+vertex vault set DB_PORT "5432"
+vertex vault set DB_NAME "myapp"
 
 # List and export
-eden vault list --format json > secrets.json
+vertex vault list --format json > secrets.json
 ```
 
 ---

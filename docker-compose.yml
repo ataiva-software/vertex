@@ -2,10 +2,10 @@ services:
   # Infrastructure Services
   postgres:
     image: timescale/timescaledb:latest-pg15
-    container_name: eden-postgres
+    container_name: vertex-postgres
     environment:
-      POSTGRES_DB: eden_dev
-      POSTGRES_USER: eden
+      POSTGRES_DB: vertex_dev
+      POSTGRES_USER: vertex
       POSTGRES_PASSWORD: dev_password
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
@@ -14,16 +14,16 @@ services:
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eden -d eden_dev"]
+      test: ["CMD-SHELL", "pg_isready -U vertex -d vertex_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - eden_network
+      - vertex_network
 
   redis:
     image: redis:7-alpine
-    container_name: eden-redis
+    container_name: vertex-redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - eden_network
+      - vertex_network
 
   # API Gateway
   api-gateway:
@@ -44,7 +44,7 @@ services:
       dockerfile: infrastructure/docker/base/service.Dockerfile
       args:
         SERVICE_NAME: api-gateway
-    container_name: eden-api-gateway
+    container_name: vertex-api-gateway
     deploy:
       resources:
         limits:
@@ -52,7 +52,7 @@ services:
         reservations:
           memory: 512M
     environment:
-      - DATABASE_URL=postgresql://eden:dev_password@postgres:5432/eden_dev
+      - DATABASE_URL=postgresql://vertex:dev_password@postgres:5432/vertex_dev
       # Note: We're still using port 5432 here because inside the Docker network,
       # the postgres container exposes port 5432, not 5433 (which is only for host access)
       - REDIS_URL=redis://redis:6379
@@ -74,7 +74,7 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - eden_network
+      - vertex_network
 
   # Note: Other services are temporarily disabled in settings.gradle.kts
   # Only api-gateway is currently enabled for building
@@ -84,7 +84,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: infrastructure/docker/web/Dockerfile
-  #   container_name: eden-web-ui
+  #   container_name: vertex-web-ui
   #   environment:
   #     - API_BASE_URL=http://localhost:8080
   #     - NODE_ENV=development
@@ -93,7 +93,7 @@ services:
   #   depends_on:
   #     - api-gateway
   #   networks:
-  #     - eden_network
+  #     - vertex_network
   #   volumes:
   #     - ./clients/web:/app
   #     - /app/node_modules
@@ -105,6 +105,6 @@ volumes:
     driver: local
 
 networks:
-  eden_network:
+  vertex_network:
     driver: bridge
-    name: eden_network
+    name: vertex_network

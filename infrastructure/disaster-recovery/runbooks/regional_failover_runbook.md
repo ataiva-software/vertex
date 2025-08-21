@@ -2,12 +2,12 @@
 
 ## Overview
 
-This runbook provides step-by-step procedures for performing a regional failover of the Eden DevOps Suite. It covers both planned failovers (for maintenance or testing) and emergency failovers (in response to a disaster).
+This runbook provides step-by-step procedures for performing a regional failover of the Vertex DevOps Suite. It covers both planned failovers (for maintenance or testing) and emergency failovers (in response to a disaster).
 
 ## Prerequisites
 
 - Access to both primary and secondary region infrastructure
-- Administrator credentials for all systems
+- Administrator crvertextials for all systems
 - Access to DNS management console
 - Access to monitoring systems
 - Communication channels for stakeholder notifications
@@ -50,7 +50,7 @@ Before initiating a failover, verify the following:
    ./infrastructure/backup/scripts/monitor_backups.sh --check-replication-lag
    
    # Verify Redis replication status
-   redis-cli -h redis.secondary.eden.internal info replication
+   redis-cli -h redis.secondary.vertex.internal info replication
    ```
 
 3. **Verify secondary region readiness**
@@ -79,11 +79,11 @@ Before initiating a failover, verify the following:
    ```bash
    # Trigger final PostgreSQL backup and restore to secondary
    ./infrastructure/backup/scripts/postgres_backup.sh
-   ./infrastructure/backup/scripts/postgres_restore.sh --host=postgres.secondary.eden.internal
+   ./infrastructure/backup/scripts/postgres_restore.sh --host=postgres.secondary.vertex.internal
    
    # Trigger final Redis backup and restore to secondary
    ./infrastructure/backup/scripts/redis_backup.sh
-   ./infrastructure/backup/scripts/redis_restore.sh --host=redis.secondary.eden.internal
+   ./infrastructure/backup/scripts/redis_restore.sh --host=redis.secondary.vertex.internal
    
    # Sync configuration files
    ./infrastructure/backup/scripts/config_backup.sh
@@ -95,7 +95,7 @@ Before initiating a failover, verify the following:
    ```bash
    # Check service health endpoints
    for service in api-gateway vault-service hub-service flow-service task-service monitor-service sync-service insight-service; do
-     curl -f https://$service.secondary.eden.internal/health || echo "$service health check failed"
+     curl -f https://$service.secondary.vertex.internal/health || echo "$service health check failed"
    done
    ```
 
@@ -105,15 +105,15 @@ Before initiating a failover, verify the following:
 
    ```bash
    # Set PostgreSQL to read-only
-   PGPASSWORD=postgres psql -h postgres.primary.eden.internal -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = on;"
-   PGPASSWORD=postgres psql -h postgres.primary.eden.internal -U postgres -c "SELECT pg_reload_conf();"
+   PGPASSWORD=postgres psql -h postgres.primary.vertex.internal -U postgres -c "ALTER SYSTEM SET default_transaction_read_only = on;"
+   PGPASSWORD=postgres psql -h postgres.primary.vertex.internal -U postgres -c "SELECT pg_reload_conf();"
    ```
 
 2. **Scale down write-heavy services in primary region**
 
    ```bash
-   kubectl --context primary scale deployment task-service --replicas=0 -n eden
-   kubectl --context primary scale deployment flow-service --replicas=0 -n eden
+   kubectl --context primary scale deployment task-service --replicas=0 -n vertex
+   kubectl --context primary scale deployment flow-service --replicas=0 -n vertex
    ```
 
 3. **Execute DNS failover**
@@ -126,24 +126,24 @@ Before initiating a failover, verify the following:
 4. **Scale up all services in secondary region**
 
    ```bash
-   kubectl --context secondary scale deployment api-gateway --replicas=3 -n eden
-   kubectl --context secondary scale deployment vault-service --replicas=3 -n eden
-   kubectl --context secondary scale deployment hub-service --replicas=3 -n eden
-   kubectl --context secondary scale deployment flow-service --replicas=3 -n eden
-   kubectl --context secondary scale deployment task-service --replicas=3 -n eden
-   kubectl --context secondary scale deployment monitor-service --replicas=2 -n eden
-   kubectl --context secondary scale deployment sync-service --replicas=2 -n eden
-   kubectl --context secondary scale deployment insight-service --replicas=2 -n eden
+   kubectl --context secondary scale deployment api-gateway --replicas=3 -n vertex
+   kubectl --context secondary scale deployment vault-service --replicas=3 -n vertex
+   kubectl --context secondary scale deployment hub-service --replicas=3 -n vertex
+   kubectl --context secondary scale deployment flow-service --replicas=3 -n vertex
+   kubectl --context secondary scale deployment task-service --replicas=3 -n vertex
+   kubectl --context secondary scale deployment monitor-service --replicas=2 -n vertex
+   kubectl --context secondary scale deployment sync-service --replicas=2 -n vertex
+   kubectl --context secondary scale deployment insight-service --replicas=2 -n vertex
    ```
 
 5. **Promote secondary databases to primary role**
 
    ```bash
    # Promote PostgreSQL replica to primary
-   PGPASSWORD=postgres psql -h postgres.secondary.eden.internal -U postgres -c "SELECT pg_promote();"
+   PGPASSWORD=postgres psql -h postgres.secondary.vertex.internal -U postgres -c "SELECT pg_promote();"
    
    # Promote Redis replica to primary
-   redis-cli -h redis-sentinel-1.eden.internal -p 26379 sentinel failover eden-master
+   redis-cli -h redis-sentinel-1.vertex.internal -p 26379 sentinel failover vertex-master
    ```
 
 ### Phase 4: Post-Failover Verification
@@ -151,8 +151,8 @@ Before initiating a failover, verify the following:
 1. **Verify DNS propagation**
 
    ```bash
-   dig api.eden.example.com +short
-   dig vault.eden.example.com +short
+   dig api.vertex.example.com +short
+   dig vault.vertex.example.com +short
    ```
 
 2. **Verify service health in secondary region**
@@ -160,7 +160,7 @@ Before initiating a failover, verify the following:
    ```bash
    # Check all service health endpoints
    for service in api-gateway vault-service hub-service flow-service task-service monitor-service sync-service insight-service; do
-     curl -f https://$service.eden.example.com/health || echo "$service health check failed"
+     curl -f https://$service.vertex.example.com/health || echo "$service health check failed"
    done
    ```
 
@@ -168,12 +168,12 @@ Before initiating a failover, verify the following:
 
    ```bash
    # Test PostgreSQL write operations
-   PGPASSWORD=postgres psql -h postgres.secondary.eden.internal -U postgres -d eden_vault -c "CREATE TABLE failover_test (id serial, test_time timestamp default now()); INSERT INTO failover_test DEFAULT VALUES; SELECT * FROM failover_test; DROP TABLE failover_test;"
+   PGPASSWORD=postgres psql -h postgres.secondary.vertex.internal -U postgres -d vertex_vault -c "CREATE TABLE failover_test (id serial, test_time timestamp default now()); INSERT INTO failover_test DEFAULT VALUES; SELECT * FROM failover_test; DROP TABLE failover_test;"
    
    # Test Redis write operations
-   redis-cli -h redis.secondary.eden.internal SET failover_test "$(date)"
-   redis-cli -h redis.secondary.eden.internal GET failover_test
-   redis-cli -h redis.secondary.eden.internal DEL failover_test
+   redis-cli -h redis.secondary.vertex.internal SET failover_test "$(date)"
+   redis-cli -h redis.secondary.vertex.internal GET failover_test
+   redis-cli -h redis.secondary.vertex.internal DEL failover_test
    ```
 
 4. **Verify application functionality**
@@ -238,7 +238,7 @@ Before initiating a failover, verify the following:
    ```bash
    # Check all service health endpoints
    for service in api-gateway vault-service hub-service flow-service task-service monitor-service sync-service insight-service; do
-     curl -f https://$service.eden.example.com/health || echo "$service health check failed"
+     curl -f https://$service.vertex.example.com/health || echo "$service health check failed"
    done
    ```
 
@@ -304,7 +304,7 @@ Before initiating a failover, verify the following:
 **Solution:**
 1. Verify DNS changes were applied correctly:
    ```bash
-   dig api.eden.example.com
+   dig api.vertex.example.com
    ```
 
 2. Check if DNS provider's API is functioning:
@@ -319,14 +319,14 @@ Before initiating a failover, verify the following:
 **Solution:**
 1. Check replication status:
    ```bash
-   PGPASSWORD=postgres psql -h postgres.secondary.eden.internal -U postgres -c "SELECT * FROM pg_stat_replication;"
+   PGPASSWORD=postgres psql -h postgres.secondary.vertex.internal -U postgres -c "SELECT * FROM pg_stat_replication;"
    ```
 
 2. Increase replication resources:
    ```bash
-   kubectl --context secondary scale statefulset postgres --replicas=0 -n eden
-   kubectl --context secondary edit statefulset postgres -n eden  # Increase CPU/memory
-   kubectl --context secondary scale statefulset postgres --replicas=1 -n eden
+   kubectl --context secondary scale statefulset postgres --replicas=0 -n vertex
+   kubectl --context secondary edit statefulset postgres -n vertex  # Increase CPU/memory
+   kubectl --context secondary scale statefulset postgres --replicas=1 -n vertex
    ```
 
 #### Issue: Services not starting in secondary region
@@ -334,24 +334,24 @@ Before initiating a failover, verify the following:
 **Solution:**
 1. Check pod status:
    ```bash
-   kubectl --context secondary get pods -n eden
-   kubectl --context secondary describe pod <pod-name> -n eden
+   kubectl --context secondary get pods -n vertex
+   kubectl --context secondary describe pod <pod-name> -n vertex
    ```
 
 2. Check logs:
    ```bash
-   kubectl --context secondary logs <pod-name> -n eden
+   kubectl --context secondary logs <pod-name> -n vertex
    ```
 
 3. Verify configuration:
    ```bash
-   kubectl --context secondary get configmaps -n eden
-   kubectl --context secondary get secrets -n eden
+   kubectl --context secondary get configmaps -n vertex
+   kubectl --context secondary get secrets -n vertex
    ```
 
 ## References
 
-- [Eden DevOps Suite Disaster Recovery Plan](../disaster_recovery_plan.md)
+- [Vertex DevOps Suite Disaster Recovery Plan](../disaster_recovery_plan.md)
 - [Multi-Region Replication Configuration](../../backup/configs/multi_region_replication.yaml)
 - [PostgreSQL Documentation on Replication](https://www.postgresql.org/docs/current/runtime-config-replication.html)
 - [Redis Sentinel Documentation](https://redis.io/topics/sentinel)
