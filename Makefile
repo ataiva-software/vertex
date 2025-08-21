@@ -23,10 +23,10 @@ help:
 
 # Build targets
 build: deps
-	@echo "Building Eden single binary..."
+	@echo "Building Vertex single binary..."
 	@mkdir -p bin
 	go build -o bin/vertex ./cmd/vertex/
-	@echo "✅ Eden single binary built successfully!"
+	@echo "✅ Vertex single binary built successfully!"
 	@echo ""
 	@echo "Usage:"
 	@echo "  ./bin/vertex server           # Run all services"

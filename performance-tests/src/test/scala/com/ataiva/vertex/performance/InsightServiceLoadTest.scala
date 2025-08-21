@@ -1,4 +1,4 @@
-package com.ataiva.eden.performance
+package com.ataiva.vertex.performance
 
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
