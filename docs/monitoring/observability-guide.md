@@ -76,7 +76,7 @@ Alternatively, you can view traces in Grafana:
 
 You can add custom spans to your code using the OpenTelemetry API:
 
-```kotlin
+```go
 // Using the PerformanceMonitor utility
 val performanceMonitor = PerformanceMonitor(openTelemetry, "my-service")
 
@@ -122,7 +122,7 @@ The following metrics are collected by default:
 
 You can add custom metrics using the MetricsRegistry utility:
 
-```kotlin
+```go
 val metricsRegistry = MetricsRegistry(openTelemetry, "my-service")
 
 // Create a counter
@@ -240,7 +240,7 @@ The following health checks are implemented by default:
 
 You can add custom health checks:
 
-```kotlin
+```go
 val healthCheckRegistry = HealthCheckRegistry()
 
 // Add a custom health check
@@ -289,7 +289,7 @@ Dependency maps can be viewed in Grafana:
 
 You can also generate dependency maps programmatically:
 
-```kotlin
+```go
 val dependencyMapper = ServiceDependencyMapper(openTelemetry, "my-service")
 
 // Record a dependency call
@@ -315,7 +315,7 @@ Performance monitoring is implemented using the PerformanceMonitor utility.
 
 You can monitor the performance of operations:
 
-```kotlin
+```go
 val performanceMonitor = PerformanceMonitor(openTelemetry, "my-service")
 
 // Track an operation
@@ -347,7 +347,7 @@ Audit logging is implemented using the AuditLogger utility.
 
 You can log audit events:
 
-```kotlin
+```go
 val auditLogger = AuditLogger(openTelemetry, "my-service")
 
 // Log a user login event

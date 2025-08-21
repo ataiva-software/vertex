@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ataivadev/eden/pkg/core"
+	"github.com/ataiva-software/eden/pkg/core"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

@@ -16,7 +16,7 @@ The Analytics Engine combines multiple algorithms and techniques to provide:
 
 ### Basic Usage
 
-```kotlin
+```go
 // Initialize analytics engine
 val analytics = DefaultAdvancedAnalytics(
     metricsRepository = metricsRepo,
@@ -62,7 +62,7 @@ eden analytics insights --live
 
 ### Example
 
-```kotlin
+```go
 val analysis = analytics.analyzePerformanceTrends(timeRange)
 
 // Check response time trend
@@ -102,7 +102,7 @@ Eden uses three complementary anomaly detection algorithms:
 
 ### Usage
 
-```kotlin
+```go
 val metrics = getMetricsData()
 val anomalies = analytics.detectAnomalies(metrics)
 
@@ -129,7 +129,7 @@ anomalies.forEach { anomaly ->
 
 Eden can predict future resource usage using time series analysis:
 
-```kotlin
+```go
 val prediction = analytics.predictResourceUsage(24.hours)
 
 println("CPU prediction for next 24 hours:")
@@ -146,7 +146,7 @@ prediction.recommendations.forEach { println("  - $it") }
 
 The analytics engine can recommend optimal deployment strategies based on historical data:
 
-```kotlin
+```go
 val deploymentHistory = getDeploymentHistory()
 val recommendation = analytics.optimizeDeploymentStrategy(deploymentHistory)
 
@@ -167,7 +167,7 @@ println("Alternative strategies: ${recommendation.alternativeStrategies}")
 
 ### Model Training
 
-```kotlin
+```go
 // Prepare training data
 val trainingData = TrainingData(
     features = extractFeatures(historicalMetrics),
@@ -184,7 +184,7 @@ if (result.success) {
 
 ### Model Evaluation
 
-```kotlin
+```go
 val testData = TestData(features = testFeatures, labels = testLabels)
 val evaluation = analytics.evaluateModel(modelId, testData)
 
@@ -203,7 +203,7 @@ println("  AUC: ${evaluation.rocCurve.auc}")
 
 Eden provides continuous analytics with real-time insights:
 
-```kotlin
+```go
 analytics.getRealtimeAnalytics().collect { realtimeData ->
     println("Performance Score: ${realtimeData.performanceScore}")
     println("Health Score: ${realtimeData.healthScore}")
@@ -223,7 +223,7 @@ analytics.getRealtimeAnalytics().collect { realtimeData ->
 
 Generate actionable insights across multiple categories:
 
-```kotlin
+```go
 val context = AnalysisContext(
     timeRange = timeRange,
     services = listOf("vault", "flow", "task"),

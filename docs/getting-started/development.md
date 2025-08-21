@@ -1,421 +1,414 @@
 # Development Guide
 
-This guide helps you set up a complete development environment for contributing to Eden DevOps Suite.
+This guide helps you set up a development environment for Eden and understand the codebase structure.
 
 ## Prerequisites
 
 ### Required Software
-- **Java 17 or higher** - For running Kotlin/JVM services
-- **Docker Desktop** - For containerized development environment
-- **Git** - For version control
-- **IDE** - IntelliJ IDEA (recommended) or VS Code with Kotlin plugin
+- **Go 1.21 or higher** - Primary development language
+- **Docker** - For running dependencies (PostgreSQL, Redis)
+- **Docker Compose** - For orchestrating development services
+- **Git** - Version control
+- **Make** - Build automation
 
 ### Recommended Tools
-- **Postman/Insomnia** - For API testing
-- **pgAdmin** - For database management
-- **Redis CLI** - For cache inspection
+- **VS Code** - With Go extension for development
+- **PostgreSQL Client** - For database management
+- **Redis CLI** - For cache and queue inspection
 
-## Development Environment Setup
+## Quick Setup
 
-### 1. Clone and Initialize
+### 1. Clone Repository
 
 ```bash
-# Clone the repository
-git clone https://github.com/ataivadev/eden.git
+git clone https://github.com/ataiva-software/eden.git
 cd eden
-
-# Make scripts executable
-chmod +x gradlew
-chmod +x scripts/setup-dev.sh
-
-# Run development setup script
-./scripts/setup-dev.sh
 ```
 
-### 2. Start Infrastructure Services
+### 2. Start Dependencies
 
 ```bash
 # Start PostgreSQL and Redis
-docker-compose up -d postgres redis
-
-# Verify services are running
-docker-compose ps
+docker-compose up -d
 ```
 
-### 3. Build the Project
+### 3. Install Go Dependencies
 
 ```bash
-# Build all modules
-./gradlew build
-
-# Build specific modules
-./gradlew :shared:core:build
-./gradlew :services:api-gateway:build
-./gradlew :clients:cli:build
+# Download and install dependencies
+go mod tidy
 ```
 
-### 4. Initialize Database
+### 4. Build Eden
 
 ```bash
-# Run database initialization
-docker-compose exec postgres psql -U eden -d eden_dev -f /docker-entrypoint-initdb.d/01-init-database.sql
+# Build single binary
+make build
+```
 
-# Verify database setup
-docker-compose exec postgres psql -U eden -d eden_dev -c "\dt"
+### 5. Run Eden
+
+```bash
+# Start all services
+./bin/eden server
+
+# Or run specific service
+./bin/eden service vault --port 8080
+```
+
+## Project Structure
+
+```
+eden/
+├── cmd/
+│   └── eden/                 # Main application entry point
+├── internal/                 # Internal service implementations
+│   ├── api-gateway/          # API Gateway service
+│   ├── vault/                # Vault service
+│   ├── flow/                 # Flow service
+│   ├── task/                 # Task service
+│   ├── monitor/              # Monitor service
+│   ├── sync/                 # Sync service
+│   ├── insight/              # Insight service
+│   └── hub/                  # Hub service
+├── pkg/                      # Shared packages
+│   ├── core/                 # Core utilities
+│   ├── crypto/               # Cryptographic operations
+│   ├── auth/                 # Authentication
+│   ├── database/             # Database abstractions
+│   ├── events/               # Event system
+│   ├── config/               # Configuration
+│   └── monitoring/           # Monitoring utilities
+├── docs/                     # Documentation
+├── web/                      # Web dashboard (future)
+└── bin/                      # Built binaries
 ```
 
 ## Development Workflow
 
-### Project Structure
+### 1. Service Development
+
+Each service follows a consistent structure:
 
 ```
-eden/
-├── shared/                   # Shared Kotlin Multiplatform libraries
-│   ├── core/                 # Core models and utilities
-│   ├── auth/                 # Authentication framework
-│   ├── crypto/               # Cryptography utilities
-│   ├── database/             # Database abstraction
-│   ├── events/               # Event system
-│   └── config/               # Configuration management
-├── services/                 # Microservices (Kotlin/JVM)
-│   ├── api-gateway/          # API Gateway service
-│   ├── vault/                # Vault service (planned)
-│   ├── flow/                 # Flow service (planned)
-│   └── ...                   # Other services
-├── clients/                  # Client applications
-│   ├── web/                  # Web UI (Kotlin/JS)
-│   ├── cli/                  # CLI (Kotlin Native)
-│   └── mobile/               # Mobile app (future)
-├── infrastructure/           # Infrastructure as code
-│   ├── docker/               # Docker configurations
-│   ├── kubernetes/           # Kubernetes manifests
-│   └── database/             # Database scripts
-└── docs/                     # Documentation
+internal/service-name/
+├── main.go                   # Service entry point
+├── handler.go                # HTTP handlers
+├── service.go                # Business logic
+├── models.go                 # Data models
+├── repository.go             # Data access
+└── service_test.go           # Tests
 ```
 
-### Working with Shared Libraries
+### 2. Shared Package Development
 
-Shared libraries use Kotlin Multiplatform and are consumed by services and clients:
+Shared packages provide common functionality:
+
+```
+pkg/package-name/
+├── package.go                # Main package file
+├── types.go                  # Type definitions
+├── utils.go                  # Utility functions
+└── package_test.go           # Tests
+```
+
+### 3. Testing
+
+Run tests for specific packages:
 
 ```bash
-# Build shared libraries
-./gradlew :shared:build
+# Test specific service
+go test ./internal/vault/...
 
-# Test shared libraries
-./gradlew :shared:test
+# Test shared package
+go test ./pkg/crypto/...
 
-# Publish to local repository
-./gradlew :shared:publishToMavenLocal
+# Test everything
+go test ./...
+
+# Test with coverage
+go test -cover ./...
 ```
 
-### Working with Services
+### 4. Building
 
-Services are Kotlin/JVM applications using Ktor:
+Build the single binary:
 
 ```bash
-# Run API Gateway locally
-./gradlew :services:api-gateway:run
+# Build for current platform
+make build
 
-# Run with specific profile
-./gradlew :services:api-gateway:run --args="--config=dev"
+# Build for specific platform
+GOOS=linux GOARCH=amd64 go build -o bin/eden-linux ./cmd/eden/
 
 # Build Docker image
-./gradlew :services:api-gateway:buildImage
+make docker-build
 ```
 
-### Working with CLI
+## Configuration
 
-The CLI is built with Kotlin Native for cross-platform support:
+### Environment Variables
 
 ```bash
-# Build for your platform
-./gradlew :clients:cli:build
+# Database configuration
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=eden
+export DB_USER=eden
+export DB_PASSWORD=secret
 
-# Build for Linux
-./gradlew :clients:cli:linkReleaseExecutableLinuxX64
+# Redis configuration
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
 
-# Build for macOS
-./gradlew :clients:cli:linkReleaseExecutableMacosX64
-
-# Build for Windows
-./gradlew :clients:cli:linkReleaseExecutableMingwX64
-
-# Run the CLI
-./clients/cli/build/bin/linuxX64/releaseExecutable/eden --help
+# Service configuration
+export BASE_PORT=8000
+export LOG_LEVEL=info
 ```
 
-### Working with Web UI
+### Configuration Files
 
-The Web UI uses Kotlin/JS with Compose for Web:
+Create `config/local.yaml` for local development:
 
-```bash
-# Build web UI
-./gradlew :clients:web:build
+```yaml
+database:
+  host: localhost
+  port: 5432
+  name: eden
+  user: eden
+  password: secret
 
-# Run development server
-./gradlew :clients:web:jsBrowserDevelopmentRun
+redis:
+  host: localhost
+  port: 6379
 
-# Build for production
-./gradlew :clients:web:jsBrowserProductionWebpack
+services:
+  base_port: 8000
+  log_level: debug
 ```
 
-## Testing
+## IDE Setup
 
-### Running Tests
+### VS Code Configuration
+
+Install recommended extensions:
+- Go (by Google)
+- Docker
+- YAML
+- GitLens
+
+Create `.vscode/settings.json`:
+
+```json
+{
+  "go.useLanguageServer": true,
+  "go.formatTool": "goimports",
+  "go.lintTool": "golangci-lint",
+  "go.testFlags": ["-v"],
+  "go.coverOnSave": true
+}
+```
+
+### Debugging
+
+Create `.vscode/launch.json` for debugging:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Eden Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/eden",
+      "args": ["server"],
+      "env": {
+        "DB_HOST": "localhost",
+        "DB_PASSWORD": "secret"
+      }
+    }
+  ]
+}
+```
+
+## Development Commands
+
+### Common Make Targets
 
 ```bash
-# Run all tests
-./gradlew test
+# Build binary
+make build
 
-# Run tests for specific module
-./gradlew :shared:core:test
-./gradlew :services:api-gateway:test
-
-# Run integration tests
-./gradlew integrationTest
+# Run tests
+make test
 
 # Run tests with coverage
-./gradlew test jacocoTestReport
+make test-coverage
+
+# Start development environment
+make dev
+
+# Clean build artifacts
+make clean
+
+# Build Docker image
+make docker-build
+
+# Run linting
+make lint
 ```
 
-### Test Structure
+### Go Commands
 
-```
-src/
-├── main/kotlin/              # Production code
-└── test/kotlin/              # Test code
-    ├── unit/                 # Unit tests
-    ├── integration/          # Integration tests
-    └── fixtures/             # Test data and utilities
-```
+```bash
+# Run specific service
+go run cmd/eden/main.go service vault
 
-### Writing Tests
+# Test with verbose output
+go test -v ./internal/vault/...
 
-```kotlin
-// Unit test example
-class SecretServiceTest {
-    @Test
-    fun `should encrypt secret with zero-knowledge encryption`() {
-        // Arrange
-        val service = SecretService()
-        val plaintext = "my-secret"
-        val password = "user-password"
-        
-        // Act
-        val result = service.encryptSecret(plaintext, password)
-        
-        // Assert
-        assertTrue(result.isSuccess)
-        assertNotEquals(plaintext, result.encryptedData)
-    }
-}
+# Generate test coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 
-// Integration test example
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ApiGatewayIntegrationTest {
-    private lateinit var testApplication: TestApplication
-    
-    @BeforeAll
-    fun setup() {
-        testApplication = TestApplication {
-            module()
-        }
-    }
-    
-    @Test
-    fun `should authenticate user successfully`() = testApplication.test {
-        // Test API endpoints
-        val response = client.post("/auth/login") {
-            contentType(ContentType.Application.Json)
-            setBody(LoginRequest("user@example.com", "password"))
-        }
-        
-        assertEquals(HttpStatusCode.OK, response.status)
-    }
-}
+# Format code
+go fmt ./...
+
+# Check for issues
+go vet ./...
 ```
 
 ## Database Development
 
+### Migrations
+
+Database migrations are handled automatically on startup. To create new migrations:
+
+```bash
+# Create migration file
+touch pkg/database/migrations/001_create_users.sql
+```
+
 ### Database Access
 
+Use the database package for consistent access:
+
+```go
+import "github.com/ataiva-software/eden/pkg/database"
+
+// Get database connection
+db, err := database.Connect(config.Database)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Use GORM for queries
+var users []User
+db.Find(&users)
+```
+
+## Testing Guidelines
+
+### Test Structure
+
+Follow Go testing conventions:
+
+```go
+func TestServiceFunction(t *testing.T) {
+    // Arrange
+    service := NewService()
+    
+    // Act
+    result, err := service.DoSomething()
+    
+    // Assert
+    assert.NoError(t, err)
+    assert.Equal(t, expected, result)
+}
+```
+
+### Integration Tests
+
+Use build tags for integration tests:
+
+```go
+//go:build integration
+
+func TestDatabaseIntegration(t *testing.T) {
+    // Integration test code
+}
+```
+
+Run integration tests:
+
 ```bash
-# Connect to development database
-docker-compose exec postgres psql -U eden -d eden_dev
-
-# Connect to test database
-docker-compose exec postgres psql -U eden -d eden_test
-
-# Run SQL scripts
-docker-compose exec postgres psql -U eden -d eden_dev -f /path/to/script.sql
+go test -tags=integration ./...
 ```
 
-### Schema Management
+## Code Style
 
-```bash
-# Create new migration
-./gradlew flywayInfo
-./gradlew flywayMigrate
+### Go Conventions
+- Follow standard Go formatting (use `gofmt`)
+- Use meaningful variable and function names
+- Write comprehensive comments for public APIs
+- Handle errors explicitly
+- Use interfaces for testability
 
-# Reset database (development only)
-./gradlew flywayClean flywayMigrate
-```
-
-### Database Schema
-
-Current schema organization:
-```sql
--- Core schema
-CREATE SCHEMA IF NOT EXISTS core;
--- Tables: users, organizations, permissions, audit_logs
-
--- Service-specific schemas
-CREATE SCHEMA IF NOT EXISTS vault;
--- Tables: secrets, secret_versions, access_logs
-
-CREATE SCHEMA IF NOT EXISTS flow;
--- Tables: workflows, workflow_runs, workflow_steps
-```
+### Project Conventions
+- Services should be stateless where possible
+- Use dependency injection for testability
+- Follow the repository pattern for data access
+- Use events for inter-service communication
+- Implement comprehensive error handling
 
 ## Debugging
 
-### IntelliJ IDEA Setup
-
-1. **Import Project**: Open the root `build.gradle.kts` file
-2. **Configure JDK**: Set Project SDK to Java 17+
-3. **Enable Kotlin**: Ensure Kotlin plugin is installed and enabled
-4. **Configure Run Configurations**: 
-   - API Gateway: Main class `com.ataiva.eden.gateway.ApplicationKt`
-   - CLI: Native binary execution
-
-### Debugging Services
+### Local Debugging
 
 ```bash
-# Run with debug port
-./gradlew :services:api-gateway:run --debug-jvm
+# Run with debug logging
+LOG_LEVEL=debug ./bin/eden server
 
-# Or set environment variable
-export JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
-./gradlew :services:api-gateway:run
+# Run specific service with debugging
+./bin/eden service vault --port 8080 --debug
 ```
 
-### Logging
-
-Services use structured JSON logging:
-
-```kotlin
-// In service code
-private val logger = LoggerFactory.getLogger(this::class.java)
-
-logger.info("Processing request", 
-    StructuredArguments.kv("userId", userId),
-    StructuredArguments.kv("action", "secret.create")
-)
-```
-
-View logs:
-```bash
-# Service logs
-docker-compose logs api-gateway
-
-# Database logs
-docker-compose logs postgres
-
-# All logs
-docker-compose logs -f
-```
-
-## Code Quality
-
-### Code Style
-
-- Follow [Kotlin Coding Conventions](https://kotlinlang.org/docs/coding-conventions.html)
-- Use meaningful names for variables and functions
-- Add KDoc comments for public APIs
-- Keep functions small and focused
-
-### Pre-commit Checks
+### Docker Debugging
 
 ```bash
-# Format code
-./gradlew ktlintFormat
+# View service logs
+docker-compose logs -f eden
 
-# Check code style
-./gradlew ktlintCheck
-
-# Run static analysis
-./gradlew detekt
-
-# Run all quality checks
-./gradlew check
+# Access container shell
+docker-compose exec eden sh
 ```
 
-### Git Hooks
+## Contributing
 
-Set up pre-commit hooks:
-```bash
-# Install pre-commit hooks
-cp scripts/pre-commit .git/hooks/
-chmod +x .git/hooks/pre-commit
-```
+### Before Submitting
 
-## Troubleshooting
+1. **Run tests**: Ensure all tests pass
+2. **Check formatting**: Run `go fmt ./...`
+3. **Lint code**: Run `golangci-lint run`
+4. **Update documentation**: Keep docs current
+5. **Test locally**: Verify changes work locally
 
-### Common Issues
+### Pull Request Process
 
-**Build Failures**
-```bash
-# Clean and rebuild
-./gradlew clean build
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
-# Check Java version
-java -version
+For more details, see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-# Update Gradle wrapper
-./gradlew wrapper --gradle-version=8.5
-```
+## Getting Help
 
-**Database Connection Issues**
-```bash
-# Check if PostgreSQL is running
-docker-compose ps postgres
-
-# Reset database
-docker-compose down postgres
-docker-compose up -d postgres
-```
-
-**CLI Build Issues**
-```bash
-# Check Kotlin Native setup
-./gradlew :clients:cli:tasks
-
-# Clean native build
-./gradlew :clients:cli:clean
-```
-
-**Port Conflicts**
-```bash
-# Check port usage
-netstat -tulpn | grep :8080
-
-# Change ports in docker-compose.yml if needed
-```
-
-### Getting Help
-
-- **Documentation**: Check the [docs/](.) directory
-- **Issues**: Search [GitHub Issues](https://github.com/your-org/eden/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/your-org/eden/discussions)
-- **Code Review**: Ask for help in pull requests
-
-## Next Steps
-
-1. **Pick a Component**: Choose from [Project Status](../development/project-status.md)
-2. **Read Architecture**: Review [Architecture Overview](../architecture/overview.md)
-3. **Start Contributing**: Follow [Contributing Guide](../../CONTRIBUTING.md)
-4. **Join Community**: Participate in discussions and code reviews
-
----
-
-Happy coding! 🚀
+- **Documentation**: Check the docs/ directory
+- **Issues**: Report bugs on GitHub
+- **Discussions**: Join community discussions
+- **Support**: Contact support@ataiva.com

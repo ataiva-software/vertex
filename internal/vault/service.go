@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ataivadev/eden/pkg/crypto"
+	"github.com/ataiva-software/eden/pkg/crypto"
 	"gorm.io/gorm"
 )
 

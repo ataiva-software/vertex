@@ -13,7 +13,7 @@ Before installing Eden DevOps Suite, ensure you have the following:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ataivadev/eden.git
+git clone https://github.com/ataiva-software/eden.git
 cd eden
 ```
 

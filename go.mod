@@ -1,4 +1,4 @@
-module github.com/ataivadev/eden
+module github.com/ataiva-software/eden
 
 go 1.23.0
 

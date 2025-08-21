@@ -13,7 +13,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - **Simple commands**: Intuitive CLI with sensible defaults
 - **Clear visibility**: Always know what's happening in your systems
 
-### 🔒 Privacy-First Design
+### Privacy-First Design
 - **Zero-knowledge principles**: Your secrets stay encrypted, even from us
 - **Strong security**: End-to-end encryption for workflows and data
 - **Audit transparency**: Complete audit trail for all operations
@@ -23,14 +23,14 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - **Seamless integration**: Components work better together
 - **Reduced tool sprawl**: One platform instead of dozens of tools
 
-### 📈 Organic Growth
+### Organic Growth
 - **Start simple**: Perfect for solo developers
 - **Scale effortlessly**: Grows with your team and organization
 - **No vendor lock-in**: Open source with standard protocols
 
 ## The Eden Suite Components
 
-### 🔐 Eden Vault - Zero-Knowledge Secrets Management
+### Eden Vault - Zero-Knowledge Secrets Management
 
 **Purpose**: Secure storage and management of secrets, API keys, and sensitive configuration.
 
@@ -46,7 +46,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Secure CI/CD pipeline secrets
 - Team secret sharing with access controls
 
-### 🔄 Eden Flow - Secure Workflow Automation
+### Eden Flow - Secure Workflow Automation
 
 **Purpose**: Automate complex workflows with built-in security and monitoring.
 
@@ -62,7 +62,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Compliance and security automation
 - Cross-system data synchronization
 
-### ⚡ Eden Task - Distributed Task Orchestration
+### Eden Task - Distributed Task Orchestration
 
 **Purpose**: Scalable task execution for CI/CD pipelines and data processing.
 
@@ -78,7 +78,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Scheduled maintenance tasks
 - Batch job processing
 
-### 📊 Eden Monitor - Global Uptime & Performance Monitoring
+### Eden Monitor - Global Uptime & Performance Monitoring
 
 **Purpose**: Privacy-conscious monitoring with global reach and intelligent alerting.
 
@@ -94,7 +94,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - SLA compliance tracking
 - Incident response automation
 
-### ☁️ Eden Sync - Multi-Cloud Cost Optimization
+### Eden Sync - Multi-Cloud Cost Optimization
 
 **Purpose**: Visibility and optimization across multiple cloud providers.
 
@@ -110,7 +110,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Budget management and alerts
 - Vendor cost comparison
 
-### 📈 Eden Insight - Privacy-First Analytics
+### Eden Insight - Privacy-First Analytics
 
 **Purpose**: Real-time analytics dashboards without compromising user privacy.
 
@@ -126,7 +126,7 @@ Inspired by the Garden of Eden — a symbol of purity, simplicity, and ideal con
 - Business intelligence dashboards
 - Custom metric tracking
 
-### 🎯 Eden Hub - Service Discovery & Configuration Management
+### Eden Hub - Service Discovery & Configuration Management
 
 **Purpose**: Centralized service discovery, configuration, and integration management.
 
@@ -252,9 +252,9 @@ The CLI automatically detects:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Your Device   │    │  Eden Platform  │    │  Encrypted DB   │
 │                 │    │                 │    │                 │
-│ 🔑 Master Key   │────│ 🔒 Encrypted    │────│ 🔒 Encrypted    │
+│ 🔑 Master Key   │────│ Encrypted    │────│ Encrypted    │
 │ 🔓 Decrypt      │    │    Data Only    │    │    Data Only    │
-│ 🔒 Encrypt      │    │                 │    │                 │
+│ Encrypt      │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 

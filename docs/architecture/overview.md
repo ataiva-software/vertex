@@ -1,297 +1,197 @@
-# Architecture Overview
+# Eden Architecture Overview
 
-Eden DevOps Suite is built using a microservices architecture with shared libraries, designed to scale from simple Docker Compose deployments to enterprise Kubernetes clusters.
+Eden is built as a single-binary application with a microservices architecture, providing a unified DevOps platform through integrated services.
 
-## High-Level Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend Layer                              │
-│  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
-│  │   Eden Web UI       │    │        Eden CLI                 │ │
-│  │ (Kotlin/JS+Compose) │    │    (Kotlin Native)              │ │
-│  └─────────────────────┘    └─────────────────────────────────┘ │
+│                     Eden Binary (19MB)                          │
 ├─────────────────────────────────────────────────────────────────┤
-│                     API Gateway Layer                           │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Authentication • Rate Limiting • Load Balancing • Routing  ││
-│  └─────────────────────────────────────────────────────────────┘│
+│ API Gateway │ Vault │ Flow │ Task │ Monitor │ Sync │ Insight │ Hub │
+│   Port 8000 │ 8080  │ 8081 │ 8082 │  8083   │ 8084 │  8085   │8086 │
 ├─────────────────────────────────────────────────────────────────┤
-│                    Service Layer                                │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
-│  │  Vault  │ │  Flow   │ │  Task   │ │ Monitor │ │  Sync   │    │
-│  │ Service │ │ Service │ │ Service │ │ Service │ │ Service │    │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
-│  ┌─────────┐ ┌─────────┐                                        │
-│  │ Insight │ │   Hub   │                                        │
-│  │ Service │ │ Service │                                        │
-│  └─────────┘ └─────────┘                                        │
+│                    Shared Infrastructure                         │
+│  Database Pool • Event Bus • Crypto • Config • Logging          │
 ├─────────────────────────────────────────────────────────────────┤
-│                   Shared Infrastructure                         │
-│  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
-│  │   Shared Core       │    │    Message Bus & Events         │ │
-│  │     Library         │    │   (Redis Streams/NATS)          │ │
-│  └─────────────────────┘    └─────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│                     Data Layer                                  │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │         PostgreSQL + Extensions + Redis Cache               ││
-│  └─────────────────────────────────────────────────────────────┘│
+│                       Data Layer                                 │
+│              PostgreSQL + Redis + File System                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Key Architectural Decisions
+## Core Services
 
-### 1. Microservices with Shared Kernel
-- **Independent Services**: Each Eden component runs as a separate service
-- **Shared Libraries**: Common functionality in shared Kotlin Multiplatform modules
-- **Loose Coupling**: Services communicate via well-defined APIs and events
-- **Technology Consistency**: All services use Kotlin and Ktor framework
+### API Gateway (Port 8000)
+- **Purpose**: Central entry point for all API requests
+- **Features**: Authentication, routing, rate limiting, request/response transformation
+- **Technology**: Go with Gin framework
 
-### 2. PostgreSQL-Centric Data Strategy
-- **Single Database**: All services share a PostgreSQL database with schema separation
-- **Extensions**: TimescaleDB for time-series data, PostGIS for geospatial features
-- **ACID Compliance**: Strong consistency for critical operations
-- **Redis Cache**: High-performance caching and session storage
+### Vault Service (Port 8080)
+- **Purpose**: Zero-knowledge secrets management
+- **Features**: AES-256-GCM encryption, secure key storage, audit logging
+- **Technology**: Go with cryptographic libraries
 
-### 3. Event-Driven Communication
-- **Asynchronous Events**: Services communicate via domain events
-- **Redis Streams**: Reliable event streaming with persistence
-- **Event Sourcing**: Critical operations recorded as immutable events
-- **CQRS Pattern**: Separate read/write models for complex operations
+### Flow Service (Port 8081)
+- **Purpose**: Workflow automation and orchestration
+- **Features**: Visual workflow designer, event-driven execution, conditional logic
+- **Technology**: Go with event-driven architecture
 
-### 4. Hybrid Encryption Approach
-- **Zero-Knowledge Secrets**: Client-side encryption for sensitive data
-- **Standard Encryption**: TLS and database encryption for other data
-- **Progressive Security**: Start simple, enhance security over time
-- **Key Management**: Secure key derivation and rotation
+### Task Service (Port 8082)
+- **Purpose**: Distributed task processing and job scheduling
+- **Features**: Redis-based queuing, parallel execution, retry mechanisms
+- **Technology**: Go with Redis integration
+
+### Monitor Service (Port 8083)
+- **Purpose**: Real-time monitoring and alerting
+- **Features**: Metrics collection, health checks, AI-powered anomaly detection
+- **Technology**: Go with monitoring libraries
+
+### Sync Service (Port 8084)
+- **Purpose**: Multi-cloud data synchronization
+- **Features**: Cross-cloud replication, conflict resolution, cost optimization
+- **Technology**: Go with cloud provider SDKs
+
+### Insight Service (Port 8085)
+- **Purpose**: Analytics and business intelligence
+- **Features**: Data analysis, predictive modeling, reporting dashboards
+- **Technology**: Go with analytics engines
+
+### Hub Service (Port 8086)
+- **Purpose**: Service discovery and integration management
+- **Features**: Service registry, configuration management, health monitoring
+- **Technology**: Go with service discovery patterns
+
+## Shared Infrastructure
+
+### Database Layer
+- **Primary Database**: PostgreSQL for persistent data
+- **Cache Layer**: Redis for session management and queuing
+- **Connection Pooling**: Optimized database connections
+- **Migrations**: Automated schema management
+
+### Event System
+- **Message Broker**: Redis pub/sub for inter-service communication
+- **Event Sourcing**: Audit trail and state reconstruction
+- **Async Processing**: Non-blocking event handling
+
+### Security
+- **Authentication**: JWT tokens with configurable expiration
+- **Authorization**: Role-based access control (RBAC)
+- **Encryption**: AES-256-GCM for data at rest and in transit
+- **Audit Logging**: Comprehensive security event tracking
+
+### Configuration
+- **Environment Variables**: Runtime configuration
+- **Configuration Files**: YAML-based service configuration
+- **Secret Management**: Secure configuration storage
+- **Hot Reload**: Dynamic configuration updates
 
 ## Technology Stack
 
-### Backend Services
-- **Language**: Kotlin JVM
-- **Framework**: Ktor (async, lightweight)
-- **Database**: PostgreSQL 15+ with extensions
-- **Cache/Events**: Redis 7+
-- **Build**: Gradle with Kotlin DSL
+### Core Technologies
+- **Language**: Go 1.21+
+- **Web Framework**: Gin for HTTP services
+- **Database**: PostgreSQL with GORM ORM
+- **Cache**: Redis for caching and messaging
+- **CLI Framework**: Cobra for command-line interface
 
-### Frontend Applications
-- **Web UI**: Kotlin/JS with Compose for Web
-- **CLI**: Kotlin Native (cross-platform)
-- **Mobile**: Kotlin Multiplatform Mobile (future)
+### Development Tools
+- **Build System**: Go modules and Makefiles
+- **Testing**: Go testing framework with Testify
+- **Containerization**: Docker with multi-stage builds
+- **Orchestration**: Kubernetes with Helm charts
 
-### Infrastructure
-- **Containerization**: Docker and Docker Compose
-- **Orchestration**: Kubernetes (production)
-- **Monitoring**: Prometheus + Grafana
-- **Logging**: Structured JSON logging
+### Deployment
+- **Single Binary**: All services compiled into one executable
+- **Container Support**: Docker images with health checks
+- **Cloud Native**: Kubernetes-ready with service discovery
+- **CI/CD**: GitHub Actions for automated testing and deployment
 
-## Component Architecture
+## Design Principles
 
-### API Gateway
-```
-┌─────────────────────────────────────────┐
-│              API Gateway                │
-├─────────────────────────────────────────┤
-│  Authentication Middleware              │
-│  ├─ JWT Token Validation                │
-│  ├─ User Session Management             │
-│  └─ Role-Based Access Control           │
-├─────────────────────────────────────────┤
-│  Traffic Management                     │
-│  ├─ Rate Limiting                       │
-│  ├─ Load Balancing                      │
-│  └─ Circuit Breaker                     │
-├─────────────────────────────────────────┤
-│  Request Routing                        │
-│  ├─ Service Discovery                   │
-│  ├─ Path-Based Routing                  │
-│  └─ Health Check Aggregation            │
-└─────────────────────────────────────────┘
-```
+### Single Binary Architecture
+- **Simplicity**: One binary to deploy and manage
+- **Efficiency**: Shared resources and optimized memory usage
+- **Portability**: Runs anywhere Go is supported
+- **Performance**: Minimal overhead and fast startup
 
-### Service Structure (Example: Eden Vault)
-```
-┌─────────────────────────────────────────┐
-│            Eden Vault Service           │
-├─────────────────────────────────────────┤
-│  API Layer                              │
-│  ├─ REST Endpoints                      │
-│  ├─ GraphQL Schema (future)             │
-│  └─ WebSocket Events                    │
-├─────────────────────────────────────────┤
-│  Business Logic                         │
-│  ├─ Secret Management                   │
-│  ├─ Access Control                      │
-│  └─ Audit Logging                       │
-├─────────────────────────────────────────┤
-│  Data Access                            │
-│  ├─ Repository Pattern                  │
-│  ├─ Database Queries                    │
-│  └─ Cache Management                    │
-├─────────────────────────────────────────┤
-│  Shared Dependencies                    │
-│  ├─ Core Models                         │
-│  ├─ Authentication                      │
-│  ├─ Cryptography                        │
-│  └─ Events                              │
-└─────────────────────────────────────────┘
-```
+### Microservices Benefits
+- **Modularity**: Clear separation of concerns
+- **Scalability**: Individual service scaling
+- **Maintainability**: Independent service development
+- **Resilience**: Fault isolation and recovery
 
-## Data Architecture
+### Security First
+- **Zero Trust**: Verify all requests and communications
+- **Encryption**: End-to-end data protection
+- **Audit Trail**: Complete operation logging
+- **Least Privilege**: Minimal required permissions
 
-### Database Schema Organization
-```
-PostgreSQL Database: eden_dev
-├─ Schema: core
-│  ├─ users
-│  ├─ organizations  
-│  ├─ permissions
-│  └─ audit_logs
-├─ Schema: vault
-│  ├─ secrets
-│  ├─ secret_versions
-│  └─ access_logs
-├─ Schema: flow
-│  ├─ workflows
-│  ├─ workflow_runs
-│  └─ workflow_steps
-├─ Schema: task
-│  ├─ jobs
-│  ├─ job_runs
-│  └─ job_logs
-└─ Schema: monitor
-   ├─ checks
-   ├─ check_results
-   └─ incidents
-```
+### Cloud Native
+- **12-Factor App**: Following cloud-native principles
+- **Stateless Services**: Horizontal scaling capability
+- **Health Checks**: Kubernetes-compatible health endpoints
+- **Observability**: Comprehensive metrics and logging
 
-### Event Streaming Architecture
-```
-Redis Streams
-├─ Stream: eden.auth.events
-│  ├─ user.created
-│  ├─ user.login
-│  └─ permission.changed
-├─ Stream: eden.vault.events
-│  ├─ secret.created
-│  ├─ secret.accessed
-│  └─ secret.deleted
-├─ Stream: eden.flow.events
-│  ├─ workflow.started
-│  ├─ workflow.completed
-│  └─ workflow.failed
-└─ Stream: eden.system.events
-   ├─ service.started
-   ├─ service.health
-   └─ service.error
-```
+## Data Flow
 
-## Security Architecture
+### Request Processing
+1. **API Gateway** receives and authenticates requests
+2. **Service Routing** directs requests to appropriate services
+3. **Business Logic** processes requests within services
+4. **Data Access** interacts with PostgreSQL/Redis
+5. **Response** returns processed data to client
 
-### Zero-Knowledge Encryption Flow
-```
-Client Device                 Eden Platform              Database
-┌─────────────┐              ┌─────────────┐            ┌─────────────┐
-│             │              │             │            │             │
-│ 1. Password │─────────────▶│             │            │             │
-│ 2. Derive   │              │             │            │             │
-│    Key      │              │             │            │             │
-│ 3. Encrypt  │              │             │            │             │
-│    Secret   │              │             │            │             │
-│             │              │             │            │             │
-│ 4. Send     │─────────────▶│ 5. Store    │───────────▶│ 6. Encrypted│
-│    Encrypted│              │    Encrypted│            │    Data Only│
-│    Data     │              │    Data     │            │             │
-│             │              │             │            │             │
-│ 8. Decrypt  │◀─────────────│ 7. Retrieve │◀───────────│             │
-│    Secret   │              │    Encrypted│            │             │
-│             │              │    Data     │            │             │
-└─────────────┘              └─────────────┘            └─────────────┘
-```
+### Event Processing
+1. **Event Generation** services publish events to Redis
+2. **Event Distribution** Redis pub/sub delivers to subscribers
+3. **Event Processing** services handle events asynchronously
+4. **State Updates** services update their state based on events
 
-### Authentication & Authorization
-- **JWT Tokens**: Stateless authentication with refresh tokens
-- **Role-Based Access Control**: Granular permissions system
-- **Multi-Factor Authentication**: TOTP and WebAuthn support
-- **API Keys**: Service-to-service authentication
-- **Audit Logging**: Complete audit trail for compliance
-
-## Deployment Architecture
-
-### Development (Docker Compose)
-```
-┌─────────────────────────────────────────┐
-│           Docker Compose                │
-├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐    │
-│  │   API   │ │  Vault  │ │  Flow   │    │
-│  │ Gateway │ │ Service │ │ Service │    │
-│  └─────────┘ └─────────┘ └─────────┘    │
-├─────────────────────────────────────────┤
-│  ┌────────────┐  ┌─────────┐            │
-│  │ PostgreSQL │  │  Redis  │            │
-│  │ Database   │  │  Cache  │            │
-│  └────────────┘  └─────────┘            │
-└─────────────────────────────────────────┘
-```
-
-### Production (Kubernetes)
-```
-┌─────────────────────────────────────────┐
-│            Kubernetes Cluster           │
-├─────────────────────────────────────────┤
-│  Ingress Controller                     │
-│  ├─ TLS Termination                     │
-│  ├─ Load Balancing                      │
-│  └─ Path Routing                        │
-├─────────────────────────────────────────┤
-│  Application Pods                       │
-│  ├─ API Gateway (3 replicas)            │
-│  ├─ Vault Service (2 replicas)          │
-│  ├─ Flow Service (2 replicas)           │
-│  └─ Other Services...                   │
-├─────────────────────────────────────────┤
-│  Data Layer                             │
-│  ├─ PostgreSQL (HA Cluster)             │
-│  ├─ Redis (Sentinel Setup)              │
-│  └─ Persistent Volumes                  │
-├─────────────────────────────────────────┤
-│  Monitoring & Logging                   │
-│  ├─ Prometheus                          │
-│  ├─ Grafana                             │
-│  └─ Fluentd                             │
-└─────────────────────────────────────────┘
-```
+### Data Persistence
+1. **Transactional Data** stored in PostgreSQL
+2. **Cache Data** stored in Redis for performance
+3. **File Storage** for binary data and logs
+4. **Backup Strategy** automated backups and recovery
 
 ## Scalability Considerations
 
 ### Horizontal Scaling
-- **Stateless Services**: All services designed for horizontal scaling
-- **Database Sharding**: Future support for database partitioning
-- **Caching Strategy**: Multi-level caching with Redis and CDN
-- **Load Balancing**: Intelligent routing based on service health
+- **Stateless Services**: Multiple instances can run concurrently
+- **Load Balancing**: Distribute requests across instances
+- **Database Scaling**: Read replicas and connection pooling
+- **Cache Scaling**: Redis clustering for high availability
 
 ### Performance Optimization
-- **Connection Pooling**: Efficient database connection management
-- **Async Processing**: Non-blocking I/O throughout the stack
-- **Event Streaming**: Asynchronous inter-service communication
-- **Resource Management**: Kubernetes resource limits and requests
+- **Connection Pooling**: Efficient database connections
+- **Caching Strategy**: Multi-level caching for performance
+- **Async Processing**: Non-blocking operations where possible
+- **Resource Management**: Efficient memory and CPU usage
 
-## Integration Patterns
+### Monitoring and Observability
+- **Health Checks**: Service health monitoring
+- **Metrics Collection**: Performance and business metrics
+- **Distributed Tracing**: Request flow across services
+- **Log Aggregation**: Centralized logging and analysis
 
-### API Design
-- **RESTful APIs**: Standard HTTP methods and status codes
-- **GraphQL**: Future support for flexible data querying
-- **WebSocket**: Real-time updates and notifications
-- **OpenAPI**: Comprehensive API documentation
+## Security Architecture
 
-### External Integrations
-- **Webhooks**: Outbound event notifications
-- **OAuth 2.0**: Third-party authentication
-- **SAML/LDAP**: Enterprise identity providers
-- **Cloud APIs**: AWS, GCP, Azure integrations
+### Authentication and Authorization
+- **JWT Tokens**: Stateless authentication
+- **RBAC**: Role-based access control
+- **API Keys**: Service-to-service authentication
+- **Session Management**: Secure session handling
 
----
+### Data Protection
+- **Encryption at Rest**: Database and file encryption
+- **Encryption in Transit**: TLS for all communications
+- **Key Management**: Secure key storage and rotation
+- **Data Masking**: Sensitive data protection
 
-This architecture provides a solid foundation for the Eden DevOps Suite while maintaining flexibility for future enhancements and scaling requirements.
+### Network Security
+- **TLS Termination**: Secure communications
+- **Rate Limiting**: DDoS protection
+- **Input Validation**: Prevent injection attacks
+- **CORS Configuration**: Cross-origin request security
+
+This architecture provides a robust, scalable, and secure foundation for the Eden DevOps platform while maintaining simplicity through the single-binary deployment model.

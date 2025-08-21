@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to Eden! This document provides guidelines and information for contributors.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Eden! This document provides guid
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/ataivadev/eden.git
+   git clone https://github.com/ataiva-software/eden.git
    cd eden
    ```
 
@@ -30,7 +30,7 @@ Thank you for your interest in contributing to Eden! This document provides guid
    docker-compose ps
    ```
 
-## 📋 Development Workflow
+## Development Workflow
 
 ### Branch Strategy
 
@@ -101,7 +101,7 @@ docs: update installation instructions
 test(flow): add unit tests for workflow execution
 ```
 
-## 🏗️ Architecture Guidelines
+## Architecture Guidelines
 
 ### Project Structure
 
@@ -161,7 +161,7 @@ suspend fun encryptZeroKnowledge(
 - Implement comprehensive error handling
 - Add OpenAPI/Swagger documentation
 
-## 🧪 Testing
+## Testing
 
 ### Test Structure
 
@@ -203,7 +203,7 @@ class SecretServiceTest {
 }
 ```
 
-## 📚 Documentation
+## Documentation
 
 ### Code Documentation
 
@@ -219,7 +219,7 @@ class SecretServiceTest {
 - Document error codes and responses
 - Provide authentication examples
 
-## 🔒 Security Guidelines
+## Security Guidelines
 
 ### Security Best Practices
 
@@ -268,7 +268,7 @@ What you expected to happen.
 Any other context about the problem.
 ```
 
-## 💡 Feature Requests
+## Feature Requests
 
 ### Feature Request Template
 
@@ -286,7 +286,7 @@ Other solutions you've considered.
 Any other context about the feature request.
 ```
 
-## 📝 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting
 
@@ -339,7 +339,7 @@ We use [Semantic Versioning](https://semver.org/):
 - [ ] Release notes prepared
 - [ ] Security review completed
 
-## 🤝 Community
+## Community
 
 ### Code of Conduct
 
@@ -361,7 +361,7 @@ Contributors will be recognized in:
 - Release notes
 - Project documentation
 
-## 📄 License
+## License
 
 By contributing to Eden, you agree that your contributions will be licensed under the MIT License.
 

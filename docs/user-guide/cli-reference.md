@@ -8,7 +8,7 @@ The Eden CLI (`eden`) is the primary command-line interface for interacting with
 
 ```bash
 # Clone the repository
-git clone https://github.com/ataivadev/eden.git
+git clone https://github.com/ataiva-software/eden.git
 cd eden
 
 # Build CLI for your platform
@@ -107,7 +107,7 @@ eden auth whoami
 User: john.doe@company.com
 Organization: ACME Corp
 Role: Developer
-Session Expires: 2024-12-31 23:59:59 UTC
+Session Expires: 2030-12-31 23:59:59 UTC
 ```
 
 ## Secrets Management Commands
@@ -535,7 +535,7 @@ production:
 auth:
   access_token: "..."
   refresh_token: "..."
-  expires_at: "2024-12-31T23:59:59Z"
+  expires_at: "2030-12-31T23:59:59Z"
 ```
 
 ## Environment Variables

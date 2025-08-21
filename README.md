@@ -9,13 +9,13 @@
 
 A revolutionary single-binary DevOps platform built with Go, designed to unify your development workflow through integrated microservices, advanced analytics, multi-cloud orchestration, and intelligent automation.
 
-## 🌟 What is Eden?
+## What is Eden?
 
 Eden creates a _perfect, pristine_ environment for developers and operations teams by combining secrets management, workflow automation, task orchestration, monitoring, analytics, and multi-cloud management into a single, powerful 19MB binary.
 
 **Current Status**: Production Ready - Complete Go implementation with all services fully functional. The Eden DevOps Suite is now production-ready with comprehensive testing, single-binary deployment, and automated operations.
 
-## 🚀 Revolutionary Single-Binary Architecture
+## Revolutionary Single-Binary Architecture
 
 Unlike traditional DevOps stacks that require dozens of separate tools, Eden delivers everything in one binary:
 
@@ -33,16 +33,16 @@ grafana &                # 80MB+ memory
 
 ### Core Services
 
-- **🔐 Eden Vault** (Port 8080) - Zero-knowledge secrets management with AES-256-GCM encryption
-- **🔄 Eden Flow** (Port 8081) - Visual workflow automation with event-driven architecture
-- **⚡ Eden Task** (Port 8082) - Distributed task orchestration with Redis queuing
-- **📊 Eden Monitor** (Port 8083) - Real-time monitoring with AI-powered anomaly detection
-- **☁️ Eden Sync** (Port 8084) - Multi-cloud data synchronization and cost optimization
-- **📈 Eden Insight** (Port 8085) - Privacy-first analytics with predictive intelligence
-- **🎯 Eden Hub** (Port 8086) - Service discovery and integration hub
-- **🖥️ Eden CLI** - Comprehensive command-line interface for all operations
+- **Eden Vault** (Port 8080) - Zero-knowledge secrets management with AES-256-GCM encryption
+- **Eden Flow** (Port 8081) - Visual workflow automation with event-driven architecture
+- **Eden Task** (Port 8082) - Distributed task orchestration with Redis queuing
+- **Eden Monitor** (Port 8083) - Real-time monitoring with AI-powered anomaly detection
+- **Eden Sync** (Port 8084) - Multi-cloud data synchronization and cost optimization
+- **Eden Insight** (Port 8085) - Privacy-first analytics with predictive intelligence
+- **Eden Hub** (Port 8086) - Service discovery and integration hub
+- **Eden CLI** - Comprehensive command-line interface for all operations
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -59,40 +59,100 @@ grafana &                # 80MB+ memory
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Installation
+
+### Download Latest Release
+
+**Linux (x64)**
+```bash
+curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-linux-amd64
+chmod +x eden
+sudo mv eden /usr/local/bin/
+```
+
+**Linux (ARM64)**
+```bash
+curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-linux-arm64
+chmod +x eden
+sudo mv eden /usr/local/bin/
+```
+
+**macOS (Intel)**
+```bash
+curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-darwin-amd64
+chmod +x eden
+sudo mv eden /usr/local/bin/
+```
+
+**macOS (Apple Silicon)**
+```bash
+curl -L -o eden https://github.com/ataiva-software/eden/releases/latest/download/eden-darwin-arm64
+chmod +x eden
+sudo mv eden /usr/local/bin/
+```
+
+**Windows**
+Download the latest `eden-windows-amd64.exe` from the [releases page](https://github.com/ataiva-software/eden/releases/latest) and add to your PATH.
+
+### Install with Go
+
+```bash
+go install github.com/ataiva-software/eden/cmd/eden@latest
+```
+
+### Verify Installation
+
+```bash
+eden --version
+```
+
+## Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- Docker and Docker Compose
+- Docker and Docker Compose (for dependencies)
 - PostgreSQL and Redis (or use Docker Compose)
 
 ### 5-Minute Setup
 
 ```bash
-# 1. Clone and start infrastructure
-git clone https://github.com/ao/eden.git
-cd eden
-docker-compose up -d
+# 1. Download Eden (see Installation section above)
 
-# 2. Build the single binary
-make build
+# 2. Start infrastructure dependencies
+docker run -d --name postgres \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_USER=eden \
+  -e POSTGRES_DB=eden \
+  -p 5432:5432 postgres:15
 
-# 3. Start all services
-./bin/eden server
+docker run -d --name redis \
+  -p 6379:6379 redis:7
+
+# 3. Start all Eden services
+eden server
 
 # 4. Try the CLI
-./bin/eden status
-./bin/eden vault store my-secret "hello world"
-./bin/eden vault get my-secret
+eden status
+eden vault store my-secret "hello world"
+eden vault get my-secret
 ```
 
-## 📋 Deployment Modes
+### Alternative: Docker Compose
+
+```bash
+# Download docker-compose.yml
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/eden/main/docker-compose.yml
+
+# Start everything
+docker-compose up -d
+```
+
+## Deployment Modes
 
 ### 1. All Services Mode (Production)
 
 ```bash
-./bin/eden server
+eden server
 # Runs all 8 services concurrently on ports 8000-8086
 # Shared resources for maximum efficiency
 ```
@@ -100,17 +160,17 @@ make build
 ### 2. Single Service Mode (Development)
 
 ```bash
-./bin/eden service vault --port 8080
-./bin/eden service flow --port 8081
+eden service vault --port 8080
+eden service flow --port 8081
 # Run individual services for development/testing
 ```
 
 ### 3. CLI Mode (Operations)
 
 ```bash
-./bin/eden vault list
-./bin/eden flow run deploy-prod
-./bin/eden monitor metrics --live
+eden vault list
+eden flow run deploy-prod
+eden monitor metrics --live
 # Direct CLI operations without running services
 ```
 
@@ -121,7 +181,24 @@ docker run -p 8000-8086:8000-8086 eden:latest server
 # Containerized deployment with health checks
 ```
 
-## 🛠️ Development
+## Development
+
+### Building from Source
+
+```bash
+# Clone repository
+git clone https://github.com/ataiva-software/eden.git
+cd eden
+
+# Install dependencies
+go mod tidy
+
+# Build single binary
+make build
+
+# Run services
+./bin/eden server
+```
 
 ### Project Structure
 
@@ -206,7 +283,7 @@ make test
 ./bin/eden vault get test-key
 ```
 
-## 🧪 Testing
+## Testing
 
 Eden follows Test-Driven Development (TDD) with comprehensive test coverage:
 
@@ -236,7 +313,7 @@ go test -bench=. ./...
 - **Performance Tests** - Load and stress testing
 - **Security Tests** - Vulnerability and penetration testing
 
-## 🔐 Security Features
+## Security Features
 
 ### Zero-Knowledge Architecture
 
@@ -252,7 +329,7 @@ go test -bench=. ./...
 - **Multi-Factor Authentication** - TOTP and hardware key support
 - **Session Management** - Secure session handling
 
-## ☁️ Multi-Cloud Support
+## Multi-Cloud Support
 
 Eden natively supports multiple cloud providers:
 
@@ -262,7 +339,7 @@ Eden natively supports multiple cloud providers:
 - **Kubernetes** - Any CNCF-compliant cluster
 - **Docker** - Local and remote Docker environments
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### Resource Usage
 
@@ -282,7 +359,7 @@ Eden natively supports multiple cloud providers:
 - **Task Processing**: 10,000+ tasks/min
 - **Metric Collection**: 100,000+ metrics/sec
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ### Single Container
 
@@ -312,7 +389,7 @@ kubectl apply -f kubernetes/
 helm install eden ./charts/eden
 ```
 
-## 📚 Documentation
+## Documentation
 
 ### Getting Started
 
@@ -337,7 +414,7 @@ helm install eden ./charts/eden
 - [Security Guide](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
@@ -345,7 +422,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone repository
-git clone https://github.com/ao/eden.git
+git clone https://github.com/ataiva-software/eden.git
 cd eden
 
 # Install dependencies
@@ -370,17 +447,44 @@ make test
 - Document all public APIs
 - Follow the existing project structure
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## Support
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/ao/eden/issues)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/ataiva-software/eden/issues)
 - **Documentation**: Complete guides in the `docs/` directory
 - **Email Support**: [support@ataiva.com](mailto:support@ataiva.com)
 
-## 🎯 Why Eden?
+## Roadmap
+
+### Current Status: Production Ready (100% Complete)
+
+**Core Services (8/8 Complete)**
+- **Vault Service** - Zero-knowledge secrets management with AES-256-GCM encryption
+- **Flow Service** - Visual workflow automation with event-driven architecture  
+- **Task Service** - Distributed task orchestration with Redis queuing
+- **Monitor Service** - Real-time monitoring with AI-powered anomaly detection
+- **Sync Service** - Multi-cloud data synchronization and cost optimization
+- **Insight Service** - Privacy-first analytics with predictive intelligence
+- **Hub Service** - Service discovery and integration hub
+- **API Gateway** - Authentication, routing, and request management
+
+**Infrastructure (Complete)**
+- **Database Layer** - PostgreSQL with connection pooling and migrations
+- **Event System** - Redis-based pub/sub for service communication
+- **Security** - JWT authentication, RBAC, and audit logging
+- **Monitoring** - Health checks, metrics collection, and alerting
+- **Testing** - 100% test coverage with unit, integration, and E2E tests
+
+**Deployment (Complete)**
+- **Single Binary** - 19MB executable with all services
+- **Docker Support** - Multi-stage builds with health checks
+- **Kubernetes** - Production-ready manifests and Helm charts
+- **CI/CD** - GitHub Actions for testing, security, and deployment
+
+## Why Eden?
 
 ### For Startups
 
@@ -402,6 +506,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Eden DevOps Suite** - Creating the perfect environment for modern development teams.
+**Eden DevOps Suite** - Created by [Ataiva](https://ataiva.com)
 
 _Ready to revolutionize your DevOps workflow? Download Eden and experience the future of unified DevOps platforms._
