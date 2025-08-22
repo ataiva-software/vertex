@@ -61,6 +61,12 @@ grafana &                # 80MB+ memory
 
 ## Installation
 
+### Quick Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ataiva-software/vertex/main/install.sh | bash
+```
+
 ### Download Latest Release
 
 **Linux (x64)**
@@ -94,12 +100,6 @@ sudo mv vertex /usr/local/bin/
 **Windows**
 Download the latest `vertex-windows-amd64.exe` from the [releases page](https://github.com/ataiva-software/vertex/releases/latest) and add to your PATH.
 
-### Install with Go
-
-```bash
-go install github.com/ataiva-software/vertex/cmd/vertex@latest
-```
-
 ### Verify Installation
 
 ```bash
@@ -116,7 +116,8 @@ vertex --version
 ### 5-Minute Setup
 
 ```bash
-# 1. Download Vertex (see Installation section above)
+# 1. Install Vertex
+curl -fsSL https://raw.githubusercontent.com/ataiva-software/vertex/main/install.sh | bash
 
 # 2. Start infrastructure dependencies
 docker run -d --name postgres \
@@ -128,10 +129,14 @@ docker run -d --name postgres \
 docker run -d --name redis \
   -p 6379:6379 redis:7
 
-# 3. Start all Vertex services
+# 3. Set master password and start all services
+export VERTEX_MASTER_PASSWORD="your-secure-password"
 vertex server
 
-# 4. Try the CLI
+# 4. Access web portal
+open http://localhost:8000
+
+# 5. Try the CLI
 vertex status
 vertex vault store my-secret "hello world"
 vertex vault get my-secret

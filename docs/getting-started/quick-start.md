@@ -4,45 +4,66 @@ Get Vertex up and running in 5 minutes with this step-by-step guide.
 
 ## Prerequisites
 
-- **Go 1.21+** installed on your system
 - **Docker** and **Docker Compose** for dependencies
-- **Git** for cloning the repository
+- **Internet connection** for downloading Vertex
 
-## Step 1: Clone Repository
+## Step 1: Install Vertex
+
+### Automatic Installation (Recommended)
 
 ```bash
-git clone https://github.com/ataiva-software/vertex.git
-cd vertex
+curl -fsSL https://raw.githubusercontent.com/ataiva-software/vertex/main/install.sh | bash
+```
+
+### Manual Installation
+
+**macOS (Apple Silicon)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-darwin-arm64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+**Linux (x64)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-linux-amd64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+### Verify Installation
+
+```bash
+vertex --version
 ```
 
 ## Step 2: Start Dependencies
 
-Vertex requires PostgreSQL and Redis. Start them with Docker Compose:
+Vertex requires PostgreSQL and Redis. Start them with Docker:
 
 ```bash
-docker-compose up -d
+# PostgreSQL
+docker run -d --name postgres \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_USER=vertex \
+  -e POSTGRES_DB=vertex \
+  -p 5432:5432 postgres:15
+
+# Redis
+docker run -d --name redis \
+  -p 6379:6379 redis:7
 ```
 
-This starts:
-- PostgreSQL on port 5432
-- Redis on port 6379
-
-## Step 3: Build Vertex
-
-```bash
-make build
-```
-
-## Step 4: Set Master Password
+## Step 3: Set Master Password
 
 ```bash
 export VERTEX_MASTER_PASSWORD="your-secure-password"
 ```
 
-## Step 5: Start All Services
+## Step 4: Start All Services
 
 ```bash
-./bin/vertex server
+vertex server
 ```
 
 You should see all services starting:
@@ -58,7 +79,7 @@ You should see all services starting:
 ✅ Hub service started on port 8086
 ```
 
-## Step 6: Access the Web Portal
+## Step 5: Access the Web Portal
 
 Open your browser to: **http://localhost:8000**
 
@@ -72,23 +93,23 @@ The web portal provides a complete interface for all services:
 - 📈 **Insight**: Analytics and reports
 - 🔗 **Hub**: Service integrations
 
-## Step 7: Try the CLI
+## Step 6: Try the CLI
 
 ```bash
 # Check system status
-./bin/vertex status
+vertex status
 
 # Store a secret
-./bin/vertex vault store my-secret "hello world"
+vertex vault store my-secret "hello world"
 
 # List secrets (JSON format)
-./bin/vertex vault list --format json
+vertex vault list --format json
 
 # List secrets (YAML format)
-./bin/vertex vault list --format yaml
+vertex vault list --format yaml
 
 # Get a secret
-./bin/vertex vault get my-secret
+vertex vault get my-secret
 ```
 
 ## What's Next?
@@ -113,13 +134,13 @@ The web portal provides a complete interface for all services:
 
 ```bash
 # Check if dependencies are running
-docker-compose ps
+docker ps | grep -E "(postgres|redis)"
 
 # Check if ports are available
 lsof -i :8000-8086
 
 # Restart dependencies if needed
-docker-compose restart
+docker restart postgres redis
 ```
 
 ### Web Portal Not Loading
@@ -132,17 +153,44 @@ curl http://localhost:8000/health
 echo $VERTEX_MASTER_PASSWORD
 
 # Restart server
-./bin/vertex server
+vertex server
 ```
 
 ### CLI Commands Fail
 
 ```bash
 # Check service status
-./bin/vertex status
+vertex status
 
 # Test individual service
 curl http://localhost:8080/health
+```
+
+## Alternative Setup Methods
+
+### Docker Compose
+
+```bash
+# Download docker-compose.yml
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/ataiva-software/vertex/main/docker-compose.yml
+
+# Start everything
+docker-compose up -d
+
+# Access web portal
+open http://localhost:8000
+```
+
+### Individual Services
+
+```bash
+# Run only specific services
+vertex service vault --port 8080
+vertex service flow --port 8081
+
+# Use CLI with specific services
+vertex vault list
+vertex flow list
 ```
 
 Build the single binary containing all services:

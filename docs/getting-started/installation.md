@@ -1,33 +1,210 @@
 # Installation Guide
 
+## Quick Install (Recommended)
+
+### Automatic Installation Script
+
+The fastest way to install Vertex is using our installation script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ataiva-software/vertex/main/install.sh | bash
+```
+
+This script will:
+- ✅ Detect your operating system and architecture automatically
+- ✅ Download the latest release binary
+- ✅ Install to `/usr/local/bin/vertex`
+- ✅ Verify the installation
+- ✅ Show you next steps
+
+## Manual Installation
+
+### Download Latest Release
+
+Choose your platform and download the appropriate binary:
+
+**macOS (Apple Silicon)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-darwin-arm64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+**macOS (Intel)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-darwin-amd64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+**Linux (x64)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-linux-amd64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+**Linux (ARM64)**
+```bash
+curl -L -o vertex https://github.com/ataiva-software/vertex/releases/latest/download/vertex-linux-arm64
+chmod +x vertex
+sudo mv vertex /usr/local/bin/
+```
+
+**Windows**
+1. Download `vertex-windows-amd64.exe` from the [releases page](https://github.com/ataiva-software/vertex/releases/latest)
+2. Rename to `vertex.exe`
+3. Add to your PATH
+
+### Verify Installation
+
+```bash
+vertex --version
+```
+
+You should see output like:
+```
+Vertex DevOps Suite v1.0.0
+```
+
 ## Prerequisites
 
-Before installing Vertex DevOps Suite, ensure you have the following:
+Vertex requires these dependencies to run:
 
-- **Java 17 or higher** - Required for running services
-- **Docker and Docker Compose** - For containerized deployment
-- **Git** - For version control and repository management
+### Required Dependencies
 
-## Quick Installation
-
-### 1. Clone the Repository
-
+**PostgreSQL Database**
 ```bash
-git clone https://github.com/ataiva-software/vertex.git
-cd vertex
+# Using Docker (recommended)
+docker run -d --name postgres \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_USER=vertex \
+  -e POSTGRES_DB=vertex \
+  -p 5432:5432 postgres:15
+
+# Or install locally
+# macOS: brew install postgresql
+# Ubuntu: sudo apt install postgresql
+# CentOS: sudo yum install postgresql-server
 ```
 
-### 2. Start Development Environment
+**Redis Cache**
+```bash
+# Using Docker (recommended)
+docker run -d --name redis \
+  -p 6379:6379 redis:7
+
+# Or install locally
+# macOS: brew install redis
+# Ubuntu: sudo apt install redis-server
+# CentOS: sudo yum install redis
+```
+
+### Environment Variables
+
+**Master Password (Required)**
+```bash
+export VERTEX_MASTER_PASSWORD="your-secure-password"
+```
+
+**Database Configuration (Optional)**
+```bash
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_NAME="vertex"
+export DB_USER="vertex"
+export DB_PASSWORD="secret"
+export DB_SSL_MODE="disable"
+```
+
+## Quick Start
+
+Once installed, start Vertex:
 
 ```bash
-# Start all services with Docker Compose
+# 1. Set master password
+export VERTEX_MASTER_PASSWORD="your-secure-password"
+
+# 2. Start all services
+vertex server
+```
+
+You should see:
+```
+🚀 Starting Vertex DevOps Suite - All Services
+✅ API Gateway service started on port 8000
+✅ Vault service started on port 8080
+✅ Flow service started on port 8081
+✅ Task service started on port 8082
+✅ Monitor service started on port 8083
+✅ Sync service started on port 8084
+✅ Insight service started on port 8085
+✅ Hub service started on port 8086
+```
+
+## Access Vertex
+
+### Web Portal
+Open your browser to: **http://localhost:8000**
+
+### CLI Commands
+```bash
+# Check system status
+vertex status
+
+# Store a secret
+vertex vault store my-secret "hello world"
+
+# List secrets
+vertex vault list --format yaml
+
+# Get help
+vertex --help
+```
+
+## Docker Installation (Alternative)
+
+If you prefer using Docker:
+
+```bash
+# Pull the image
+docker pull vertex:latest
+
+# Run with dependencies
 docker-compose up -d
-
-# Verify services are running
-docker-compose ps
 ```
 
-### 3. Build the Project
+## Troubleshooting
+
+### Common Issues
+
+**"vertex: command not found"**
+- Ensure `/usr/local/bin` is in your PATH
+- Try running `./vertex` from the download directory
+
+**"VERTEX_MASTER_PASSWORD environment variable is required"**
+- Set the master password: `export VERTEX_MASTER_PASSWORD="your-password"`
+
+**"Failed to connect to database"**
+- Ensure PostgreSQL is running on port 5432
+- Check database credentials and connection
+
+**"Failed to connect to Redis"**
+- Ensure Redis is running on port 6379
+- Check Redis connection
+
+### Getting Help
+
+- **Documentation**: [Complete guides](https://github.com/ataiva-software/vertex/tree/main/docs)
+- **Issues**: [GitHub Issues](https://github.com/ataiva-software/vertex/issues)
+- **Support**: [support@ataiva.com](mailto:support@ataiva.com)
+
+## Next Steps
+
+- [Quick Start Guide](quick-start.md) - Get up and running in 5 minutes
+- [Web Portal Guide](../user-guide/web-portal.md) - Complete web interface documentation
+- [CLI Reference](../user-guide/cli-reference.md) - All CLI commands
+- [Configuration Guide](configuration.md) - Advanced configuration options
 
 ```bash
 # Build all components
