@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertex DevOps Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 2rem 0; }
+        .service { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .service h3 { color: #333; margin-bottom: 1rem; }
+        .service-status { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-bottom: 1rem; }
+        .status-healthy { background: #d4edda; color: #155724; }
+        .status-unhealthy { background: #f8d7da; color: #721c24; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { background: #667eea; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #5a6fd8; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .output { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; padding: 1rem; margin-top: 1rem; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 1rem; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: #667eea; color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .secret-list { margin-top: 1rem; }
+        .secret-item { background: #f8f9fa; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🔺 Vertex DevOps Suite</h1>
+            <p>Unified DevOps Platform - Web Portal</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="services">
+            <!-- Vault Service -->
+            <div class="service">
+                <h3>🔐 Vault Service</h3>
+                <div class="service-status status-healthy" id="vault-status">● Healthy</div>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('vault', 'store')">Store</div>
+                    <div class="tab" onclick="switchTab('vault', 'list')">List</div>
+                    <div class="tab" onclick="switchTab('vault', 'get')">Get</div>
+                </div>
+
+                <div class="tab-content active" id="vault-store">
+                    <div class="form-group">
+                        <label>Secret Key:</label>
+                        <input type="text" id="vault-key" placeholder="api-key">
+                    </div>
+                    <div class="form-group">
+                        <label>Secret Value:</label>
+                        <input type="password" id="vault-value" placeholder="secret-value">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <input type="text" id="vault-description" placeholder="Optional description">
+                    </div>
+                    <div class="form-group">
+                        <label>Tags (comma-separated):</label>
+                        <input type="text" id="vault-tags" placeholder="production,api,critical">
+                    </div>
+                    <button class="btn" onclick="storeSecret()">Store Secret</button>
+                </div>
+
+                <div class="tab-content" id="vault-list">
+                    <button class="btn" onclick="listSecrets()">Refresh List</button>
+                    <div class="secret-list" id="secrets-list"></div>
+                </div>
+
+                <div class="tab-content" id="vault-get">
+                    <div class="form-group">
+                        <label>Secret Key:</label>
+                        <input type="text" id="get-key" placeholder="api-key">
+                    </div>
+                    <button class="btn" onclick="getSecret()">Get Secret</button>
+                </div>
+
+                <div class="output" id="vault-output"></div>
+            </div>
+
+            <!-- Flow Service -->
+            <div class="service">
+                <h3>🔄 Flow Service</h3>
+                <div class="service-status status-healthy" id="flow-status">● Healthy</div>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('flow', 'list')">Workflows</div>
+                    <div class="tab" onclick="switchTab('flow', 'create')">Create</div>
+                </div>
+
+                <div class="tab-content active" id="flow-list">
+                    <button class="btn" onclick="listWorkflows()">Refresh Workflows</button>
+                </div>
+
+                <div class="tab-content" id="flow-create">
+                    <div class="form-group">
+                        <label>Workflow Name:</label>
+                        <input type="text" id="workflow-name" placeholder="deploy-production">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea id="workflow-description" placeholder="Workflow description"></textarea>
+                    </div>
+                    <button class="btn" onclick="createWorkflow()">Create Workflow</button>
+                </div>
+
+                <div class="output" id="flow-output"></div>
+            </div>
+
+            <!-- Task Service -->
+            <div class="service">
+                <h3>⚡ Task Service</h3>
+                <div class="service-status status-healthy" id="task-status">● Healthy</div>
+                
+                <button class="btn" onclick="listTasks()">List Tasks</button>
+                <div class="output" id="task-output"></div>
+            </div>
+
+            <!-- Monitor Service -->
+            <div class="service">
+                <h3>📊 Monitor Service</h3>
+                <div class="service-status status-healthy" id="monitor-status">● Healthy</div>
+                
+                <div class="form-group">
+                    <label>Service:</label>
+                    <select id="monitor-service">
+                        <option value="vault">Vault</option>
+                        <option value="flow">Flow</option>
+                        <option value="task">Task</option>
+                        <option value="sync">Sync</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="getMetrics()">Get Metrics</button>
+                <div class="output" id="monitor-output"></div>
+            </div>
+
+            <!-- Sync Service -->
+            <div class="service">
+                <h3>🔄 Sync Service</h3>
+                <div class="service-status status-healthy" id="sync-status">● Healthy</div>
+                
+                <button class="btn" onclick="listSyncJobs()">List Sync Jobs</button>
+                <div class="output" id="sync-output"></div>
+            </div>
+
+            <!-- Insight Service -->
+            <div class="service">
+                <h3>📈 Insight Service</h3>
+                <div class="service-status status-healthy" id="insight-status">● Healthy</div>
+                
+                <button class="btn" onclick="listReports()">List Reports</button>
+                <div class="output" id="insight-output"></div>
+            </div>
+
+            <!-- Hub Service -->
+            <div class="service">
+                <h3>🔗 Hub Service</h3>
+                <div class="service-status status-healthy" id="hub-status">● Healthy</div>
+                
+                <button class="btn" onclick="listIntegrations()">List Integrations</button>
+                <div class="output" id="hub-output"></div>
+            </div>
+
+            <!-- System Status -->
+            <div class="service">
+                <h3>🖥️ System Status</h3>
+                <button class="btn" onclick="getSystemStatus()">Refresh Status</button>
+                <div class="output" id="system-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Service-specific API endpoints
+        const API_ENDPOINTS = {
+            vault: 'http://localhost:8080/api/v1',
+            flow: 'http://localhost:8081/api/v1', 
+            task: 'http://localhost:8082/api/v1',
+            monitor: 'http://localhost:8083/api/v1',
+            sync: 'http://localhost:8084/api/v1',
+            insight: 'http://localhost:8085/api/v1',
+            hub: 'http://localhost:8086/api/v1'
+        };
+
+        function switchTab(service, tab) {
+            document.querySelectorAll(`#${service}-${tab}`).forEach(el => el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active')));
+            document.querySelectorAll(`#${service}-${tab}`).forEach(el => el.parentElement.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')));
+            event.target.classList.add('active');
+            document.getElementById(`${service}-${tab}`).classList.add('active');
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null, service = 'vault') {
+            try {
+                const baseUrl = API_ENDPOINTS[service] || API_ENDPOINTS.vault;
+                const response = await fetch(`${baseUrl}${endpoint}`, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': 'web-user'
+                    },
+                    body: body ? JSON.stringify(body) : null
+                });
+                const data = await response.text();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, data: `Error: ${error.message}`, status: 0 };
+            }
+        }
+
+        // Vault functions
+        async function storeSecret() {
+            const key = document.getElementById('vault-key').value;
+            const value = document.getElementById('vault-value').value;
+            const description = document.getElementById('vault-description').value;
+            const tags = document.getElementById('vault-tags').value.split(',').map(t => t.trim()).filter(t => t);
+            
+            const result = await apiCall('/secrets', 'POST', { key, value, description, tags }, 'vault');
+            document.getElementById('vault-output').textContent = result.data;
+        }
+
+        async function listSecrets() {
+            const result = await apiCall('/secrets', 'GET', null, 'vault');
+            document.getElementById('vault-output').textContent = result.data;
+            
+            if (result.success) {
+                try {
+                    const secrets = JSON.parse(result.data).secrets || [];
+                    const listEl = document.getElementById('secrets-list');
+                    listEl.innerHTML = secrets.map(s => 
+                        `<div class="secret-item">
+                            <span><strong>${s.key}</strong> - ${s.description || 'No description'}</span>
+                            <button class="btn btn-danger" onclick="deleteSecret('${s.key}')">Delete</button>
+                        </div>`
+                    ).join('');
+                } catch (e) {}
+            }
+        }
+
+        async function getSecret() {
+            const key = document.getElementById('get-key').value;
+            const result = await apiCall(`/secrets/${key}`, 'GET', null, 'vault');
+            document.getElementById('vault-output').textContent = result.data;
+        }
+
+        async function deleteSecret(key) {
+            const result = await apiCall(`/secrets/${key}`, 'DELETE', null, 'vault');
+            document.getElementById('vault-output').textContent = result.data;
+            listSecrets(); // Refresh list
+        }
+
+        // Flow functions
+        async function listWorkflows() {
+            const result = await apiCall('/workflows', 'GET', null, 'flow');
+            document.getElementById('flow-output').textContent = result.data;
+        }
+
+        async function createWorkflow() {
+            const name = document.getElementById('workflow-name').value;
+            const description = document.getElementById('workflow-description').value;
+            const result = await apiCall('/workflows', 'POST', { name, description }, 'flow');
+            document.getElementById('flow-output').textContent = result.data;
+        }
+
+        // Other service functions
+        async function listTasks() {
+            const result = await apiCall('/tasks', 'GET', null, 'task');
+            document.getElementById('task-output').textContent = result.data;
+        }
+
+        async function getMetrics() {
+            const service = document.getElementById('monitor-service').value;
+            const result = await apiCall(`/metrics/${service}`, 'GET', null, 'monitor');
+            document.getElementById('monitor-output').textContent = result.data;
+        }
+
+        async function listSyncJobs() {
+            const result = await apiCall('/sync-jobs', 'GET', null, 'sync');
+            document.getElementById('sync-output').textContent = result.data;
+        }
+
+        async function listReports() {
+            const result = await apiCall('/reports', 'GET', null, 'insight');
+            document.getElementById('insight-output').textContent = result.data;
+        }
+
+        async function listIntegrations() {
+            const result = await apiCall('/integrations', 'GET', null, 'hub');
+            document.getElementById('hub-output').textContent = result.data;
+        }
+
+        async function getSystemStatus() {
+            const services = ['vault', 'flow', 'task', 'monitor', 'sync', 'insight', 'hub'];
+            let status = 'System Status:\n';
+            
+            for (const service of services) {
+                try {
+                    const response = await fetch(`http://localhost:808${services.indexOf(service)}/health`);
+                    const healthy = response.ok;
+                    status += `${service}: ${healthy ? '✅ Healthy' : '❌ Unhealthy'}\n`;
+                    
+                    const statusEl = document.getElementById(`${service}-status`);
+                    if (statusEl) {
+                        statusEl.textContent = healthy ? '● Healthy' : '● Unhealthy';
+                        statusEl.className = `service-status ${healthy ? 'status-healthy' : 'status-unhealthy'}`;
+                    }
+                } catch (e) {
+                    status += `${service}: ❌ Unhealthy\n`;
+                }
+            }
+            
+            document.getElementById('system-output').textContent = status;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            getSystemStatus();
+            listSecrets();
+        });
+    </script>
+</body>
+</html>

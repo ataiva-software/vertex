@@ -2,8 +2,11 @@ package vault
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/ataiva-software/vertex/pkg/crypto"
@@ -18,8 +21,12 @@ type Service struct {
 
 // NewService creates a new vault service
 func NewService() *Service {
+	password := os.Getenv("VERTEX_MASTER_PASSWORD")
+	if password == "" {
+		log.Fatal("VERTEX_MASTER_PASSWORD environment variable is required")
+	}
 	return &Service{
-		password: "default-master-password", // In real implementation, this would come from config
+		password: password,
 	}
 }
 
@@ -39,9 +46,9 @@ func (s *Service) StoreSecret(ctx context.Context, userID string, secret *Secret
 		return err
 	}
 
-	// Check if secret already exists
+	// Check if secret already exists (globally, not per user)
 	var existing Secret
-	err := s.db.Where("user_id = ? AND key = ?", userID, secret.Key).First(&existing).Error
+	err := s.db.Where("key = ?", secret.Key).First(&existing).Error
 	if err == nil {
 		return fmt.Errorf("secret with key '%s' already exists", secret.Key)
 	}
@@ -59,7 +66,7 @@ func (s *Service) StoreSecret(ctx context.Context, userID string, secret *Secret
 	newSecret := &Secret{
 		UserID:      userID,
 		Key:         secret.Key,
-		Value:       string(encryptedValue),
+		Value:       base64.StdEncoding.EncodeToString(encryptedValue),
 		Description: secret.Description,
 		Tags:        StringSlice(secret.Tags),
 	}
@@ -77,7 +84,7 @@ func (s *Service) StoreSecret(ctx context.Context, userID string, secret *Secret
 // GetSecret retrieves a secret by key
 func (s *Service) GetSecret(ctx context.Context, userID, key string) (*Secret, error) {
 	var secret Secret
-	err := s.db.Where("user_id = ? AND key = ?", userID, key).First(&secret).Error
+	err := s.db.Where("key = ?", key).First(&secret).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("secret '%s' not found", key)
 	}
@@ -86,7 +93,12 @@ func (s *Service) GetSecret(ctx context.Context, userID, key string) (*Secret, e
 	}
 
 	// Decrypt the value
-	decryptedValue, err := crypto.DecryptAES([]byte(secret.Value), s.password)
+	encryptedBytes, err := base64.StdEncoding.DecodeString(secret.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode secret: %w", err)
+	}
+	
+	decryptedValue, err := crypto.DecryptAES(encryptedBytes, s.password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt secret: %w", err)
 	}
@@ -99,11 +111,10 @@ func (s *Service) GetSecret(ctx context.Context, userID, key string) (*Secret, e
 	return &secret, nil
 }
 
-// ListSecrets returns a list of secrets for a user (without values)
+// ListSecrets returns a list of all secrets (without values)
 func (s *Service) ListSecrets(ctx context.Context, userID string) ([]*SecretListItem, error) {
 	var secrets []Secret
 	err := s.db.Select("key, description, tags, created_at, updated_at").
-		Where("user_id = ?", userID).
 		Find(&secrets).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list secrets: %w", err)
@@ -129,9 +140,9 @@ func (s *Service) UpdateSecret(ctx context.Context, userID string, secret *Secre
 		return err
 	}
 
-	// Check if secret exists
+	// Check if secret exists (globally)
 	var existing Secret
-	err := s.db.Where("user_id = ? AND key = ?", userID, secret.Key).First(&existing).Error
+	err := s.db.Where("key = ?", secret.Key).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("secret '%s' not found", secret.Key)
 	}
@@ -147,7 +158,7 @@ func (s *Service) UpdateSecret(ctx context.Context, userID string, secret *Secre
 
 	// Update the secret
 	updates := map[string]interface{}{
-		"value":       string(encryptedValue),
+		"value":       base64.StdEncoding.EncodeToString(encryptedValue),
 		"description": secret.Description,
 		"tags":        StringSlice(secret.Tags),
 	}
@@ -164,9 +175,9 @@ func (s *Service) UpdateSecret(ctx context.Context, userID string, secret *Secre
 
 // DeleteSecret deletes a secret
 func (s *Service) DeleteSecret(ctx context.Context, userID, key string) error {
-	// Check if secret exists
+	// Check if secret exists (globally)
 	var secret Secret
-	err := s.db.Where("user_id = ? AND key = ?", userID, key).First(&secret).Error
+	err := s.db.Where("key = ?", key).First(&secret).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("secret '%s' not found", key)
 	}

@@ -29,6 +29,122 @@ This starts:
 
 ## Step 3: Build Vertex
 
+```bash
+make build
+```
+
+## Step 4: Set Master Password
+
+```bash
+export VERTEX_MASTER_PASSWORD="your-secure-password"
+```
+
+## Step 5: Start All Services
+
+```bash
+./bin/vertex server
+```
+
+You should see all services starting:
+```
+🚀 Starting Vertex DevOps Suite - All Services
+✅ API Gateway service started on port 8000
+✅ Vault service started on port 8080
+✅ Flow service started on port 8081
+✅ Task service started on port 8082
+✅ Monitor service started on port 8083
+✅ Sync service started on port 8084
+✅ Insight service started on port 8085
+✅ Hub service started on port 8086
+```
+
+## Step 6: Access the Web Portal
+
+Open your browser to: **http://localhost:8000**
+
+The web portal provides a complete interface for all services:
+
+- 🔐 **Vault**: Manage secrets securely
+- 🔄 **Flow**: Create and manage workflows  
+- ⚡ **Task**: Orchestrate tasks
+- 📊 **Monitor**: System health and metrics
+- 🔄 **Sync**: Multi-cloud synchronization
+- 📈 **Insight**: Analytics and reports
+- 🔗 **Hub**: Service integrations
+
+## Step 7: Try the CLI
+
+```bash
+# Check system status
+./bin/vertex status
+
+# Store a secret
+./bin/vertex vault store my-secret "hello world"
+
+# List secrets (JSON format)
+./bin/vertex vault list --format json
+
+# List secrets (YAML format)
+./bin/vertex vault list --format yaml
+
+# Get a secret
+./bin/vertex vault get my-secret
+```
+
+## What's Next?
+
+### Explore the Web Portal
+
+1. **Store Your First Secret**: Use the Vault tab to securely store API keys
+2. **Create a Workflow**: Use the Flow tab to automate tasks
+3. **Monitor Services**: Check the Monitor tab for system health
+4. **View Analytics**: Use the Insight tab for system metrics
+
+### Learn More
+
+- [Web Portal Guide](../user-guide/web-portal.md) - Complete web interface documentation
+- [CLI Reference](../user-guide/cli-reference.md) - All CLI commands and options
+- [Service Guides](../services/) - Individual service documentation
+- [Deployment Guide](../deployment/) - Production deployment options
+
+## Troubleshooting
+
+### Services Won't Start
+
+```bash
+# Check if dependencies are running
+docker-compose ps
+
+# Check if ports are available
+lsof -i :8000-8086
+
+# Restart dependencies if needed
+docker-compose restart
+```
+
+### Web Portal Not Loading
+
+```bash
+# Test API Gateway health
+curl http://localhost:8000/health
+
+# Check if master password is set
+echo $VERTEX_MASTER_PASSWORD
+
+# Restart server
+./bin/vertex server
+```
+
+### CLI Commands Fail
+
+```bash
+# Check service status
+./bin/vertex status
+
+# Test individual service
+curl http://localhost:8080/health
+```
+
 Build the single binary containing all services:
 
 ```bash

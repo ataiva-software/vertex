@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +27,7 @@ import (
 	"github.com/ataiva-software/vertex/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -36,6 +40,7 @@ var (
 	dbSSLMode  string
 	basePort   int
 	services   []string
+	allServiceInstances map[string]interface{} // Global access to all service instances
 )
 
 func main() {
@@ -77,7 +82,17 @@ func serverCmd() *cobra.Command {
 		Use:   "server",
 		Short: "Run all Vertex services",
 		Long:  "Start all Vertex services in a single process",
-		Run:   runAllServices,
+		Run: func(cmd *cobra.Command, args []string) {
+			// Check for master password
+			if os.Getenv("VERTEX_MASTER_PASSWORD") == "" {
+				fmt.Println("⚠️  WARNING: VERTEX_MASTER_PASSWORD not set!")
+				fmt.Println("Setting development default. DO NOT USE IN PRODUCTION!")
+				fmt.Println("Set VERTEX_MASTER_PASSWORD environment variable for production.")
+				os.Setenv("VERTEX_MASTER_PASSWORD", "dev-password-change-in-production")
+			}
+			
+			runAllServices(cmd, args)
+		},
 	}
 
 	cmd.Flags().StringSliceVar(&services, "services", []string{"api-gateway", "vault", "flow", "task", "monitor", "sync", "insight", "hub"}, "Services to run")
@@ -127,19 +142,32 @@ func runAllServices(cmd *cobra.Command, args []string) {
 
 	// Create service instances
 	serviceInstances := createServiceInstances(pool)
+	allServiceInstances = serviceInstances // Set global reference for API Gateway
 
 	// Start all services concurrently
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Define service ports
+	ports := map[string]int{
+		"api-gateway": 8000,
+		"vault":       8080,
+		"flow":        8081,
+		"task":        8082,
+		"monitor":     8083,
+		"sync":        8084,
+		"insight":     8085,
+		"hub":         8086,
+	}
+
 	// Start each service in its own goroutine
-	for i, serviceName := range services {
+	for _, serviceName := range services {
 		wg.Add(1)
 		go func(name string, port int) {
 			defer wg.Done()
 			startService(ctx, name, port, serviceInstances[name])
-		}(serviceName, basePort+i)
+		}(serviceName, ports[serviceName])
 	}
 
 	// Wait for interrupt signal
@@ -323,8 +351,41 @@ func addServiceRoutes(router *gin.Engine, serviceName string, serviceInstance in
 
 	switch serviceName {
 	case "api-gateway":
-		// API Gateway routes are handled differently
+		// Add web portal routes
+		router.Static("/static", "./web")
+		router.StaticFile("/", "./web/index.html")
+		router.GET("/portal", func(c *gin.Context) {
+			c.File("./web/index.html")
+		})
+		
+		// API Gateway routes
 		addAPIGatewayRoutes(v1, serviceInstance.(*apigateway.Service))
+		
+		// Add ALL service routes to API Gateway for web portal
+		// This allows the web portal to access all services through port 8000
+		if len(allServiceInstances) > 0 {
+			if vaultService, ok := allServiceInstances["vault"].(*vault.Service); ok {
+				addVaultRoutes(v1, vaultService)
+			}
+			if flowService, ok := allServiceInstances["flow"].(*flow.Service); ok {
+				addFlowRoutes(v1, flowService)
+			}
+			if taskService, ok := allServiceInstances["task"].(*task.Service); ok {
+				addTaskRoutes(v1, taskService)
+			}
+			if monitorService, ok := allServiceInstances["monitor"].(*monitor.Service); ok {
+				addMonitorRoutes(v1, monitorService)
+			}
+			if syncService, ok := allServiceInstances["sync"].(*syncservice.Service); ok {
+				addSyncRoutes(v1, syncService)
+			}
+			if insightService, ok := allServiceInstances["insight"].(*insight.Service); ok {
+				addInsightRoutes(v1, insightService)
+			}
+			if hubService, ok := allServiceInstances["hub"].(*hub.Service); ok {
+				addHubRoutes(v1, hubService)
+			}
+		}
 	case "vault":
 		addVaultRoutes(v1, serviceInstance.(*vault.Service))
 	case "flow":
@@ -365,6 +426,42 @@ func addVaultRoutes(v1 *gin.RouterGroup, service *vault.Service) {
 		c.JSON(http.StatusOK, gin.H{"secrets": secrets})
 	})
 
+	v1.POST("/secrets", func(c *gin.Context) {
+		userID := getUserID(c)
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+			return
+		}
+		
+		var req struct {
+			Key         string   `json:"key" binding:"required"`
+			Value       string   `json:"value" binding:"required"`
+			Description string   `json:"description"`
+			Tags        []string `json:"tags"`
+		}
+		
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		
+		secret := &vault.Secret{
+			UserID:      userID,
+			Key:         req.Key,
+			Value:       req.Value,
+			Description: req.Description,
+			Tags:        req.Tags,
+		}
+		
+		err := service.StoreSecret(c.Request.Context(), userID, secret)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		
+		c.JSON(http.StatusCreated, gin.H{"message": "Secret stored successfully"})
+	})
+
 	v1.GET("/secrets/:key", func(c *gin.Context) {
 		userID := getUserID(c)
 		if userID == "" {
@@ -383,6 +480,66 @@ func addVaultRoutes(v1 *gin.RouterGroup, service *vault.Service) {
 		}
 		c.JSON(http.StatusOK, secret)
 	})
+
+	v1.PUT("/secrets/:key", func(c *gin.Context) {
+		userID := getUserID(c)
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+			return
+		}
+		
+		key := c.Param("key")
+		var req struct {
+			Value       string   `json:"value" binding:"required"`
+			Description string   `json:"description"`
+			Tags        []string `json:"tags"`
+		}
+		
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		
+		secret := &vault.Secret{
+			Key:         key,
+			Value:       req.Value,
+			Description: req.Description,
+			Tags:        req.Tags,
+		}
+		
+		err := service.UpdateSecret(c.Request.Context(), userID, secret)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"message": "Secret updated successfully"})
+	})
+
+	v1.DELETE("/secrets/:key", func(c *gin.Context) {
+		userID := getUserID(c)
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+			return
+		}
+		
+		key := c.Param("key")
+		err := service.DeleteSecret(c.Request.Context(), userID, key)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"message": "Secret deleted successfully"})
+	})
 }
 
 func addFlowRoutes(v1 *gin.RouterGroup, service *flow.Service) {
@@ -398,6 +555,36 @@ func addFlowRoutes(v1 *gin.RouterGroup, service *flow.Service) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"workflows": workflows})
+	})
+
+	v1.POST("/workflows", func(c *gin.Context) {
+		userID := getUserID(c)
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID required"})
+			return
+		}
+		
+		var req struct {
+			Name        string `json:"name" binding:"required"`
+			Description string `json:"description"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		
+		workflow := &flow.Workflow{
+			Name:        req.Name,
+			Description: req.Description,
+		}
+		
+		err := service.CreateWorkflow(c.Request.Context(), workflow)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		
+		c.JSON(http.StatusCreated, gin.H{"message": "Workflow created successfully"})
 	})
 }
 
@@ -579,7 +766,9 @@ func vaultCmd() *cobra.Command {
 		Short: "Manage secrets",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List secrets",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -589,11 +778,17 @@ func vaultCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
-	cmd.AddCommand(&cobra.Command{
+	getCmd := &cobra.Command{
 		Use:   "get [key]",
 		Short: "Get a secret",
 		Args:  cobra.ExactArgs(1),
@@ -605,11 +800,122 @@ func vaultCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	getCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	storeCmd := &cobra.Command{
+		Use:   "store [key] [value]",
+		Short: "Store a secret",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			key := args[0]
+			value := args[1]
+			description, _ := cmd.Flags().GetString("description")
+			tags, _ := cmd.Flags().GetStringSlice("tags")
+			
+			url := fmt.Sprintf("http://localhost:8080/api/v1/secrets")
+			body := map[string]interface{}{
+				"key":         key,
+				"value":       value,
+				"description": description,
+				"tags":        tags,
+			}
+			resp, err := makeRequest("POST", url, body)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
+		},
+	}
+	storeCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
+	storeCmd.Flags().String("description", "", "Secret description")
+	storeCmd.Flags().StringSlice("tags", []string{}, "Secret tags")
+
+	updateCmd := &cobra.Command{
+		Use:   "update [key] [value]",
+		Short: "Update a secret",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			key := args[0]
+			value := args[1]
+			description, _ := cmd.Flags().GetString("description")
+			tags, _ := cmd.Flags().GetStringSlice("tags")
+			
+			url := fmt.Sprintf("http://localhost:8080/api/v1/secrets/%s", key)
+			body := map[string]interface{}{
+				"value":       value,
+				"description": description,
+				"tags":        tags,
+			}
+			resp, err := makeRequest("PUT", url, body)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
+		},
+	}
+	updateCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
+	updateCmd.Flags().String("description", "", "Secret description")
+	updateCmd.Flags().StringSlice("tags", []string{}, "Secret tags")
+
+	deleteCmd := &cobra.Command{
+		Use:   "delete [key]",
+		Short: "Delete a secret",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			key := args[0]
+			url := fmt.Sprintf("http://localhost:8080/api/v1/secrets/%s", key)
+			resp, err := makeRequest("DELETE", url, nil)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
+		},
+	}
+	deleteCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
+
+	cmd.AddCommand(listCmd, getCmd, storeCmd, updateCmd, deleteCmd)
 	return cmd
+}
+
+func formatOutput(jsonStr, format string) (string, error) {
+	if format == "yaml" {
+		var data interface{}
+		if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+			return "", err
+		}
+		yamlBytes, err := yaml.Marshal(data)
+		if err != nil {
+			return "", err
+		}
+		return string(yamlBytes), nil
+	}
+	return jsonStr, nil
 }
 
 func flowCmd() *cobra.Command {
@@ -618,7 +924,9 @@ func flowCmd() *cobra.Command {
 		Short: "Manage workflows",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List workflows",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -628,10 +936,17 @@ func flowCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 
@@ -641,7 +956,9 @@ func taskCmd() *cobra.Command {
 		Short: "Manage tasks",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List tasks",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -651,10 +968,17 @@ func taskCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 
@@ -664,7 +988,9 @@ func monitorCmd() *cobra.Command {
 		Short: "Monitor services",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	metricsCmd := &cobra.Command{
 		Use:   "metrics [service]",
 		Short: "Get service metrics",
 		Args:  cobra.ExactArgs(1),
@@ -676,10 +1002,17 @@ func monitorCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	metricsCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(metricsCmd)
 	return cmd
 }
 
@@ -689,7 +1022,9 @@ func syncCmd() *cobra.Command {
 		Short: "Manage sync jobs",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List sync jobs",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -699,10 +1034,17 @@ func syncCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 
@@ -712,7 +1054,9 @@ func insightCmd() *cobra.Command {
 		Short: "Manage reports",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List reports",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -722,10 +1066,17 @@ func insightCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 
@@ -735,7 +1086,9 @@ func hubCmd() *cobra.Command {
 		Short: "Manage integrations",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var format string
+
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List integrations",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -745,10 +1098,17 @@ func hubCmd() *cobra.Command {
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			fmt.Println(resp)
+			output, err := formatOutput(resp, format)
+			if err != nil {
+				fmt.Printf("Error formatting output: %v\n", err)
+				return
+			}
+			fmt.Println(output)
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&format, "format", "json", "Output format (json|yaml)")
 
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 
@@ -812,7 +1172,17 @@ func checkServiceHealth(url string) string {
 
 func makeRequest(method, url string, body interface{}) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequest(method, url, nil)
+	
+	var reqBody io.Reader
+	if body != nil {
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			return "", err
+		}
+		reqBody = bytes.NewBuffer(jsonBody)
+	}
+	
+	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
 		return "", err
 	}
@@ -830,5 +1200,10 @@ func makeRequest(method, url string, body interface{}) (string, error) {
 		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
-	return fmt.Sprintf("✅ Success (HTTP %d)", resp.StatusCode), nil
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(respBody), nil
 }
