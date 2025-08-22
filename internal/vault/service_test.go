@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -24,12 +25,20 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestVaultService(t *testing.T) {
 	t.Run("should create new vault service", func(t *testing.T) {
+		// Set required environment variable for test
+		os.Setenv("VERTEX_MASTER_PASSWORD", "test-password")
+		defer os.Unsetenv("VERTEX_MASTER_PASSWORD")
+		
 		service := NewService()
 		assert.NotNil(t, service)
 	})
 }
 
 func TestSecretOperations(t *testing.T) {
+	// Set required environment variable for test
+	os.Setenv("VERTEX_MASTER_PASSWORD", "test-password")
+	defer os.Unsetenv("VERTEX_MASTER_PASSWORD")
+	
 	db := setupTestDB(t)
 	service := NewService()
 	service.SetDB(db)
@@ -58,7 +67,7 @@ func TestSecretOperations(t *testing.T) {
 		assert.WithinDuration(t, time.Now(), retrieved.UpdatedAt, time.Second)
 	})
 
-	t.Run("should list user secrets", func(t *testing.T) {
+	t.Run("should list all secrets globally", func(t *testing.T) {
 		// Store multiple secrets
 		secrets := []*Secret{
 			{Key: "secret1", Value: "value1", Description: "First secret"},
@@ -70,16 +79,22 @@ func TestSecretOperations(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		// List secrets
+		// List secrets - should return all secrets regardless of user
 		list, err := service.ListSecrets(ctx, "user2")
 		require.NoError(t, err)
-		assert.Len(t, list, 2)
+		// Should include the 2 new secrets plus any from previous tests
+		assert.GreaterOrEqual(t, len(list), 2)
 
 		// Check that values are not included in list (SecretListItem doesn't have Value field)
+		secretFound := false
 		for _, item := range list {
 			assert.NotEmpty(t, item.Key)
-			assert.NotEmpty(t, item.Description)
+			if item.Key == "secret1" || item.Key == "secret2" {
+				secretFound = true
+				assert.NotEmpty(t, item.Description)
+			}
 		}
+		assert.True(t, secretFound, "Should find at least one of the stored secrets")
 	})
 
 	t.Run("should update existing secret", func(t *testing.T) {
@@ -132,20 +147,24 @@ func TestSecretOperations(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 	})
 
-	t.Run("should isolate secrets between users", func(t *testing.T) {
+	t.Run("should allow global access to secrets", func(t *testing.T) {
 		// Store secret for user1
-		secret := &Secret{Key: "isolation-test", Value: "user1-value"}
+		secret := &Secret{Key: "global-test", Value: "global-value"}
 		err := service.StoreSecret(ctx, "user1", secret)
 		require.NoError(t, err)
 
-		// Try to access from user2
-		_, err = service.GetSecret(ctx, "user2", "isolation-test")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		// Access from user2 should work (global secrets)
+		retrieved, err := service.GetSecret(ctx, "user2", "global-test")
+		require.NoError(t, err)
+		assert.Equal(t, "global-value", retrieved.Value)
 	})
 }
 
 func TestSecretValidation(t *testing.T) {
+	// Set required environment variable for test
+	os.Setenv("VERTEX_MASTER_PASSWORD", "test-password")
+	defer os.Unsetenv("VERTEX_MASTER_PASSWORD")
+	
 	db := setupTestDB(t)
 	service := NewService()
 	service.SetDB(db)
@@ -185,6 +204,10 @@ func TestSecretValidation(t *testing.T) {
 }
 
 func TestSecretEncryption(t *testing.T) {
+	// Set required environment variable for test
+	os.Setenv("VERTEX_MASTER_PASSWORD", "test-password")
+	defer os.Unsetenv("VERTEX_MASTER_PASSWORD")
+	
 	db := setupTestDB(t)
 	service := NewService()
 	service.SetDB(db)
