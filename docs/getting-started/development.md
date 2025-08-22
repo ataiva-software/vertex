@@ -18,11 +18,16 @@ This guide helps you set up a development environment for Vertex and understand 
 
 ## Quick Setup
 
-### 1. Clone Repository
+### 1. Install Vertex
 
 ```bash
+# Install latest release
+curl -fsSL https://raw.githubusercontent.com/ataiva-software/vertex/main/install.sh | bash
+
+# Or for development, clone and build
 git clone https://github.com/ataiva-software/vertex.git
 cd vertex
+make build
 ```
 
 ### 2. Start Dependencies
@@ -32,28 +37,78 @@ cd vertex
 docker-compose up -d
 ```
 
-### 3. Install Go Dependencies
+### 3. Set Environment Variables
 
 ```bash
-# Download and install dependencies
-go mod tidy
+# Required master password
+export VERTEX_MASTER_PASSWORD="dev-password"
+
+# Optional database configuration
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_NAME="vertex"
+export DB_USER="vertex"
+export DB_PASSWORD="secret"
 ```
 
-### 4. Build Vertex
-
-```bash
-# Build single binary
-make build
-```
-
-### 5. Run Vertex
+### 4. Run Vertex
 
 ```bash
 # Start all services
-./bin/vertex server
+vertex server
 
-# Or run specific service
-./bin/vertex service vault --port 8080
+# Or run specific service for development
+vertex service vault --port 8080
+```
+
+## Development Workflow
+
+### Building from Source
+
+```bash
+# Install Go dependencies
+go mod tidy
+
+# Build single binary
+make build
+
+# Run built binary
+./bin/vertex server
+```
+
+### Running Services
+
+```bash
+# All services
+vertex server
+
+# Individual services for development
+vertex service vault --port 8080
+vertex service flow --port 8081
+vertex service task --port 8082
+```
+
+### Testing
+
+```bash
+# Run all tests
+make test
+
+# Run specific service tests
+go test ./internal/vault/...
+
+# Run with coverage
+go test -cover ./...
+```
+
+### Debugging
+
+```bash
+# Enable debug logging
+LOG_LEVEL=debug vertex server
+
+# Run specific service with debug
+vertex service vault --port 8080 --debug
 ```
 
 ## Project Structure

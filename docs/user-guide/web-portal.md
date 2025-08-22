@@ -184,16 +184,16 @@ headers: {
 curl http://localhost:8000/health
 
 # Restart server if needed
-./bin/vertex server
+vertex server
 ```
 
 **Service Unavailable Errors**
 ```bash
 # Check individual service status
-./bin/vertex status
+vertex status
 
 # Start specific service
-./bin/vertex service vault --port 8080
+vertex service vault --port 8080
 ```
 
 **Empty Data Displays**
@@ -224,7 +224,7 @@ The web portal is served from `./web/index.html` and can be customized:
 vim web/index.html
 
 # Restart to see changes
-./bin/vertex server
+vertex server
 ```
 
 ### API Testing
@@ -268,9 +268,9 @@ The web portal complements the CLI interface:
 
 ```bash
 # CLI operations
-./bin/vertex vault list --format yaml
-./bin/vertex flow run my-workflow
-./bin/vertex status
+vertex vault list --format yaml
+vertex flow run my-workflow
+vertex status
 
 # Web portal provides visual interface for same operations
 open http://localhost:8000
